@@ -1,0 +1,1213 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.content.Intent;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
+import android.graphics.Typeface;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+
+public class SplashActivity extends Activity {
+
+    private CinematicView cinematicView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        Window w = getWindow();
+        w.setStatusBarColor(Color.BLACK);
+        w.setNavigationBarColor(Color.BLACK);
+        w.setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+        );
+
+        cinematicView = new CinematicView();
+
+        setContentView(cinematicView);
+
+        cinematicView.start();
+    }
+
+    private class CinematicView extends View {
+
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        private long inicio;
+        private boolean iniciada = false;
+        private boolean abriuLogin = false;
+
+        private final int CYAN = Color.rgb(0, 235, 255);
+        private final int BLUE = Color.rgb(40, 110, 255);
+        private final int RED = Color.rgb(255, 25, 55);
+        private final int RED2 = Color.rgb(255, 80, 30);
+        private final int WHITE = Color.WHITE;
+
+        CinematicView() {
+            super(SplashActivity.this);
+
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+
+            p.setTypeface(Typeface.DEFAULT_BOLD);
+            glow.setTypeface(Typeface.DEFAULT_BOLD);
+        }
+
+        void start() {
+            if (iniciada) return;
+
+            iniciada = true;
+            inicio = System.currentTimeMillis();
+
+            postInvalidate();
+        }
+
+        private float progresso(long agora, float inicioMs, float fimMs) {
+            float t = (agora - inicio) / 1000f;
+
+            if (t <= inicioMs) return 0f;
+            if (t >= fimMs) return 1f;
+
+            return (t - inicioMs) / (fimMs - inicioMs);
+        }
+
+        private float easeOut(float x) {
+            x = Math.max(0f, Math.min(1f, x));
+            return 1f - (1f - x) * (1f - x);
+        }
+
+        private float easeIn(float x) {
+            x = Math.max(0f, Math.min(1f, x));
+            return x * x;
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+            super.onDraw(c);
+
+            long agora = System.currentTimeMillis();
+            float tempo = (agora - inicio) / 1000f;
+
+            desenharFundo(c, tempo);
+
+            // ROBÔ SE APROXIMANDO
+            if (tempo < 3.15f) {
+                float aproximacao =
+                        easeIn(progresso(agora, 0.35f, 2.65f));
+
+                desenharRobo(
+                        c,
+                        getWidth() / 2f,
+                        getHeight() * 0.49f,
+                        aproximacao,
+                        tempo
+                );
+            }
+
+            // SOCÃO
+            if (tempo >= 2.35f && tempo < 3.55f) {
+                desenharSoco(c, tempo);
+            }
+
+            // IMPACTO
+            if (tempo >= 2.85f && tempo < 4.2f) {
+                desenharImpacto(c, tempo);
+            }
+
+            // LINHAS NEON VERMELHAS
+            if (tempo >= 3.0f && tempo < 5.5f) {
+                desenharLinhasVelocidade(c, tempo);
+            }
+
+            // FERRARI VERMELHA PASSANDO
+            if (tempo >= 3.35f && tempo < 5.45f) {
+                desenharCarro(c, tempo);
+            }
+
+            // NOME DA IA
+            if (tempo >= 0.3f && tempo < 5.5f) {
+                desenharTitulo(c, tempo);
+            }
+
+            // ESCURECE ANTES DO LOGIN
+            if (tempo >= 5.25f) {
+                float fade =
+                        progresso(agora, 5.25f, 5.95f);
+
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(Color.argb(
+                        (int)(255f * fade),
+                        0, 0, 0
+                ));
+
+                c.drawRect(
+                        0,
+                        0,
+                        getWidth(),
+                        getHeight(),
+                        p
+                );
+            }
+
+            if (tempo >= 5.95f && !abriuLogin) {
+                abriuLogin = true;
+
+                post(() -> {
+                    Intent intent = new Intent(
+                            SplashActivity.this,
+                            LoginActivity.class
+                    );
+
+                    startActivity(intent);
+                    overridePendingTransition(
+                            android.R.anim.fade_in,
+                            android.R.anim.fade_out
+                    );
+
+                    finish();
+                });
+            }
+
+            if (!abriuLogin) {
+                postInvalidateDelayed(16);
+            }
+        }
+
+        private void desenharFundo(Canvas c, float tempo) {
+
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(2, 3, 10));
+
+            c.drawRect(
+                    0,
+                    0,
+                    getWidth(),
+                    getHeight(),
+                    p
+            );
+
+            // horizonte
+            p.setColor(Color.rgb(8, 10, 25));
+
+            c.drawRect(
+                    0,
+                    getHeight() * 0.63f,
+                    getWidth(),
+                    getHeight(),
+                    p
+            );
+
+            // grades futuristas
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(1f);
+            p.setColor(Color.rgb(18, 35, 55));
+
+            float horizonte = getHeight() * 0.63f;
+
+            for (int i = -10; i <= 10; i++) {
+
+                float x =
+                        getWidth() / 2f +
+                        i * getWidth() * 0.12f;
+
+                Path linha = new Path();
+
+                linha.moveTo(
+                        getWidth() / 2f,
+                        horizonte
+                );
+
+                linha.lineTo(
+                        x * 2f -
+                        getWidth() / 2f,
+                        getHeight()
+                );
+
+                c.drawPath(linha, p);
+            }
+
+            for (int i = 0; i < 8; i++) {
+
+                float y =
+                        horizonte +
+                        i * getHeight() * 0.055f;
+
+                c.drawLine(
+                        0,
+                        y,
+                        getWidth(),
+                        y,
+                        p
+                );
+            }
+
+            // partículas
+            p.setStyle(Paint.Style.FILL);
+
+            for (int i = 0; i < 35; i++) {
+
+                float x =
+                        ((i * 97) % Math.max(1, getWidth()));
+
+                float y =
+                        ((i * 173) % Math.max(1, getHeight()));
+
+                float brilho =
+                        1.5f +
+                        (float)Math.sin(
+                                tempo * 3 + i
+                        ) * 1.2f;
+
+                p.setColor(Color.argb(
+                        130,
+                        30,
+                        150,
+                        210
+                ));
+
+                c.drawCircle(
+                        x,
+                        y,
+                        Math.max(0.5f, brilho),
+                        p
+                );
+            }
+        }
+
+        private void desenharTitulo(Canvas c, float tempo) {
+
+            float entrada =
+                    easeOut(
+                            progresso(
+                                    System.currentTimeMillis(),
+                                    0.35f,
+                                    1.2f
+                            )
+                    );
+
+            p.setTypeface(Typeface.DEFAULT_BOLD);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setTextSize(getWidth() * 0.075f);
+            p.setStyle(Paint.Style.FILL);
+
+            glow.setTypeface(Typeface.DEFAULT_BOLD);
+            glow.setTextAlign(Paint.Align.CENTER);
+            glow.setTextSize(getWidth() * 0.075f);
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(CYAN);
+            glow.setShadowLayer(
+                    28,
+                    0,
+                    0,
+                    CYAN
+            );
+            glow.setAlpha((int)(220 * entrada));
+
+            c.drawText(
+                    "DANIKE AI",
+                    getWidth() / 2f,
+                    getHeight() * 0.12f,
+                    glow
+            );
+
+            p.setColor(Color.argb(
+                    (int)(170 * entrada),
+                    190,
+                    235,
+                    255
+            ));
+
+            p.setTextSize(getWidth() * 0.027f);
+
+            c.drawText(
+                    "INTELLIGÊNCIA • VELOCIDADE • FUTURO",
+                    getWidth() / 2f,
+                    getHeight() * 0.16f,
+                    p
+            );
+        }
+
+        private void desenharRobo(
+                Canvas c,
+                float cx,
+                float cy,
+                float aproximacao,
+                float tempo
+        ) {
+
+            float escala =
+                    0.48f +
+                    aproximacao * 0.62f;
+
+            c.save();
+
+            c.translate(cx, cy);
+
+            // sombra energética
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(Color.argb(100, 0, 180, 255));
+            glow.setShadowLayer(
+                    60 * escala,
+                    0,
+                    0,
+                    CYAN
+            );
+
+            c.drawOval(
+                    -145 * escala,
+                    165 * escala,
+                    145 * escala,
+                    220 * escala,
+                    glow
+            );
+
+            // cabelo / silhueta
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(8, 12, 25));
+            p.setShadowLayer(
+                    25 * escala,
+                    0,
+                    0,
+                    BLUE
+            );
+
+            Path cabelo = new Path();
+
+            cabelo.moveTo(
+                    -105 * escala,
+                    -125 * escala
+            );
+
+            cabelo.quadTo(
+                    -175 * escala,
+                    -30 * escala,
+                    -125 * escala,
+                    120 * escala
+            );
+
+            cabelo.quadTo(
+                    -70 * escala,
+                    170 * escala,
+                    0,
+                    190 * escala
+            );
+
+            cabelo.quadTo(
+                    70 * escala,
+                    170 * escala,
+                    125 * escala,
+                    120 * escala
+            );
+
+            cabelo.quadTo(
+                    175 * escala,
+                    -30 * escala,
+                    105 * escala,
+                    -125 * escala
+            );
+
+            cabelo.close();
+
+            c.drawPath(cabelo, p);
+
+            p.clearShadowLayer();
+
+            // cabeça
+            p.setColor(Color.rgb(24, 32, 48));
+
+            c.drawOval(
+                    -82 * escala,
+                    -105 * escala,
+                    82 * escala,
+                    95 * escala,
+                    p
+            );
+
+            // rosto luminoso
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(2.5f * escala);
+            p.setColor(Color.rgb(75, 175, 205));
+
+            c.drawOval(
+                    -70 * escala,
+                    -92 * escala,
+                    70 * escala,
+                    85 * escala,
+                    p
+            );
+
+            // olhos neon
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(CYAN);
+            glow.setShadowLayer(
+                    25 * escala,
+                    0,
+                    0,
+                    CYAN
+            );
+
+            Path olhoE = new Path();
+            olhoE.moveTo(
+                    -58 * escala,
+                    -25 * escala
+            );
+            olhoE.lineTo(
+                    -18 * escala,
+                    -32 * escala
+            );
+            olhoE.lineTo(
+                    -22 * escala,
+                    -12 * escala
+            );
+            olhoE.lineTo(
+                    -58 * escala,
+                    -7 * escala
+            );
+            olhoE.close();
+
+            Path olhoD = new Path();
+            olhoD.moveTo(
+                    58 * escala,
+                    -25 * escala
+            );
+            olhoD.lineTo(
+                    18 * escala,
+                    -32 * escala
+            );
+            olhoD.lineTo(
+                    22 * escala,
+                    -12 * escala
+            );
+            olhoD.lineTo(
+                    58 * escala,
+                    -7 * escala
+            );
+            olhoD.close();
+
+            c.drawPath(olhoE, glow);
+            c.drawPath(olhoD, glow);
+
+            glow.clearShadowLayer();
+
+            // nariz
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(2 * escala);
+            p.setColor(Color.rgb(100, 170, 190));
+
+            c.drawLine(
+                    0,
+                    -5 * escala,
+                    -7 * escala,
+                    25 * escala,
+                    p
+            );
+
+            c.drawLine(
+                    -7 * escala,
+                    25 * escala,
+                    8 * escala,
+                    25 * escala,
+                    p
+            );
+
+            // boca
+            p.setColor(CYAN);
+            c.drawArc(
+                    -27 * escala,
+                    28 * escala,
+                    27 * escala,
+                    55 * escala,
+                    15,
+                    150,
+                    false,
+                    p
+            );
+
+            // pescoço
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(15, 25, 40));
+
+            c.drawRect(
+                    -35 * escala,
+                    75 * escala,
+                    35 * escala,
+                    125 * escala,
+                    p
+            );
+
+            // tronco
+            Path tronco = new Path();
+
+            tronco.moveTo(
+                    -72 * escala,
+                    105 * escala
+            );
+
+            tronco.lineTo(
+                    -115 * escala,
+                    190 * escala
+            );
+
+            tronco.lineTo(
+                    115 * escala,
+                    190 * escala
+            );
+
+            tronco.lineTo(
+                    72 * escala,
+                    105 * escala
+            );
+
+            tronco.close();
+
+            p.setColor(Color.rgb(12, 20, 35));
+            c.drawPath(tronco, p);
+
+            // núcleo do peito
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(CYAN);
+            glow.setShadowLayer(
+                    30 * escala,
+                    0,
+                    0,
+                    CYAN
+            );
+
+            c.drawCircle(
+                    0,
+                    145 * escala,
+                    20 * escala,
+                    glow
+            );
+
+            glow.clearShadowLayer();
+
+            // braço esquerdo
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(28 * escala);
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setColor(Color.rgb(18, 30, 48));
+
+            c.drawLine(
+                    -75 * escala,
+                    120 * escala,
+                    -145 * escala,
+                    215 * escala,
+                    p
+            );
+
+            // braço direito preparando o soco
+            float golpe =
+                    tempo > 2.25f
+                            ? easeOut(
+                                progresso(
+                                    System.currentTimeMillis(),
+                                    2.25f,
+                                    3.05f
+                            ))
+                            : 0f;
+
+            float ombroX = 75 * escala;
+            float ombroY = 120 * escala;
+
+            float punhoX =
+                    150 * escala +
+                    golpe * 220 * escala;
+
+            float punhoY =
+                    15 * escala -
+                    golpe * 55 * escala;
+
+            c.drawLine(
+                    ombroX,
+                    ombroY,
+                    punhoX,
+                    punhoY,
+                    p
+            );
+
+            // contorno neon dos braços
+            p.setStrokeWidth(3 * escala);
+            p.setColor(CYAN);
+
+            c.drawLine(
+                    -75 * escala,
+                    120 * escala,
+                    -145 * escala,
+                    215 * escala,
+                    p
+            );
+
+            c.drawLine(
+                    ombroX,
+                    ombroY,
+                    punhoX,
+                    punhoY,
+                    p
+            );
+
+            // punho
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(Color.WHITE);
+            glow.setShadowLayer(
+                    35 * escala,
+                    0,
+                    0,
+                    CYAN
+            );
+
+            c.drawCircle(
+                    punhoX,
+                    punhoY,
+                    32 * escala,
+                    glow
+            );
+
+            glow.clearShadowLayer();
+
+            c.restore();
+        }
+
+        private void desenharSoco(Canvas c, float tempo) {
+
+            float golpe =
+                    easeOut(
+                            progresso(
+                                    System.currentTimeMillis(),
+                                    2.35f,
+                                    3.05f
+                            )
+                    );
+
+            float cx =
+                    getWidth() * 0.5f +
+                    golpe * getWidth() * 0.43f;
+
+            float cy =
+                    getHeight() * 0.48f -
+                    golpe * getHeight() * 0.08f;
+
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(Color.WHITE);
+            glow.setShadowLayer(
+                    50,
+                    0,
+                    0,
+                    CYAN
+            );
+
+            c.drawCircle(
+                    cx,
+                    cy,
+                    28 + golpe * 32,
+                    glow
+            );
+
+            glow.clearShadowLayer();
+
+            // rastros do golpe
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+
+            for (int i = 0; i < 6; i++) {
+
+                p.setStrokeWidth(3 + i);
+
+                p.setColor(Color.argb(
+                        190 - i * 25,
+                        0,
+                        200,
+                        255
+                ));
+
+                c.drawLine(
+                        cx - 120 - i * 20,
+                        cy + i * 10,
+                        cx - 30,
+                        cy,
+                        p
+                );
+            }
+        }
+
+        private void desenharImpacto(Canvas c, float tempo) {
+
+            float impacto =
+                    progresso(
+                            System.currentTimeMillis(),
+                            2.85f,
+                            4.1f
+                    );
+
+            float forca =
+                    1f - impacto;
+
+            // clarão
+            if (impacto < 0.35f) {
+
+                float alpha =
+                        1f - impacto / 0.35f;
+
+                p.setStyle(Paint.Style.FILL);
+                p.setColor(Color.argb(
+                        (int)(220 * alpha),
+                        230,
+                        250,
+                        255
+                ));
+
+                c.drawRect(
+                        0,
+                        0,
+                        getWidth(),
+                        getHeight(),
+                        p
+                );
+            }
+
+            float cx = getWidth() / 2f;
+            float cy = getHeight() * 0.47f;
+
+            // círculo de choque
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(4);
+
+            for (int i = 0; i < 5; i++) {
+
+                float raio =
+                        35 +
+                        impacto * 400 +
+                        i * 35;
+
+                p.setColor(Color.argb(
+                        (int)(180 * forca),
+                        0,
+                        220,
+                        255
+                ));
+
+                c.drawCircle(
+                        cx,
+                        cy,
+                        raio,
+                        p
+                );
+            }
+
+            // rachaduras
+            p.setStrokeWidth(3);
+            p.setColor(Color.argb(
+                    (int)(230 * Math.min(1f, impacto * 2f)),
+                    220,
+                    245,
+                    255
+            ));
+
+            desenharRachadura(
+                    c,
+                    cx,
+                    cy,
+                    -1,
+                    -1
+            );
+
+            desenharRachadura(
+                    c,
+                    cx,
+                    cy,
+                    1,
+                    -1
+            );
+
+            desenharRachadura(
+                    c,
+                    cx,
+                    cy,
+                    -1,
+                    1
+            );
+
+            desenharRachadura(
+                    c,
+                    cx,
+                    cy,
+                    1,
+                    1
+            );
+        }
+
+        private void desenharRachadura(
+                Canvas c,
+                float cx,
+                float cy,
+                float sx,
+                float sy
+        ) {
+
+            Path path = new Path();
+
+            path.moveTo(
+                    cx,
+                    cy
+            );
+
+            path.lineTo(
+                    cx + sx * getWidth() * 0.12f,
+                    cy + sy * getHeight() * 0.09f
+            );
+
+            path.lineTo(
+                    cx + sx * getWidth() * 0.18f,
+                    cy + sy * getHeight() * 0.04f
+            );
+
+            path.lineTo(
+                    cx + sx * getWidth() * 0.30f,
+                    cy + sy * getHeight() * 0.16f
+            );
+
+            path.lineTo(
+                    cx + sx * getWidth() * 0.43f,
+                    cy + sy * getHeight() * 0.12f
+            );
+
+            c.drawPath(path, p);
+        }
+
+        private void desenharLinhasVelocidade(
+                Canvas c,
+                float tempo
+        ) {
+
+            float entrada =
+                    progresso(
+                            System.currentTimeMillis(),
+                            3.0f,
+                            3.7f
+                    );
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeCap(Paint.Cap.ROUND);
+
+            for (int i = 0; i < 15; i++) {
+
+                float y =
+                        ((i * 91f) +
+                        tempo * 180f * (i + 1)) %
+                        Math.max(1, getHeight());
+
+                float tamanho =
+                        80 + (i % 4) * 70;
+
+                float x =
+                        (i * 137f) %
+                        Math.max(1, getWidth());
+
+                p.setStrokeWidth(
+                        2 + (i % 3)
+                );
+
+                p.setColor(Color.argb(
+                        (int)(130 + 100 * entrada),
+                        255,
+                        15 + i * 3,
+                        40
+                ));
+
+                c.drawLine(
+                        x,
+                        y,
+                        x + tamanho,
+                        y - 25,
+                        p
+                );
+            }
+
+            // linhas horizontais de velocidade
+            for (int i = 0; i < 7; i++) {
+
+                float y =
+                        getHeight() * 0.25f +
+                        i * getHeight() * 0.10f;
+
+                p.setStrokeWidth(1.5f);
+                p.setColor(Color.argb(
+                        160,
+                        255,
+                        35,
+                        55
+                ));
+
+                c.drawLine(
+                        0,
+                        y,
+                        getWidth() * 0.35f,
+                        y,
+                        p
+                );
+
+                c.drawLine(
+                        getWidth() * 0.65f,
+                        y,
+                        getWidth(),
+                        y,
+                        p
+                );
+            }
+        }
+
+        private void desenharCarro(
+                Canvas c,
+                float tempo
+        ) {
+
+            float entrada =
+                    progresso(
+                            System.currentTimeMillis(),
+                            3.35f,
+                            3.8f
+                    );
+
+            float saida =
+                    progresso(
+                            System.currentTimeMillis(),
+                            4.8f,
+                            5.45f
+                    );
+
+            float x =
+                    -getWidth() * 0.75f +
+                    easeOut(entrada) *
+                    getWidth() * 1.75f;
+
+            x += easeIn(saida) *
+                    getWidth() * 0.75f;
+
+            float y =
+                    getHeight() * 0.68f;
+
+            float escala =
+                    Math.max(
+                            0.65f,
+                            getWidth() / 500f
+                    );
+
+            c.save();
+            c.translate(x, y);
+            c.scale(escala, escala);
+
+            // sombra
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(Color.argb(
+                    120,
+                    0,
+                    0,
+                    0
+            ));
+
+            c.drawOval(
+                    -190,
+                    55,
+                    190,
+                    105,
+                    glow
+            );
+
+            // carroceria
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(
+                    180,
+                    5,
+                    22
+            ));
+
+            Path carro = new Path();
+
+            carro.moveTo(
+                    -185,
+                    35
+            );
+
+            carro.lineTo(
+                    -145,
+                    -5
+            );
+
+            carro.lineTo(
+                    -75,
+                    -30
+            );
+
+            carro.lineTo(
+                    55,
+                    -30
+            );
+
+            carro.lineTo(
+                    135,
+                    0
+            );
+
+            carro.lineTo(
+                    185,
+                    30
+            );
+
+            carro.lineTo(
+                    180,
+                    58
+            );
+
+            carro.lineTo(
+                    -180,
+                    58
+            );
+
+            carro.close();
+
+            c.drawPath(carro, p);
+
+            // vidro
+            p.setColor(Color.rgb(
+                    8,
+                    22,
+                    35
+            ));
+
+            Path vidro = new Path();
+
+            vidro.moveTo(
+                    -70,
+                    -24
+            );
+
+            vidro.lineTo(
+                    45,
+                    -24
+            );
+
+            vidro.lineTo(
+                    105,
+                    4
+            );
+
+            vidro.lineTo(
+                    -105,
+                    4
+            );
+
+            vidro.close();
+
+            c.drawPath(vidro, p);
+
+            // linha neon na lateral
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(3);
+            p.setColor(RED2);
+
+            c.drawLine(
+                    -165,
+                    30,
+                    160,
+                    30,
+                    p
+            );
+
+            // rodas
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(
+                    5,
+                    5,
+                    8
+            ));
+
+            c.drawCircle(
+                    -105,
+                    55,
+                    32,
+                    p
+            );
+
+            c.drawCircle(
+                    105,
+                    55,
+                    32,
+                    p
+            );
+
+            p.setColor(Color.rgb(
+                    120,
+                    125,
+                    135
+            ));
+
+            c.drawCircle(
+                    -105,
+                    55,
+                    12,
+                    p
+            );
+
+            c.drawCircle(
+                    105,
+                    55,
+                    12,
+                    p
+            );
+
+            // faróis
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(Color.WHITE);
+            glow.setShadowLayer(
+                    18,
+                    0,
+                    0,
+                    Color.WHITE
+            );
+
+            c.drawOval(
+                    145,
+                    15,
+                    175,
+                    25,
+                    glow
+            );
+
+            c.drawOval(
+                    -175,
+                    15,
+                    -145,
+                    25,
+                    glow
+            );
+
+            glow.clearShadowLayer();
+
+            // detalhe frontal
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(2);
+            p.setColor(Color.rgb(
+                    240,
+                    240,
+                    240
+            ));
+
+            c.drawLine(
+                    165,
+                    30,
+                    180,
+                    45,
+                    p
+            );
+
+            c.restore();
+        }
+    }
+}

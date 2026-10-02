@@ -1,0 +1,186 @@
+package com.danike.ai;
+
+import android.animation.ValueAnimator;
+import android.content.Context;
+import android.graphics.*;
+import android.view.View;
+import android.view.animation.LinearInterpolator;
+
+public class DaNikeFaceView extends View {
+
+    private Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private float blink = 1f;
+    private float pulse = 1f;
+    private boolean thinking = false;
+    private boolean listening = false;
+    private boolean speaking = false;
+
+    private final int BLUE = Color.rgb(20, 210, 255);
+    private final int GOLD = Color.rgb(255, 190, 30);
+
+    public DaNikeFaceView(Context context) {
+        super(context);
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+
+        ValueAnimator anim = ValueAnimator.ofFloat(0f, 1f);
+        anim.setDuration(1800);
+        anim.setRepeatCount(ValueAnimator.INFINITE);
+        anim.setInterpolator(new LinearInterpolator());
+
+        anim.addUpdateListener(a -> {
+            float v = (float)a.getAnimatedValue();
+            pulse = 1f + (float)Math.sin(v * Math.PI * 2) * 0.035f;
+            invalidate();
+        });
+
+        anim.start();
+
+        postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (!thinking && !listening) {
+                    blink = 0.08f;
+                    invalidate();
+
+                    postDelayed(() -> {
+                        blink = 1f;
+                        invalidate();
+                    }, 130);
+
+                    postDelayed(this, 3500 + (long)(Math.random() * 2500));
+                }
+            }
+        }, 2500);
+    }
+
+    public void setThinking(boolean value) {
+        thinking = value;
+        invalidate();
+    }
+
+    public void setListening(boolean value) {
+        listening = value;
+        invalidate();
+    }
+
+    public void setSpeaking(boolean value) {
+        speaking = value;
+        invalidate();
+    }
+
+    @Override
+    protected void onDraw(Canvas c) {
+        super.onDraw(c);
+
+        float cx = getWidth() / 2f;
+        float cy = getHeight() / 2f;
+        float r = Math.min(getWidth(), getHeight()) * 0.38f;
+
+        int neon = thinking ? GOLD : BLUE;
+
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.rgb(1, 7, 14));
+        c.drawCircle(cx, cy, r * 1.05f, p);
+
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(5);
+        p.setColor(neon);
+        p.setShadowLayer(listening ? 35 : 22, 0, 0, neon);
+
+        RectF halo = new RectF(
+                cx - r * 1.15f,
+                cy - r * 1.15f,
+                cx + r * 1.15f,
+                cy + r * 1.15f
+        );
+
+        c.drawArc(halo, -35, 100, false, p);
+        c.drawArc(halo, 145, 110, false, p);
+
+        p.clearShadowLayer();
+
+        float s = pulse;
+
+        // olhos
+        float eyeY = cy - r * 0.12f;
+        float eyeX = r * 0.38f;
+        float eyeR = r * 0.16f;
+
+        desenharOlho(c, cx - eyeX, eyeY, eyeR * s, neon);
+        desenharOlho(c, cx + eyeX, eyeY, eyeR * s, neon);
+
+        // sobrancelhas
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(5);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setColor(neon);
+        p.setShadowLayer(12, 0, 0, neon);
+
+        c.drawArc(
+                new RectF(cx-eyeX-eyeR, eyeY-eyeR*1.8f,
+                          cx-eyeX+eyeR, eyeY-eyeR*.5f),
+                210, 120, false, p
+        );
+
+        c.drawArc(
+                new RectF(cx+eyeX-eyeR, eyeY-eyeR*1.8f,
+                          cx+eyeX+eyeR, eyeY-eyeR*.5f),
+                210, 120, false, p
+        );
+
+        p.clearShadowLayer();
+
+        // boca
+        p.setColor(neon);
+        p.setStrokeWidth(speaking ? 8 : 5);
+
+        if (speaking) {
+            float h = r * (0.045f + 0.035f * (float)Math.sin(System.currentTimeMillis() / 90.0));
+            c.drawOval(
+                    new RectF(
+                            cx-r*.12f,
+                            cy+r*.43f-h,
+                            cx+r*.12f,
+                            cy+r*.43f+h
+                    ),
+                    p
+            );
+            postInvalidateDelayed(40);
+        } else {
+            c.drawLine(
+                    cx-r*.10f,
+                    cy+r*.44f,
+                    cx+r*.10f,
+                    cy+r*.44f,
+                    p
+            );
+        }
+
+        p.setStrokeCap(Paint.Cap.BUTT);
+    }
+
+    private void desenharOlho(Canvas c, float x, float y, float r, int cor) {
+
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.rgb(4, 30, 48));
+        p.setShadowLayer(25, 0, 0, cor);
+        c.drawCircle(x, y, r * 1.35f, p);
+
+        p.setColor(cor);
+        p.setShadowLayer(18, 0, 0, cor);
+        c.drawCircle(x, y, r, p);
+
+        p.clearShadowLayer();
+
+        p.setColor(Color.WHITE);
+        c.drawCircle(x-r*.30f, y-r*.30f, r*.20f, p);
+
+        p.setColor(Color.rgb(0, 45, 70));
+        c.drawCircle(x, y, r*.40f, p);
+
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(3);
+        p.setColor(cor);
+        c.drawCircle(x, y, r*1.18f, p);
+    }
+}

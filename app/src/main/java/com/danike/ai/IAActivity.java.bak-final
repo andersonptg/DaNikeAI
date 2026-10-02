@@ -1,0 +1,858 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
+import android.os.Bundle;
+
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
+
+import android.speech.SpeechRecognizer;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+
+import android.content.Intent;
+
+import android.view.Gravity;
+import android.view.View;
+
+import android.widget.*;
+
+import android.text.method.ScrollingMovementMethod;
+
+import android.view.inputmethod.EditorInfo;
+
+import android.speech.tts.TextToSpeech;
+
+import java.util.ArrayList;
+import java.util.Locale;
+
+
+public class IAActivity extends Activity {
+
+    LinearLayout tela;
+
+    DaNikeAIFaceView rostoIA;
+
+    TextView statusIA;
+    TextView resposta;
+
+    EditText entrada;
+
+    TextToSpeech voz;
+
+    SpeechRecognizer reconhecedor;
+    Intent intentVoz;
+
+    boolean ouvindo = false;
+    boolean falando = false;
+
+    // =========================================================
+    // CORES
+    // =========================================================
+
+    final int AZUL_NEON =
+            Color.rgb(0, 210, 255);
+
+    final int AZUL_FORTE =
+            Color.rgb(0, 150, 230);
+
+    final int AZUL_ESCURO =
+            Color.rgb(2, 10, 20);
+
+    final int PAINEL =
+            Color.rgb(3, 18, 32);
+
+    final int DOURADO =
+            Color.rgb(255, 195, 0);
+
+    final int VERDE =
+            Color.rgb(60, 255, 130);
+
+
+    // =========================================================
+    // DP
+    // =========================================================
+
+    int dp(float v) {
+
+        return (int)
+                (v *
+                getResources()
+                        .getDisplayMetrics()
+                        .density
+                + .5f);
+    }
+
+
+    // =========================================================
+    // FUNDO ARREDONDADO
+    // =========================================================
+
+    GradientDrawable fundo(
+            int cor,
+            float raio
+    ) {
+
+        GradientDrawable g =
+                new GradientDrawable();
+
+        g.setColor(cor);
+
+        g.setCornerRadius(
+                dp(raio)
+        );
+
+        return g;
+    }
+
+
+    // =========================================================
+    // TEXTO
+    // =========================================================
+
+    TextView texto(
+            String s,
+            float tamanho,
+            int cor
+    ) {
+
+        TextView t =
+                new TextView(this);
+
+        t.setText(s);
+        t.setTextSize(tamanho);
+        t.setTextColor(cor);
+
+        return t;
+    }
+
+
+    // =========================================================
+    // BOTÃO
+    // =========================================================
+
+    Button botao(
+            String s,
+            int cor
+    ) {
+
+        Button b =
+                new Button(this);
+
+        b.setText(s);
+
+        b.setTextSize(14);
+
+        b.setTextColor(Color.WHITE);
+
+        b.setAllCaps(false);
+
+        b.setTypeface(
+                Typeface.DEFAULT_BOLD
+        );
+
+        b.setBackground(
+                fundo(cor, 22)
+        );
+
+        return b;
+    }
+
+
+    // =========================================================
+    // ON CREATE
+    // =========================================================
+
+    @Override
+    protected void onCreate(
+            Bundle b
+    ) {
+
+        super.onCreate(b);
+
+        // -----------------------------------------------------
+        // VOZ
+        // -----------------------------------------------------
+
+        voz =
+                new TextToSpeech(
+                        this,
+                        status -> {
+
+                            if (
+                                    status ==
+                                    TextToSpeech.SUCCESS
+                            ) {
+
+                                voz.setLanguage(
+                                        new Locale(
+                                                "pt",
+                                                "BR"
+                                        )
+                                );
+
+                                voz.setSpeechRate(
+                                        1.0f
+                                );
+
+                                voz.setPitch(
+                                        1.0f
+                                );
+                            }
+                        }
+                );
+
+
+        // -----------------------------------------------------
+        // VOZ / MICROFONE
+        // -----------------------------------------------------
+
+        montarReconhecimentoVoz();
+
+
+        // -----------------------------------------------------
+        // TELA
+        // -----------------------------------------------------
+
+        montarTela();
+    }
+
+
+    // =========================================================
+    // RECONHECIMENTO DE VOZ
+    // =========================================================
+
+    void montarReconhecimentoVoz() {
+
+        if (
+                !SpeechRecognizer
+                        .isRecognitionAvailable(this)
+        ) {
+
+            return;
+        }
+
+
+        reconhecedor =
+                SpeechRecognizer
+                        .createSpeechRecognizer(
+                                this
+                        );
+
+
+        reconhecedor.setRecognitionListener(
+                new RecognitionListener() {
+
+                    @Override
+                    public void onReadyForSpeech(
+                            Bundle params
+                    ) {
+
+                        ouvindo = true;
+
+                        statusIA.setText(
+                                "🎤  OUVINDO..."
+                        );
+
+                        statusIA.setTextColor(
+                                AZUL_NEON
+                        );
+
+                        if (rostoIA != null) {
+
+                            rostoIA.invalidate();
+                        }
+                    }
+
+
+                    @Override
+                    public void onBeginningOfSpeech() {
+
+                        ouvindo = true;
+                    }
+
+
+                    @Override
+                    public void onRmsChanged(
+                            float rmsdB
+                    ) {
+                    }
+
+
+                    @Override
+                    public void onBufferReceived(
+                            byte[] buffer
+                    ) {
+                    }
+
+
+                    @Override
+                    public void onEndOfSpeech() {
+
+                        ouvindo = false;
+                    }
+
+
+                    @Override
+                    public void onError(
+                            int error
+                    ) {
+
+                        ouvindo = false;
+
+                        if (!falando) {
+
+                            statusIA.setText(
+                                    "●  IA ONLINE"
+                            );
+
+                            statusIA.setTextColor(
+                                    VERDE
+                            );
+                        }
+                    }
+
+
+                    @Override
+                    public void onResults(
+                            Bundle resultados
+                    ) {
+
+                        ouvindo = false;
+
+                        ArrayList<String> textos =
+                                resultados.getStringArrayList(
+                                        SpeechRecognizer
+                                                .RESULTS_RECOGNITION
+                                );
+
+
+                        if (
+                                textos == null ||
+                                textos.isEmpty()
+                        ) {
+
+                            statusIA.setText(
+                                    "●  IA ONLINE"
+                            );
+
+                            statusIA.setTextColor(
+                                    VERDE
+                            );
+
+                            return;
+                        }
+
+
+                        String textoReconhecido =
+                                textos
+                                        .get(0)
+                                        .trim();
+
+
+                        // -------------------------------------
+                        // COMANDO PARAR
+                        // -------------------------------------
+
+                        if (
+                                textoReconhecido
+                                        .equalsIgnoreCase(
+                                                "stop"
+                                        )
+
+                                ||
+
+                                textoReconhecido
+                                        .equalsIgnoreCase(
+                                                "parar"
+                                        )
+
+                                ||
+
+                                textoReconhecido
+                                        .equalsIgnoreCase(
+                                                "pare"
+                                        )
+
+                                ||
+
+                                textoReconhecido
+                                        .equalsIgnoreCase(
+                                                "parar de falar"
+                                        )
+                        ) {
+
+                            pararFala();
+
+                            return;
+                        }
+
+
+                        entrada.setText(
+                                textoReconhecido
+                        );
+
+
+                        responder();
+                    }
+
+
+                    @Override
+                    public void onPartialResults(
+                            Bundle resultados
+                    ) {
+                    }
+
+
+                    @Override
+                    public void onEvent(
+                            int eventType,
+                            Bundle params
+                    ) {
+                    }
+                }
+        );
+
+
+        intentVoz =
+                new Intent(
+                        RecognizerIntent
+                                .ACTION_RECOGNIZE_SPEECH
+                );
+
+
+        intentVoz.putExtra(
+                RecognizerIntent
+                        .EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent
+                        .LANGUAGE_MODEL_FREE_FORM
+        );
+
+
+        intentVoz.putExtra(
+                RecognizerIntent
+                        .EXTRA_LANGUAGE,
+                "pt-BR"
+        );
+
+
+        intentVoz.putExtra(
+                RecognizerIntent
+                        .EXTRA_PARTIAL_RESULTS,
+                false
+        );
+    }
+
+
+    // =========================================================
+    // MONTAR TELA
+    // =========================================================
+
+    void montarTela() {
+
+        tela =
+                new LinearLayout(this);
+
+        tela.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+
+        tela.setPadding(
+                dp(14),
+                dp(8),
+                dp(14),
+                dp(12)
+        );
+
+
+        tela.setBackgroundColor(
+                AZUL_ESCURO
+        );
+
+
+        // =====================================================
+        // TOPO
+        // =====================================================
+
+        LinearLayout topo =
+                new LinearLayout(this);
+
+        topo.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+
+        // -----------------------------------------------------
+        // TÍTULO
+        // -----------------------------------------------------
+
+        TextView titulo =
+                texto(
+                        "DaNikeAI",
+                        28,
+                        Color.WHITE
+                );
+
+
+        titulo.setTypeface(
+                Typeface.DEFAULT_BOLD
+        );
+
+
+        topo.addView(
+                titulo,
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(52),
+                        1
+                )
+        );
+
+
+        // -----------------------------------------------------
+        // BOTÃO VOLTAR
+        // -----------------------------------------------------
+
+        Button voltar =
+                botao(
+                        "←",
+                        Color.rgb(
+                                8,
+                                35,
+                                55
+                        )
+                );
+
+
+        topo.addView(
+                voltar,
+                new LinearLayout.LayoutParams(
+                        dp(50),
+                        dp(50)
+                )
+        );
+
+
+        // -----------------------------------------------------
+        // LUA
+        // -----------------------------------------------------
+
+        Button lua =
+                botao(
+                        "🌙",
+                        Color.rgb(
+                                8,
+                                35,
+                                55
+                        )
+                );
+
+
+        LinearLayout.LayoutParams lpLua =
+                new LinearLayout.LayoutParams(
+                        dp(50),
+                        dp(50)
+                );
+
+
+        lpLua.setMargins(
+                dp(6),
+                0,
+                0,
+                0
+        );
+
+
+        topo.addView(
+                lua,
+                lpLua
+        );
+
+
+        // -----------------------------------------------------
+        // ENGRENAGEM
+        // -----------------------------------------------------
+
+        Button configuracoes =
+                botao(
+                        "⚙",
+                        Color.rgb(
+                                8,
+                                35,
+                                55
+                        )
+                );
+
+
+        LinearLayout.LayoutParams lpConfig =
+                new LinearLayout.LayoutParams(
+                        dp(50),
+                        dp(50)
+                );
+
+
+        lpConfig.setMargins(
+                dp(6),
+                0,
+                0,
+                0
+        );
+
+
+        topo.addView(
+                configuracoes,
+                lpConfig
+        );
+
+
+        tela.addView(topo);
+
+
+        // -----------------------------------------------------
+        // AÇÕES
+        // -----------------------------------------------------
+
+        voltar.setOnClickListener(
+                v -> finish()
+        );
+
+
+        configuracoes.setOnClickListener(
+                v -> abrirConfiguracoes()
+        );
+
+
+        lua.setOnClickListener(
+                v -> alternarModoEscuro()
+        );
+
+
+        // =====================================================
+        // SUBTÍTULO
+        // =====================================================
+
+        TextView subtitulo =
+                texto(
+                        "🧠  CÉREBRO DA DaNikeAI",
+                        15,
+                        AZUL_NEON
+                );
+
+
+        subtitulo.setTypeface(
+                Typeface.DEFAULT_BOLD
+        );
+
+
+        tela.addView(
+                subtitulo,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(32)
+                )
+        );
+
+
+        // =====================================================
+        // STATUS
+        // =====================================================
+
+        statusIA =
+                texto(
+                        "●  IA ONLINE",
+                        13,
+                        VERDE
+                );
+
+
+        tela.addView(
+                statusIA,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(28)
+                )
+        );
+
+
+        // =====================================================
+        // ROSTO
+        // =====================================================
+
+        FrameLayout areaRosto =
+                new FrameLayout(this);
+
+
+        rostoIA =
+                new DaNikeAIFaceView(this);
+
+
+        int tamanho =
+                Math.min(
+                        dp(320),
+                        getResources()
+                                .getDisplayMetrics()
+                                .widthPixels
+                                - dp(25)
+                );
+
+
+        areaRosto.addView(
+                rostoIA,
+                new FrameLayout.LayoutParams(
+                        tamanho,
+                        tamanho,
+                        Gravity.CENTER
+                )
+        );
+
+
+        tela.addView(
+                areaRosto,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(330)
+                )
+        );
+
+
+        // =====================================================
+        // PAINEL DE RESPOSTA
+        // =====================================================
+
+        LinearLayout painel =
+                new LinearLayout(this);
+
+
+        painel.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+
+        painel.setPadding(
+                dp(12),
+                dp(8),
+                dp(12),
+                dp(8)
+        );
+
+
+        GradientDrawable painelFundo =
+                fundo(
+                        Color.rgb(
+                                3,
+                                14,
+                                27
+                        ),
+                        22
+                );
+
+
+        painelFundo.setStroke(
+                dp(2),
+                AZUL_NEON
+        );
+
+
+        painel.setBackground(
+                painelFundo
+        );
+
+
+        // -----------------------------------------------------
+        // TÍTULO RESPOSTA
+        // -----------------------------------------------------
+
+        TextView tituloResposta =
+                texto(
+                        "DaNikeAI  •  Resposta",
+                        15,
+                        DOURADO
+                );
+
+
+        tituloResposta.setTypeface(
+                Typeface.DEFAULT_BOLD
+        );
+
+
+        painel.addView(
+                tituloResposta,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(30)
+                )
+        );
+
+
+        // -----------------------------------------------------
+        // TEXTO RESPOSTA
+        // -----------------------------------------------------
+
+        resposta =
+                texto(
+                        "Olá.\n\n" +
+                        "Sou a DaNikeAI. " +
+                        "Faça uma pergunta para começar.",
+                        16,
+                        Color.WHITE
+                );
+
+
+        resposta.setGravity(
+                Gravity.TOP
+        );
+
+
+        resposta.setPadding(
+                dp(8),
+                dp(4),
+                dp(8),
+                dp(4)
+        );
+
+
+        resposta.setMovementMethod(
+                ScrollingMovementMethod
+                        .getInstance()
+        );
+
+
+        ScrollView scrollResposta =
+                new ScrollView(this);
+
+
+        scrollResposta.setFillViewport(
+                true
+        );
+
+
+        scrollResposta.addView(
+                resposta
+        );
+
+
+        painel.addView(
+                scrollResposta,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(105)
+                )
+        );
+
+
+        tela.addView(
+                painel,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(145)
+                )
+        );
+
+
+        // =====================================
+

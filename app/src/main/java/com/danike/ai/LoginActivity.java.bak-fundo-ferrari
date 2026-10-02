@@ -1,0 +1,443 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.os.Bundle;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.text.InputType;
+import android.view.Gravity;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+import com.google.firebase.auth.FirebaseAuth;
+
+public class LoginActivity extends Activity {
+
+    private FirebaseAuth auth;
+
+    private int dp(float value) {
+        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
+    }
+
+    private GradientDrawable fundo(int cor, float raio) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(cor);
+        g.setCornerRadius(dp(raio));
+        return g;
+    }
+
+    private EditText campo(String dica, boolean senha) {
+
+        EditText campo = new EditText(this);
+
+        campo.setHint(dica);
+        campo.setHintTextColor(Color.rgb(120, 120, 130));
+        campo.setTextColor(Color.WHITE);
+        campo.setTextSize(15);
+        campo.setSingleLine(true);
+        campo.setPadding(dp(18), 0, dp(18), 0);
+        campo.setBackground(
+                fundo(Color.rgb(22, 22, 28), 14)
+        );
+
+        if (senha) {
+            campo.setInputType(
+                    InputType.TYPE_CLASS_TEXT |
+                    InputType.TYPE_TEXT_VARIATION_PASSWORD
+            );
+        }
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, dp(55));
+
+        params.setMargins(0, dp(7), 0, dp(7));
+
+        campo.setLayoutParams(params);
+
+        return campo;
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        auth = FirebaseAuth.getInstance();
+
+        getWindow().setStatusBarColor(Color.BLACK);
+        getWindow().setNavigationBarColor(Color.BLACK);
+
+        LinearLayout tela = new LinearLayout(this);
+        tela.setOrientation(LinearLayout.VERTICAL);
+        tela.setGravity(Gravity.CENTER_HORIZONTAL);
+        tela.setPadding(
+                dp(28),
+                dp(25),
+                dp(28),
+                dp(25)
+        );
+        tela.setBackgroundColor(Color.BLACK);
+
+        TextView robo = new TextView(this);
+        robo.setText(""); robo.setBackgroundResource(com.danike.ai.R.drawable.danike_logo);
+        robo.setTextSize(58);
+        robo.setGravity(Gravity.CENTER);
+
+        tela.addView(
+                robo,
+                new LinearLayout.LayoutParams(-1, dp(85))
+        );
+
+        TextView titulo = new TextView(this);
+        titulo.setText("DaNikeAI");
+        titulo.setTextColor(Color.WHITE);
+        titulo.setTextSize(30);
+        titulo.setTypeface(Typeface.DEFAULT_BOLD);
+        titulo.setGravity(Gravity.CENTER);
+
+        tela.addView(
+                titulo,
+                new LinearLayout.LayoutParams(-1, dp(50))
+        );
+
+        TextView subtitulo = new TextView(this);
+        subtitulo.setText("ENTRE NA SUA CONTA");
+        subtitulo.setTextColor(Color.rgb(70, 220, 255));
+        subtitulo.setTextSize(13);
+        subtitulo.setTypeface(Typeface.DEFAULT_BOLD);
+        subtitulo.setGravity(Gravity.CENTER);
+
+        tela.addView(
+                subtitulo,
+                new LinearLayout.LayoutParams(-1, dp(35))
+        );
+
+        EditText usuario = campo("E-MAIL OU USUÁRIO", false);
+        EditText senha = campo("SENHA", true);
+
+        tela.addView(usuario);
+        tela.addView(senha);
+
+        TextView esqueci = new TextView(this);
+        esqueci.setText("Esqueceu a senha?");
+        esqueci.setTextColor(Color.rgb(255, 70, 70));
+        esqueci.setTextSize(12);
+        esqueci.setGravity(Gravity.CENTER);
+        esqueci.setPadding(0, dp(4), 0, dp(4));
+
+        tela.addView(
+                esqueci,
+                new LinearLayout.LayoutParams(-1, dp(35))
+        );
+
+        Button entrar = new Button(this);
+        entrar.setText("ENTRAR");
+        entrar.setTextColor(Color.BLACK);
+        entrar.setTextSize(14);
+        entrar.setTypeface(Typeface.DEFAULT_BOLD);
+        entrar.setAllCaps(false);
+        entrar.setBackground(
+                fundo(Color.rgb(70, 220, 255), 16)
+        );
+
+        LinearLayout.LayoutParams entrarParams =
+                new LinearLayout.LayoutParams(-1, dp(55));
+
+        entrarParams.setMargins(
+                0,
+                dp(10),
+                0,
+                dp(14)
+        );
+
+        tela.addView(entrar, entrarParams);
+
+        LinearLayout cadastroLinha = new LinearLayout(this);
+        cadastroLinha.setOrientation(LinearLayout.HORIZONTAL);
+        cadastroLinha.setGravity(Gravity.CENTER);
+
+        TextView cadastroTexto = new TextView(this);
+        cadastroTexto.setText("Ainda não tem uma conta? ");
+        cadastroTexto.setTextColor(Color.LTGRAY);
+        cadastroTexto.setTextSize(12);
+        cadastroTexto.setGravity(Gravity.CENTER);
+
+        TextView cadastroBotao = new TextView(this);
+        cadastroBotao.setText("CADASTRE-SE");
+        cadastroBotao.setTextColor(Color.rgb(70, 220, 255));
+        cadastroBotao.setTextSize(12);
+        cadastroBotao.setTypeface(Typeface.DEFAULT_BOLD);
+        cadastroBotao.setGravity(Gravity.CENTER);
+
+        cadastroLinha.addView(cadastroTexto);
+        cadastroLinha.addView(cadastroBotao);
+
+        tela.addView(
+                cadastroLinha,
+                new LinearLayout.LayoutParams(-1, dp(40))
+        );
+
+        TextView mensagem = new TextView(this);
+        mensagem.setText("");
+        mensagem.setTextColor(Color.rgb(255, 80, 80));
+        mensagem.setTextSize(12);
+        mensagem.setGravity(Gravity.CENTER);
+
+        tela.addView(
+                mensagem,
+                new LinearLayout.LayoutParams(-1, dp(45))
+        );
+
+        TextView rodape = new TextView(this);
+        rodape.setText(
+                "DaNikeAI • Assistente pessoal de inteligência artificial"
+        );
+        rodape.setTextColor(Color.rgb(85, 85, 95));
+        rodape.setTextSize(9);
+        rodape.setGravity(Gravity.CENTER);
+
+        tela.addView(
+                rodape,
+                new LinearLayout.LayoutParams(-1, dp(35))
+        );
+
+        entrar.setOnClickListener(v -> {
+
+            String entrada =
+                    usuario.getText().toString().trim();
+
+            String pass =
+                    senha.getText().toString();
+
+            if (entrada.isEmpty() || pass.isEmpty()) {
+
+                mensagem.setTextColor(
+                        Color.rgb(255, 80, 80)
+                );
+
+                mensagem.setText(
+                        "Digite e-mail/usuário e senha."
+                );
+
+                return;
+            }
+
+            String emailLogin = entrada;
+
+            if (!entrada.contains("@")) {
+
+                SharedPreferences dados =
+                        getSharedPreferences(
+                                "DaNikeAI_Dados",
+                                MODE_PRIVATE
+                        );
+
+                String usuarioSalvo =
+                        dados.getString("usuario", "");
+
+                String emailSalvo =
+                        dados.getString("email", "");
+
+                if (entrada.equals(usuarioSalvo) &&
+                        !emailSalvo.isEmpty()) {
+
+                    emailLogin = emailSalvo;
+
+                } else {
+
+                    mensagem.setTextColor(
+                            Color.rgb(255, 80, 80)
+                    );
+
+                    mensagem.setText(
+                            "Usuário não encontrado neste dispositivo."
+                    );
+
+                    return;
+                }
+            }
+
+            entrar.setEnabled(false);
+
+            mensagem.setTextColor(
+                    Color.rgb(120, 200, 255)
+            );
+
+            mensagem.setText(
+                    "Autenticando..."
+            );
+
+            final String emailFinal = emailLogin;
+
+            auth.signInWithEmailAndPassword(
+                    emailFinal,
+                    pass
+            ).addOnCompleteListener(task -> {
+
+                if (task.isSuccessful()) {
+
+                    mensagem.setTextColor(
+                            Color.rgb(80, 255, 150)
+                    );
+
+                    mensagem.setText(
+                            "Login realizado com sucesso ✔️"
+                    );
+
+                    new android.os.Handler().postDelayed(() -> {
+
+                        Intent intent = new Intent(
+                                LoginActivity.this,
+                                MainActivity.class
+                        );
+
+                        startActivity(intent);
+                        finish();
+
+                    }, 700);
+
+                } else {
+
+                    entrar.setEnabled(true);
+
+                    mensagem.setTextColor(
+                            Color.rgb(255, 80, 80)
+                    );
+
+                    mensagem.setText(
+                            "E-mail ou senha incorretos."
+                    );
+                }
+            });
+        });
+
+        esqueci.setOnClickListener(v -> {
+
+            final EditText campoEmail =
+                    campo("E-MAIL", false);
+
+            SharedPreferences dados =
+                    getSharedPreferences(
+                            "DaNikeAI_Dados",
+                            MODE_PRIVATE
+                    );
+
+            String emailSalvo =
+                    dados.getString("email", "");
+
+            if (!emailSalvo.isEmpty()) {
+                campoEmail.setText(emailSalvo);
+                campoEmail.setSelection(
+                        campoEmail.getText().length()
+                );
+            }
+
+            AlertDialog dialog = new AlertDialog.Builder(this)
+                    .setTitle("RECUPERAR SENHA")
+                    .setMessage(
+                            "Digite o e-mail da sua conta. " +
+                            "Enviaremos um link para criar uma nova senha."
+                    )
+                    .setView(campoEmail)
+                    .setNegativeButton(
+                            "CANCELAR",
+                            null
+                    )
+                    .setPositiveButton(
+                            "ENVIAR",
+                            null
+                    )
+                    .create();
+
+            dialog.setOnShowListener(d -> {
+
+                Button enviar =
+                        dialog.getButton(
+                                AlertDialog.BUTTON_POSITIVE
+                        );
+
+                enviar.setOnClickListener(view -> {
+
+                    String email =
+                            campoEmail.getText()
+                                    .toString()
+                                    .trim();
+
+                    if (email.isEmpty() ||
+                            !email.contains("@")) {
+
+                        mensagem.setTextColor(
+                                Color.rgb(255, 80, 80)
+                        );
+
+                        mensagem.setText(
+                                "Digite um e-mail válido."
+                        );
+
+                        return;
+                    }
+
+                    auth.sendPasswordResetEmail(email)
+                            .addOnCompleteListener(task -> {
+
+                                if (task.isSuccessful()) {
+
+                                    mensagem.setTextColor(
+                                            Color.rgb(80, 255, 150)
+                                    );
+
+                                    mensagem.setText(
+                                            "E-mail de recuperação enviado ✔️"
+                                    );
+
+                                    dialog.dismiss();
+
+                                } else {
+
+                                    mensagem.setTextColor(
+                                            Color.rgb(255, 80, 80)
+                                    );
+
+                                    mensagem.setText(
+                                            "Não foi possível enviar o e-mail."
+                                    );
+                                }
+                            });
+                });
+            });
+
+            dialog.show();
+        });
+
+        cadastroBotao.setOnClickListener(v -> {
+
+            Intent intent = new Intent(
+                    LoginActivity.this,
+                    RegisterActivity.class
+            );
+
+            startActivity(intent);
+        });
+
+        if (getIntent().getBooleanExtra(
+                "cadastro_sucesso",
+                false
+        )) {
+
+            mensagem.setTextColor(
+                    Color.rgb(80, 255, 150)
+            );
+
+            mensagem.setText(
+                    "USUÁRIO cadastrado com sucesso ✔️"
+            );
+        }
+
+        setContentView(tela);
+    }
+}

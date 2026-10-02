@@ -1,0 +1,1046 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.os.Bundle;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.speech.SpeechRecognizer;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.content.Intent;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.*;
+import android.text.method.ScrollingMovementMethod;
+import android.view.inputmethod.EditorInfo;
+import android.view.KeyEvent;
+import android.speech.tts.TextToSpeech;
+
+import java.util.ArrayList;
+import java.util.Locale;
+
+public class IAActivity extends Activity {
+
+    LinearLayout tela;
+    DaNikeAIFaceView rostoIA;
+    TextView statusIA;
+    TextView resposta;
+    EditText entrada;
+
+    TextToSpeech voz;
+
+    SpeechRecognizer reconhecedor;
+    Intent intentVoz;
+
+    boolean ouvindo = false;
+    boolean falando = false;
+
+    int dp(float v) {
+        return (int)(v * getResources().getDisplayMetrics().density + .5f);
+    }
+
+    GradientDrawable fundo(int cor, float raio) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(cor);
+        g.setCornerRadius(dp(raio));
+        return g;
+    }
+
+    TextView texto(String s, float tamanho, int cor) {
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextSize(tamanho);
+        t.setTextColor(cor);
+        return t;
+    }
+
+    Button botao(String s, int cor) {
+        Button b = new Button(this);
+        b.setText(s);
+        b.setTextSize(14);
+        b.setTextColor(Color.WHITE);
+        b.setAllCaps(false);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setBackground(fundo(cor, 22));
+        return b;
+    }
+
+    @Override
+    protected void onCreate(Bundle b) {
+        super.onCreate(b);
+
+        voz = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                voz.setLanguage(new Locale("pt", "BR"));
+                voz.setSpeechRate(1.0f);
+                voz.setPitch(1.0f);
+            }
+        });
+
+        montarReconhecimentoVoz();
+        montarTela();
+    }
+
+    void montarReconhecimentoVoz() {
+
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            return;
+        }
+
+        reconhecedor = SpeechRecognizer.createSpeechRecognizer(this);
+
+        reconhecedor.setRecognitionListener(new RecognitionListener() {
+
+            public void onReadyForSpeech(Bundle params) {
+                ouvindo = true;
+                statusIA.setText("🎤  OUVINDO...");
+                statusIA.setTextColor(Color.rgb(0, 220, 255));
+            }
+
+            public void onBeginningOfSpeech() {
+                ouvindo = true;
+            }
+
+            public void onRmsChanged(float rmsdB) {}
+
+            public void onBufferReceived(byte[] buffer) {}
+
+            public void onEndOfSpeech() {
+                ouvindo = false;
+            }
+
+            public void onError(int error) {
+                ouvindo = false;
+
+                if (!falando) {
+                    statusIA.setText("●  IA ONLINE");
+                    statusIA.setTextColor(Color.rgb(60, 255, 130));
+                }
+            }
+
+            public void onResults(Bundle resultados) {
+
+                ouvindo = false;
+
+                ArrayList<String> textos =
+                        resultados.getStringArrayList(
+                                SpeechRecognizer.RESULTS_RECOGNITION
+                        );
+
+                if (textos == null || textos.isEmpty()) {
+                    statusIA.setText("●  IA ONLINE");
+                    statusIA.setTextColor(Color.rgb(60, 255, 130));
+                    return;
+                }
+
+                String textoReconhecido =
+                        textos.get(0).trim();
+
+                if (textoReconhecido.equalsIgnoreCase("stop")
+                        || textoReconhecido.equalsIgnoreCase("parar")
+                        || textoReconhecido.equalsIgnoreCase("pare")
+                        || textoReconhecido.equalsIgnoreCase("parar de falar")) {
+
+                    pararFala();
+                    return;
+                }
+
+                entrada.setText(textoReconhecido);
+                responder();
+            }
+
+            public void onPartialResults(Bundle resultados) {}
+
+            public void onEvent(int eventType, Bundle params) {}
+        });
+
+        intentVoz = new Intent(
+                RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+        );
+
+        intentVoz.putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        );
+
+        intentVoz.putExtra(
+                RecognizerIntent.EXTRA_LANGUAGE,
+                "pt-BR"
+        );
+
+        intentVoz.putExtra(
+                RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+                false
+        );
+    }
+
+    void montarTela() {
+    tela = new LinearLayout(this);
+    tela.setOrientation(LinearLayout.VERTICAL);
+    tela.setPadding(dp(14), dp(8), dp(14), dp(10));
+    tela.setBackgroundColor(Color.rgb(1, 4, 12));
+
+    // TOPO
+    LinearLayout topo = new LinearLayout(this);
+    topo.setGravity(Gravity.CENTER_VERTICAL);
+    topo.setPadding(dp(4), 0, dp(4), 0);
+
+    LinearLayout tituloBox = new LinearLayout(this);
+    tituloBox.setOrientation(LinearLayout.VERTICAL);
+
+    TextView titulo = texto("DaNike AI", 29, Color.WHITE);
+    titulo.setTypeface(Typeface.DEFAULT_BOLD);
+
+    TextView subtituloTopo = texto(
+            "SEU ASSISTENTE INTELIGENTE",
+            11,
+            Color.rgb(0, 210, 255)
+    );
+    subtituloTopo.setTypeface(Typeface.DEFAULT_BOLD);
+
+    tituloBox.addView(titulo);
+    tituloBox.addView(
+            subtituloTopo,
+            new LinearLayout.LayoutParams(-1, dp(22))
+    );
+
+    topo.addView(
+            tituloBox,
+            new LinearLayout.LayoutParams(0, dp(70), 1)
+    );
+
+    Button configuracoes = botao("⚙", Color.rgb(2, 22, 40));
+    configuracoes.setTextSize(24);
+
+    GradientDrawable bordaConfig = fundo(Color.rgb(2, 18, 32), 50);
+    bordaConfig.setStroke(dp(2), Color.rgb(0, 210, 255));
+    configuracoes.setBackground(bordaConfig);
+
+    topo.addView(
+            configuracoes,
+            new LinearLayout.LayoutParams(dp(62), dp(62))
+    );
+
+    tela.addView(
+            topo,
+            new LinearLayout.LayoutParams(-1, dp(72))
+    );
+
+    configuracoes.setOnClickListener(v -> abrirConfiguracoes());
+
+    // STATUS
+    statusIA = texto(
+            "●  IA ONLINE",
+            13,
+            Color.rgb(60, 255, 130)
+    );
+    statusIA.setGravity(Gravity.CENTER);
+    statusIA.setTypeface(Typeface.DEFAULT_BOLD);
+
+    tela.addView(
+            statusIA,
+            new LinearLayout.LayoutParams(-1, dp(28))
+    );
+
+    // ROSTO
+    FrameLayout areaRosto = new FrameLayout(this);
+    areaRosto.setPadding(0, dp(4), 0, dp(4));
+
+    rostoIA = new DaNikeAIFaceView(this);
+
+    int tamanho = Math.min(
+            dp(330),
+            getResources().getDisplayMetrics().widthPixels - dp(28)
+    );
+
+    areaRosto.addView(
+            rostoIA,
+            new FrameLayout.LayoutParams(
+                    tamanho,
+                    tamanho,
+                    Gravity.CENTER
+            )
+    );
+
+    tela.addView(
+            areaRosto,
+            new LinearLayout.LayoutParams(-1, dp(345))
+    );
+
+    // SAUDAÇÃO
+    TextView saudacao = texto(
+            "Olá, Anderson.",
+            22,
+            Color.WHITE
+    );
+    saudacao.setTypeface(Typeface.DEFAULT_BOLD);
+    saudacao.setGravity(Gravity.CENTER);
+
+    tela.addView(
+            saudacao,
+            new LinearLayout.LayoutParams(-1, dp(35))
+    );
+
+    TextView ajuda = texto(
+            "Como posso te ajudar hoje?",
+            15,
+            Color.rgb(190, 215, 235)
+    );
+    ajuda.setGravity(Gravity.CENTER);
+
+    tela.addView(
+            ajuda,
+            new LinearLayout.LayoutParams(-1, dp(28))
+    );
+
+    // INDICADOR DE VOZ
+    TextView indicador = texto(
+            "◉  〽  PRONTA PARA OUVIR...",
+            13,
+            Color.rgb(0, 220, 255)
+    );
+    indicador.setGravity(Gravity.CENTER);
+    indicador.setTypeface(Typeface.DEFAULT_BOLD);
+
+    GradientDrawable indicadorFundo =
+            fundo(Color.rgb(2, 15, 30), 30);
+    indicadorFundo.setStroke(
+            dp(1),
+            Color.rgb(0, 180, 255)
+    );
+    indicador.setBackground(indicadorFundo);
+
+    LinearLayout.LayoutParams ip =
+            new LinearLayout.LayoutParams(
+                    dp(230),
+                    dp(42)
+            );
+    ip.gravity = Gravity.CENTER;
+    ip.setMargins(0, dp(4), 0, dp(8));
+
+    tela.addView(indicador, ip);
+
+    // RESPOSTA
+    GradientDrawable respostaFundo =
+            fundo(Color.rgb(2, 12, 24), 22);
+    respostaFundo.setStroke(
+            dp(1),
+            Color.rgb(0, 160, 255)
+    );
+
+    LinearLayout painelResposta =
+            new LinearLayout(this);
+    painelResposta.setOrientation(
+            LinearLayout.VERTICAL
+    );
+    painelResposta.setPadding(
+            dp(12), dp(7), dp(12), dp(7)
+    );
+    painelResposta.setBackground(respostaFundo);
+
+    TextView tituloResposta = texto(
+            "DaNikeAI  •  Resposta",
+            13,
+            Color.rgb(255, 195, 0)
+    );
+    tituloResposta.setTypeface(Typeface.DEFAULT_BOLD);
+
+    painelResposta.addView(
+            tituloResposta,
+            new LinearLayout.LayoutParams(-1, dp(27))
+    );
+
+    resposta = texto(
+            "Olá.\n\nSou a DaNikeAI. Faça uma pergunta para começar.",
+            15,
+            Color.WHITE
+    );
+    resposta.setGravity(Gravity.TOP);
+    resposta.setPadding(
+            dp(5), dp(2), dp(5), dp(2)
+    );
+    resposta.setMovementMethod(
+            ScrollingMovementMethod.getInstance()
+    );
+
+    ScrollView scrollResposta =
+            new ScrollView(this);
+    scrollResposta.setFillViewport(true);
+    scrollResposta.addView(resposta);
+
+    painelResposta.addView(
+            scrollResposta,
+            new LinearLayout.LayoutParams(-1, dp(72))
+    );
+
+    tela.addView(
+            painelResposta,
+            new LinearLayout.LayoutParams(-1, dp(112))
+    );
+
+    // CAMPO DE TEXTO
+    LinearLayout linha =
+            new LinearLayout(this);
+    linha.setGravity(Gravity.CENTER_VERTICAL);
+
+    entrada = new EditText(this);
+    entrada.setHint("Escreva para a DaNikeAI...");
+    entrada.setHintTextColor(
+            Color.rgb(100, 135, 170)
+    );
+    entrada.setTextColor(Color.WHITE);
+    entrada.setTextSize(15);
+    entrada.setSingleLine(true);
+    entrada.setImeOptions(
+            EditorInfo.IME_ACTION_SEND
+    );
+    entrada.setPadding(
+            dp(15), 0, dp(10), 0
+    );
+
+    GradientDrawable campo =
+            fundo(Color.rgb(3, 13, 27), 30);
+    campo.setStroke(
+            dp(2),
+            Color.rgb(0, 190, 255)
+    );
+    entrada.setBackground(campo);
+
+    linha.addView(
+            entrada,
+            new LinearLayout.LayoutParams(
+                    0,
+                    dp(58),
+                    1
+            )
+    );
+
+    Button enviar = botao(
+            "➤",
+            Color.rgb(5, 105, 185)
+    );
+    enviar.setTextSize(23);
+
+    GradientDrawable enviarFundo =
+            fundo(Color.rgb(5, 105, 185), 50);
+    enviarFundo.setStroke(
+            dp(1),
+            Color.rgb(0, 220, 255)
+    );
+    enviar.setBackground(enviarFundo);
+
+    LinearLayout.LayoutParams ep =
+            new LinearLayout.LayoutParams(
+                    dp(62),
+                    dp(58)
+            );
+    ep.setMargins(dp(7), 0, 0, 0);
+
+    linha.addView(enviar, ep);
+
+    tela.addView(
+            linha,
+            new LinearLayout.LayoutParams(-1, dp(62))
+    );
+
+    // BOTÕES PRINCIPAIS
+    LinearLayout principais =
+            new LinearLayout(this);
+    principais.setGravity(Gravity.CENTER);
+    principais.setPadding(
+            dp(2), dp(7), dp(2), dp(3)
+    );
+
+    Button microfone = botao(
+            "🎤  FALAR",
+            Color.rgb(4, 75, 145)
+    );
+    microfone.setTextSize(15);
+
+    Button digitar = botao(
+            "⌨  DIGITAR",
+            Color.rgb(4, 55, 105)
+    );
+    digitar.setTextSize(15);
+
+    Button imagem = botao(
+            "🖼  CRIAR IMAGEM",
+            Color.rgb(55, 20, 105)
+    );
+    imagem.setTextSize(13);
+
+    Button[] principaisBotoes = {
+            microfone, digitar, imagem
+    };
+
+    for (Button b : principaisBotoes) {
+        LinearLayout.LayoutParams p =
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(54),
+                        1
+                );
+        p.setMargins(dp(3), 0, dp(3), 0);
+        principais.addView(b, p);
+    }
+
+    tela.addView(
+            principais,
+            new LinearLayout.LayoutParams(-1, dp(62))
+    );
+
+    // CONTROLES DE VOZ
+    LinearLayout acoes =
+            new LinearLayout(this);
+    acoes.setGravity(Gravity.CENTER);
+    acoes.setPadding(0, dp(3), 0, 0);
+
+    Button ouvir = botao(
+            "🔊 OUVIR",
+            Color.rgb(10, 65, 105)
+    );
+
+    Button parar = botao(
+            "⏹ PARAR",
+            Color.rgb(95, 20, 80)
+    );
+
+    Button salvar = botao(
+            "💾 SALVAR",
+            Color.rgb(10, 65, 105)
+    );
+
+    Button deletar = botao(
+            "🗑 DELETAR",
+            Color.rgb(95, 20, 45)
+    );
+
+    Button[] botoes = {
+            ouvir, parar, salvar, deletar
+    };
+
+    for (Button b : botoes) {
+        LinearLayout.LayoutParams p =
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(45),
+                        1
+                );
+        p.setMargins(dp(2), 0, dp(2), 0);
+        acoes.addView(b, p);
+    }
+
+    tela.addView(
+            acoes,
+            new LinearLayout.LayoutParams(-1, dp(50))
+    );
+
+    setContentView(tela);
+
+    // ENVIAR
+    enviar.setOnClickListener(
+            v -> responder()
+    );
+
+    // ENTER / ENVIAR
+    entrada.setOnEditorActionListener(
+            (v, action, event) -> {
+                if (action == EditorInfo.IME_ACTION_SEND
+                        || (event != null
+                        && event.getKeyCode()
+                        == KeyEvent.KEYCODE_ENTER)) {
+                    responder();
+                    return true;
+                }
+                return false;
+            }
+    );
+
+    // FALAR
+    microfone.setOnClickListener(v -> {
+        if (reconhecedor == null) {
+            Toast.makeText(
+                    this,
+                    "Reconhecimento de voz indisponível.",
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        if (ouvindo) {
+            reconhecedor.stopListening();
+            ouvindo = false;
+
+            statusIA.setText("●  IA ONLINE");
+            statusIA.setTextColor(
+                    Color.rgb(60, 255, 130)
+            );
+
+            indicador.setText(
+                    "◉  〽  PRONTA PARA OUVIR..."
+            );
+        } else {
+            if (falando) {
+                pararFala();
+            }
+
+            statusIA.setText(
+                    "🎤  OUVINDO..."
+            );
+            statusIA.setTextColor(
+                    Color.rgb(0, 220, 255)
+            );
+
+            indicador.setText(
+                    "◉  〽  OUVINDO..."
+            );
+
+            reconhecedor.startListening(
+                    intentVoz
+            );
+        }
+    });
+
+    // DIGITAR
+    digitar.setOnClickListener(v -> {
+        entrada.requestFocus();
+
+        android.view.inputmethod.InputMethodManager
+                teclado =
+                (android.view.inputmethod.InputMethodManager)
+                        getSystemService(
+                                INPUT_METHOD_SERVICE
+                        );
+
+        if (teclado != null) {
+            teclado.showSoftInput(
+                    entrada,
+                    android.view.inputmethod.InputMethodManager
+                            .SHOW_IMPLICIT
+            );
+        }
+    });
+
+    // CRIAR IMAGEM
+    imagem.setOnClickListener(v -> {
+        Toast.makeText(
+                this,
+                "Criação de imagem será adicionada na próxima etapa.",
+                Toast.LENGTH_SHORT
+        ).show();
+    });
+
+    // OUVIR RESPOSTA
+    ouvir.setOnClickListener(v -> {
+        String textoResposta =
+                resposta.getText().toString().trim();
+
+        if (!textoResposta.isEmpty()) {
+            falarTexto(textoResposta);
+        }
+    });
+
+    // PARAR
+    parar.setOnClickListener(
+            v -> pararFala()
+    );
+
+    // SALVAR
+    salvar.setOnClickListener(v -> {
+        getSharedPreferences(
+                "DaNikeAI_Dados",
+                0
+        ).edit()
+                .putString(
+                        "ultima_resposta_ia",
+                        resposta.getText().toString()
+                )
+                .apply();
+
+        Toast.makeText(
+                this,
+                "Resposta salva.",
+                Toast.LENGTH_SHORT
+        ).show();
+    });
+
+    // DELETAR
+    deletar.setOnClickListener(v -> {
+        pararFala();
+
+        resposta.setText(
+                "A resposta foi apagada."
+        );
+
+        getSharedPreferences(
+                "DaNikeAI_Dados",
+                0
+        ).edit()
+                .remove("ultima_resposta_ia")
+                .apply();
+
+        statusIA.setText(
+                "●  IA ONLINE"
+        );
+        statusIA.setTextColor(
+                Color.rgb(60, 255, 130)
+        );
+    });
+}
+
+void falarTexto(String texto) {
+
+        if (voz == null || texto == null || texto.trim().isEmpty()) {
+            return;
+        }
+
+        falando = true;
+
+        statusIA.setText("🔊  FALANDO...");
+        statusIA.setTextColor(
+                Color.rgb(255, 195, 0)
+        );
+
+        rostoIA.setFalando(true);
+
+        voz.speak(
+                texto,
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "DaNikeAI"
+        );
+    }
+
+    void pararFala() {
+
+        if (voz != null) {
+            voz.stop();
+        }
+
+        falando = false;
+
+        if (rostoIA != null) {
+            rostoIA.setFalando(false);
+        }
+
+        statusIA.setText("●  IA ONLINE");
+        statusIA.setTextColor(
+                Color.rgb(60, 255, 130)
+        );
+    }
+
+    void responder() {
+
+        String pergunta =
+                entrada.getText().toString().trim();
+
+        if (pergunta.isEmpty()) {
+
+            Toast.makeText(
+                    this,
+                    "Digite uma pergunta.",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            return;
+        }
+
+        if (ouvindo && reconhecedor != null) {
+            reconhecedor.stopListening();
+            ouvindo = false;
+        }
+
+        pararFala();
+
+        statusIA.setText("🟡  PENSANDO...");
+        statusIA.setTextColor(
+                Color.rgb(255, 195, 0)
+        );
+
+        resposta.setText(
+                "Você perguntou:\n\n"
+                        + pergunta
+                        + "\n\nDaNikeAI está consultando o Gemini..."
+        );
+
+        entrada.setText("");
+
+        GeminiAPI.perguntar(
+                pergunta,
+                new GeminiAPI.Callback() {
+
+                    @Override
+                    public void sucesso(String texto) {
+
+                        runOnUiThread(() -> {
+
+                            resposta.setText(texto);
+
+                            resposta.post(() ->
+                                    ((ScrollView) resposta.getParent())
+                                            .fullScroll(View.FOCUS_UP)
+                            );
+
+                            falarTexto(texto);
+                        });
+                    }
+
+                    @Override
+                    public void erro(String mensagem) {
+
+                        runOnUiThread(() -> {
+
+                            resposta.setText(
+                                    "Não consegui falar com o Gemini.\n\n"
+                                            + mensagem
+                            );
+
+                            statusIA.setText("🔴  ERRO NA IA");
+                            statusIA.setTextColor(
+                                    Color.rgb(255, 70, 70)
+                            );
+
+                            falando = false;
+                            rostoIA.setFalando(false);
+                        });
+                    }
+                }
+        );
+    }
+
+    @Override
+    protected void onDestroy() {
+
+        if (reconhecedor != null) {
+            reconhecedor.cancel();
+            reconhecedor.destroy();
+        }
+
+        if (voz != null) {
+            voz.stop();
+            voz.shutdown();
+        }
+
+        if (rostoIA != null) {
+            rostoIA.setFalando(false);
+        }
+
+        super.onDestroy();
+    }
+
+    
+void abrirConfiguracoes() {
+
+    final android.app.Dialog dialog = new android.app.Dialog(this);
+
+    android.widget.LinearLayout fundo =
+            new android.widget.LinearLayout(this);
+
+    fundo.setOrientation(android.widget.LinearLayout.VERTICAL);
+    fundo.setPadding(35, 25, 35, 25);
+    fundo.setBackgroundColor(android.graphics.Color.rgb(2, 10, 20));
+
+    android.widget.TextView titulo =
+            new android.widget.TextView(this);
+
+    titulo.setText("⚙️  Configurações");
+    titulo.setTextColor(android.graphics.Color.WHITE);
+    titulo.setTextSize(24);
+    titulo.setTypeface(null, android.graphics.Typeface.BOLD);
+    titulo.setGravity(android.view.Gravity.CENTER);
+    titulo.setPadding(0, 10, 0, 25);
+
+    fundo.addView(titulo,
+            new android.widget.LinearLayout.LayoutParams(
+                    -1, -2));
+
+    android.widget.LinearLayout lista =
+            new android.widget.LinearLayout(this);
+
+    lista.setOrientation(android.widget.LinearLayout.VERTICAL);
+
+    android.widget.ScrollView scroll =
+            new android.widget.ScrollView(this);
+
+    scroll.addView(lista);
+
+    // CONTAS
+    android.widget.Button conta =
+            new android.widget.Button(this);
+
+    conta.setText("👤  Conta\nAnderson024");
+    conta.setTextSize(17);
+    conta.setGravity(android.view.Gravity.CENTER_VERTICAL);
+    conta.setAllCaps(false);
+
+    conta.setOnClickListener(v -> abrirConta());
+
+    lista.addView(conta,
+            new android.widget.LinearLayout.LayoutParams(
+                    -1, 90));
+
+    // MODO ESCURO
+    android.widget.Switch modoEscuro =
+            new android.widget.Switch(this);
+
+    modoEscuro.setText("🌙  Modo escuro");
+    modoEscuro.setTextSize(17);
+    modoEscuro.setTextColor(android.graphics.Color.WHITE);
+    modoEscuro.setPadding(10, 5, 10, 5);
+
+    boolean escuro = getSharedPreferences(
+            "danike_config", MODE_PRIVATE)
+            .getBoolean("modo_escuro", true);
+
+    modoEscuro.setChecked(escuro);
+
+    modoEscuro.setOnCheckedChangeListener((button, ativo) -> {
+
+        getSharedPreferences(
+                "danike_config", MODE_PRIVATE)
+                .edit()
+                .putBoolean("modo_escuro", ativo)
+                .apply();
+
+        android.widget.Toast.makeText(
+                this,
+                ativo ? "🌙 Modo escuro ativado"
+                      : "☀️ Modo escuro desativado",
+                android.widget.Toast.LENGTH_SHORT
+        ).show();
+    });
+
+    lista.addView(modoEscuro,
+            new android.widget.LinearLayout.LayoutParams(
+                    -1, 75));
+
+    // CÉREBRO / MEMÓRIA
+    android.widget.Switch cerebro =
+            new android.widget.Switch(this);
+
+    cerebro.setText("🧠  Ativar cérebro / memória");
+    cerebro.setTextSize(17);
+    cerebro.setTextColor(android.graphics.Color.WHITE);
+    cerebro.setPadding(10, 5, 10, 5);
+
+    boolean memoria = getSharedPreferences(
+            "danike_config", MODE_PRIVATE)
+            .getBoolean("memoria_ativa", true);
+
+    cerebro.setChecked(memoria);
+
+    cerebro.setOnCheckedChangeListener((button, ativo) -> {
+
+        getSharedPreferences(
+                "danike_config", MODE_PRIVATE)
+                .edit()
+                .putBoolean("memoria_ativa", ativo)
+                .apply();
+
+        android.widget.Toast.makeText(
+                this,
+                ativo
+                        ? "🧠 Memória ativada"
+                        : "🧠 Memória desativada",
+                android.widget.Toast.LENGTH_SHORT
+        ).show();
+    });
+
+    lista.addView(cerebro,
+            new android.widget.LinearLayout.LayoutParams(
+                    -1, 75));
+
+    // ESPAÇO
+    android.widget.Space espaco =
+            new android.widget.Space(this);
+
+    lista.addView(espaco,
+            new android.widget.LinearLayout.LayoutParams(
+                    1, 35));
+
+    // VERSÃO
+    android.widget.TextView versao =
+            new android.widget.TextView(this);
+
+    versao.setText(
+            "ℹ️  DaNikeAI\n\n" +
+            "Versão 1.0.0\n" +
+            "Desenvolvido por DaNikeAI 👑"
+    );
+
+    versao.setTextColor(
+            android.graphics.Color.rgb(130, 210, 255));
+
+    versao.setTextSize(15);
+    versao.setGravity(android.view.Gravity.CENTER);
+    versao.setPadding(0, 25, 0, 25);
+
+    lista.addView(versao,
+            new android.widget.LinearLayout.LayoutParams(
+                    -1, -2));
+
+    fundo.addView(scroll,
+            new android.widget.LinearLayout.LayoutParams(
+                    -1, 0, 1));
+
+    android.widget.Button fechar =
+            new android.widget.Button(this);
+
+    fechar.setText("FECHAR");
+    fechar.setAllCaps(false);
+    fechar.setTextSize(16);
+
+    fechar.setOnClickListener(v -> dialog.dismiss());
+
+    fundo.addView(fechar,
+            new android.widget.LinearLayout.LayoutParams(
+                    -1, 70));
+
+    dialog.setContentView(fundo);
+
+    android.view.Window janela = dialog.getWindow();
+
+    if (janela != null) {
+        janela.setBackgroundDrawable(
+                new android.graphics.drawable.ColorDrawable(
+                        android.graphics.Color.TRANSPARENT));
+
+        janela.setLayout(
+                (int)(getResources().getDisplayMetrics().widthPixels * 0.92),
+                -2);
+    }
+
+    dialog.show();
+
+    if (dialog.getWindow() != null) {
+        dialog.getWindow().setLayout(
+                (int)(getResources().getDisplayMetrics().widthPixels * 0.92),
+                (int)(getResources().getDisplayMetrics().heightPixels * 0.82));
+    }
+}
+
+
+
+
+void abrirConta() {
+
+    final android.app.AlertDialog dialog =
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle("👤 Conta")
+                    .setMessage(
+                            "Nome de usuário: Anderson024\n\n" +
+                            "Conta DaNikeAI\n" +
+                            "Memória: disponível\n" +
+                            "Status: ativa"
+                    )
+                    .setPositiveButton(
+                            "VOLTAR",
+                            null)
+                    .create();
+
+    dialog.show();
+}
+
+}

@@ -1,0 +1,216 @@
+package com.danike.ai;
+
+import android.content.Context;
+import android.graphics.*;
+import android.view.View;
+import android.animation.ValueAnimator;
+import android.view.animation.LinearInterpolator;
+
+public class DaNikeAIFaceView extends View {
+
+    private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    private boolean falando = false;
+    private float boca = 0.0f;
+    private float brilho = 0.0f;
+
+    private ValueAnimator animacaoBoca;
+    private ValueAnimator animacaoBrilho;
+
+    public DaNikeAIFaceView(Context context) {
+        super(context);
+        p.setTypeface(Typeface.DEFAULT_BOLD);
+        iniciarAnimacoes();
+    }
+
+    private void iniciarAnimacoes() {
+
+        animacaoBoca = ValueAnimator.ofFloat(0.0f, 1.0f);
+        animacaoBoca.setDuration(220);
+        animacaoBoca.setRepeatMode(ValueAnimator.REVERSE);
+        animacaoBoca.setRepeatCount(ValueAnimator.INFINITE);
+        animacaoBoca.setInterpolator(new LinearInterpolator());
+
+        animacaoBoca.addUpdateListener(animation -> {
+            if (falando) {
+                boca = (float) animation.getAnimatedValue();
+            } else {
+                boca = 0.0f;
+            }
+            invalidate();
+        });
+
+        animacaoBrilho = ValueAnimator.ofFloat(0.25f, 1.0f);
+        animacaoBrilho.setDuration(900);
+        animacaoBrilho.setRepeatMode(ValueAnimator.REVERSE);
+        animacaoBrilho.setRepeatCount(ValueAnimator.INFINITE);
+
+        animacaoBrilho.addUpdateListener(animation -> {
+            brilho = (float) animation.getAnimatedValue();
+            invalidate();
+        });
+
+        animacaoBoca.start();
+        animacaoBrilho.start();
+    }
+
+    public void setFalando(boolean valor) {
+        falando = valor;
+        invalidate();
+    }
+
+    public boolean isFalando() {
+        return falando;
+    }
+
+    @Override
+    protected void onDraw(Canvas c) {
+        super.onDraw(c);
+
+        float cx = getWidth() / 2f;
+        float cy = getHeight() / 2f;
+
+        float menor = Math.min(getWidth(), getHeight());
+        float raio = menor * 0.36f;
+
+        // Fundo escuro
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.rgb(2, 8, 16));
+        c.drawCircle(cx, cy, menor * 0.49f, p);
+
+        // Anel externo azul
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.018f);
+        p.setColor(Color.rgb(0, 180, 255));
+        c.drawCircle(cx, cy, menor * 0.43f, p);
+
+        // Anel dourado quando estiver falando
+        if (falando) {
+            glow.setStyle(Paint.Style.STROKE);
+            glow.setStrokeWidth(menor * 0.035f);
+            glow.setColor(Color.argb(
+                    (int)(150 * brilho),
+                    255, 190, 0
+            ));
+            c.drawCircle(cx, cy, menor * 0.39f, glow);
+        }
+
+        // Cabeça
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.rgb(8, 13, 22));
+        c.drawOval(
+                cx - raio,
+                cy - raio * 1.08f,
+                cx + raio,
+                cy + raio * 1.08f,
+                p
+        );
+
+        // Contorno do rosto
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.012f);
+        p.setColor(falando
+                ? Color.rgb(255, 190, 0)
+                : Color.rgb(0, 210, 255));
+        c.drawOval(
+                cx - raio,
+                cy - raio * 1.08f,
+                cx + raio,
+                cy + raio * 1.08f,
+                p
+        );
+
+        // Olhos
+        float olhoY = cy - raio * 0.18f;
+        float olhoX = raio * 0.42f;
+        float olhoR = raio * 0.19f;
+
+        int corOlho = falando
+                ? Color.rgb(255, 195, 0)
+                : Color.rgb(0, 210, 255);
+
+        if (falando) {
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(Color.argb(
+                    (int)(120 * brilho),
+                    255, 185, 0
+            ));
+            c.drawCircle(cx - olhoX, olhoY, olhoR * 1.55f, glow);
+            c.drawCircle(cx + olhoX, olhoY, olhoR * 1.55f, glow);
+        }
+
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(corOlho);
+        c.drawCircle(cx - olhoX, olhoY, olhoR, p);
+        c.drawCircle(cx + olhoX, olhoY, olhoR, p);
+
+        // Pupilas
+        p.setColor(Color.rgb(2, 8, 16));
+        c.drawCircle(cx - olhoX, olhoY, olhoR * 0.38f, p);
+        c.drawCircle(cx + olhoX, olhoY, olhoR * 0.38f, p);
+
+        // Nariz
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.009f);
+        p.setColor(Color.rgb(70, 110, 135));
+        Path nariz = new Path();
+        nariz.moveTo(cx, cy - raio * 0.02f);
+        nariz.lineTo(cx - raio * 0.08f, cy + raio * 0.22f);
+        nariz.lineTo(cx + raio * 0.08f, cy + raio * 0.22f);
+        c.drawPath(nariz, p);
+
+        // Boca
+        float bocaY = cy + raio * 0.48f;
+        float larguraBoca = raio * 0.34f;
+        float alturaBoca = falando
+                ? raio * (0.06f + 0.13f * boca)
+                : raio * 0.035f;
+
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.012f);
+        p.setColor(falando
+                ? Color.rgb(255, 195, 0)
+                : Color.rgb(0, 220, 255));
+
+        RectF bocaRect = new RectF(
+                cx - larguraBoca,
+                bocaY - alturaBoca,
+                cx + larguraBoca,
+                bocaY + alturaBoca
+        );
+
+        c.drawOval(bocaRect, p);
+
+        // Pequena coroa
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.rgb(255, 195, 0));
+
+        Path coroa = new Path();
+        float topoY = cy - raio * 0.92f;
+
+        coroa.moveTo(cx - raio * 0.18f, topoY + raio * 0.13f);
+        coroa.lineTo(cx - raio * 0.25f, topoY);
+        coroa.lineTo(cx - raio * 0.08f, topoY + raio * 0.09f);
+        coroa.lineTo(cx, topoY - raio * 0.02f);
+        coroa.lineTo(cx + raio * 0.08f, topoY + raio * 0.09f);
+        coroa.lineTo(cx + raio * 0.25f, topoY);
+        coroa.lineTo(cx + raio * 0.18f, topoY + raio * 0.13f);
+        coroa.close();
+
+        c.drawPath(coroa, p);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+
+        if (animacaoBoca != null) {
+            animacaoBoca.cancel();
+        }
+
+        if (animacaoBrilho != null) {
+            animacaoBrilho.cancel();
+        }
+    }
+}

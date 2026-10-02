@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="gcm_defaultSenderId" translatable="false">724683245123</string>
+    <string name="google_api_key" translatable="false">AIzaSyBQ3NAnR9Pr-CvMPPv1LR1hX0lsLud9z6U</string>
+    <string name="google_app_id" translatable="false">1:724683245123:android:c60f339a2b68906035f6f6</string>
+    <string name="google_crash_reporting_api_key" translatable="false">AIzaSyBQ3NAnR9Pr-CvMPPv1LR1hX0lsLud9z6U</string>
+    <string name="google_storage_bucket" translatable="false">da-nike-films.firebasestorage.app</string>
+    <string name="project_id" translatable="false">da-nike-films</string>
+    <style name="AppTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">#000000</item>
+        <item name="android:navigationBarColor">#000000</item>
+    </style>
+</resources>

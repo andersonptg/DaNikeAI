@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <application
+        android:usesCleartextTraffic="true"
+        android:icon="@drawable/danike_icon"
+        android:theme="@style/AppTheme"
+        android:label="DaNikeAI"
+        android:allowBackup="true"
+        android:supportsRtl="true">
+        <activity android:name=".ManutencaoActivity" android:exported="false" />
+        <activity android:name=".AdmActivity" android:exported="false" />
+        <activity android:name=".ConfiguracoesActivity" android:exported="false" />
+
+        <!-- ABERTURA -->
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- LOGIN -->
+    <activity android:name=".OnboardingActivity" android:exported="false" />
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false" />
+
+        <!-- CADASTRO -->
+        <activity
+            android:name=".RegisterActivity"
+            android:exported="false" />
+
+        <!-- TELA PRINCIPAL -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
+
+        <!-- TELA DA INTELIGÊNCIA ARTIFICIAL -->
+        <activity
+            android:name=".IAActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".HistoricoActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".PerfilActivity"
+            android:exported="false" />
+
+            <activity android:name=".filmes.FilmesActivity" android:exported="false" />
+            <activity android:name=".filmes.VideoActivity" android:exported="false" />
+            <activity android:name=".MemoriasActivity" android:exported="false" />
+        <activity android:name=".ConversasActivity" android:exported="false" />
+        <service android:name=".DaNikeBackgroundService" android:exported="false" />
+</application>
+
+</manifest>

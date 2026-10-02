@@ -1,0 +1,29 @@
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
+
+android {
+    buildFeatures {
+        buildConfig true
+    }
+    namespace 'com.danike.ai'
+    compileSdk 35
+
+    defaultConfig {
+        def youtubeKeyFile = file(System.getProperty("user.home") + "/.config/danikeai_youtube_key")
+        def youtubeKey = youtubeKeyFile.exists() ? youtubeKeyFile.text.trim() : ""
+        buildConfigField "String", "YOUTUBE_API_KEY", "\"${youtubeKey}\""
+        applicationId 'com.mycompany.cinego'
+        minSdk 23
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+}
+
+dependencies {
+    implementation platform('com.google.firebase:firebase-bom:34.19.0')
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+}

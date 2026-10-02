@@ -1,0 +1,696 @@
+package com.danike.ai;
+
+import android.app.*;
+import android.speech.tts.TextToSpeech;
+import java.util.Locale;
+import android.os.*;
+import android.content.*;
+import android.graphics.*;
+import android.graphics.drawable.*;
+import android.net.Uri;
+import android.view.*;
+import android.view.animation.*;
+import android.widget.*;
+
+public class MainActivity extends Activity {
+
+    LinearLayout tela,rosto;
+    DaNikeFaceView face;
+    TextView status,mensagem;
+    EditText entrada;
+    boolean escuro=true,cerebro=true,vozPronta=false;
+    SharedPreferences prefs;
+    TextToSpeech voz;
+    final int GALERIA=1001;
+
+    int dp(float v){
+        return (int)(v*getResources().getDisplayMetrics().density+.5f);
+    }
+
+    GradientDrawable bg(int cor,float raio){
+        GradientDrawable g=new GradientDrawable();
+        g.setColor(cor);
+        g.setCornerRadius(dp(raio));
+        return g;
+    }
+
+    TextView txt(String s,float tam,int cor){
+        TextView t=new TextView(this);
+        t.setText(s);
+        t.setTextSize(tam);
+        t.setTextColor(cor);
+        t.setGravity(Gravity.CENTER);
+        return t;
+    }
+
+    Button btn(String s,int cor){
+        Button b=new Button(this);
+        b.setText(s);
+        b.setTextSize(15);
+        b.setTextColor(Color.WHITE);
+        b.setAllCaps(false);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setBackground(bg(cor,22));
+        return b;
+    }
+
+    @Override
+    protected void onCreate(Bundle b){
+        super.onCreate(b);
+        voz=new TextToSpeech(this,status->{
+            if(status==TextToSpeech.SUCCESS){
+                int idioma=voz.setLanguage(new Locale("pt","BR"));
+                voz.setSpeechRate(1.0f);
+                voz.setPitch(1.0f);
+
+                if(idioma!=TextToSpeech.LANG_MISSING_DATA &&
+                   idioma!=TextToSpeech.LANG_NOT_SUPPORTED){
+                    vozPronta=true;
+                }
+            }
+        });
+
+        prefs=getSharedPreferences("DaNikeAI_Dados",0);
+        escuro=prefs.getBoolean("modo_escuro",true);
+        cerebro=prefs.getBoolean("cerebro",true);
+
+        montarHome();
+    }
+
+    void montarHome(){
+
+        tela=new LinearLayout(this);
+        tela.setOrientation(LinearLayout.VERTICAL);
+        tela.setPadding(dp(16),dp(5),dp(16),dp(15));
+        tela.setBackgroundColor(Color.TRANSPARENT);
+
+        LinearLayout topo=new LinearLayout(this);
+        topo.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView nome=txt(
+            "DaNikeAI",
+            28,
+            escuro?Color.WHITE:Color.BLACK
+        );
+        nome.setTypeface(Typeface.DEFAULT_BOLD);
+
+        topo.addView(nome,new LinearLayout.LayoutParams(0,dp(55),1));
+
+        Button config=btn("⚙",Color.TRANSPARENT);
+        config.setTextSize(28);
+        topo.addView(config,new LinearLayout.LayoutParams(dp(65),dp(55)));
+
+        tela.addView(topo);
+
+        status=txt(
+            "●  ONLINE",
+            14,
+            Color.rgb(60,255,130)
+        );
+
+        tela.addView(status,new LinearLayout.LayoutParams(-1,dp(32)));
+
+        rosto=new LinearLayout(this);
+        rosto.setOrientation(LinearLayout.VERTICAL);
+        rosto.setGravity(Gravity.CENTER);
+
+        GradientDrawable rf=new GradientDrawable();
+        rf.setShape(GradientDrawable.OVAL);
+        rf.setColor(
+            escuro?Color.rgb(2,14,25):Color.rgb(220,238,245)
+        );
+        rosto.setBackground(rf);
+
+        int w=getResources().getDisplayMetrics().widthPixels;
+        int tamanho=Math.min(dp(410),w-dp(4));
+
+        LinearLayout.LayoutParams rp=
+            new LinearLayout.LayoutParams(tamanho,tamanho);
+        rp.gravity=Gravity.CENTER;
+        rp.setMargins(0,0,0,dp(8));
+
+        face=new DaNikeFaceView(this);
+        rosto.addView(face,new LinearLayout.LayoutParams(-1,-1));
+
+        tela.addView(rosto,rp);
+
+
+        mensagem=txt(
+            "Olá, Anderson.\nComo posso te ajudar?",
+            20,
+            escuro?Color.WHITE:Color.BLACK
+        );
+
+        tela.addView(mensagem,new LinearLayout.LayoutParams(-1,dp(62)));
+
+        Button falar=btn(
+            "🎤  FALAR",
+            Color.rgb(25,135,195)
+        );
+
+        tela.addView(falar,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        LinearLayout linha=new LinearLayout(this);
+        linha.setGravity(Gravity.CENTER_VERTICAL);
+
+        entrada=new EditText(this);
+        entrada.setHint("Escreva para a DaNikeAI...");
+        entrada.setTextColor(escuro?Color.WHITE:Color.BLACK);
+        entrada.setHintTextColor(Color.rgb(105,115,125));
+        entrada.setSingleLine(true);
+        entrada.setTextSize(15);
+        entrada.setPadding(dp(16),0,dp(10),0);
+        entrada.setBackground(bg(
+            escuro?Color.rgb(15,20,28):Color.rgb(225,230,235),
+            20
+        ));
+
+        linha.addView(
+            entrada,
+            new LinearLayout.LayoutParams(0,dp(55),1)
+        );
+
+        Button enviar=btn("➤",Color.rgb(20,125,185));
+
+        LinearLayout.LayoutParams ep=
+            new LinearLayout.LayoutParams(dp(65),dp(55));
+        ep.setMargins(dp(7),0,0,0);
+
+        linha.addView(enviar,ep);
+
+        LinearLayout.LayoutParams lp=
+            new LinearLayout.LayoutParams(-1,dp(55));
+        lp.setMargins(0,dp(8),0,dp(8));
+
+        tela.addView(linha,lp);
+
+        Button imagem=btn(
+            "🖼️  CRIAR IMAGEM",
+            Color.rgb(25,55,78)
+        );
+
+        tela.addView(imagem,new LinearLayout.LayoutParams(-1,dp(55)));
+
+        TextView rodape=txt(
+            "DaNikeAI  •  Inteligência artificial",
+            11,
+            Color.rgb(80,100,115)
+        );
+
+        tela.addView(rodape,new LinearLayout.LayoutParams(-1,dp(35)));
+
+        FrameLayout raiz=new FrameLayout(this);
+        NeonBackgroundView fundo=new NeonBackgroundView(this);
+        raiz.addView(fundo,new FrameLayout.LayoutParams(-1,-1));
+        raiz.addView(tela,new FrameLayout.LayoutParams(-1,-1));
+        setContentView(raiz);
+
+        falar.setOnClickListener(v->{
+
+            if(status.getText().toString().contains("OUVINDO")){
+
+                status.setText("●  ONLINE");
+                status.setTextColor(Color.rgb(60,255,130));
+                falar.setText("🎤  FALAR");
+                mensagem.setText(
+                    "Parei de ouvir.\nComo posso te ajudar?"
+                );
+                rosto.clearAnimation();
+
+            }else{
+
+                status.setText("●  OUVINDO...");
+                status.setTextColor(Color.rgb(35,220,255));
+                falar.setText("⏹  PARAR");
+                mensagem.setText(
+                    "Estou ouvindo você...\nPode falar."
+                );
+
+                ScaleAnimation p=new ScaleAnimation(
+                    1,1.05f,1,1.05f,
+                    Animation.RELATIVE_TO_SELF,.5f,
+                    Animation.RELATIVE_TO_SELF,.5f
+                );
+                p.setDuration(650);
+                p.setRepeatMode(Animation.REVERSE);
+                p.setRepeatCount(Animation.INFINITE);
+                rosto.startAnimation(p);
+            }
+        });
+
+        enviar.setOnClickListener(v->enviarMensagem());
+
+        imagem.setOnClickListener(v->abrirGaleria());
+
+        config.setOnClickListener(v->configuracoes());
+    }
+
+
+    void falarTexto(String texto){
+        if(voz!=null && vozPronta && prefs.getBoolean("voz",true)){
+            voz.speak(texto,TextToSpeech.QUEUE_FLUSH,null,"DaNikeAI");
+        }else{
+            Toast.makeText(
+                this,
+                "A voz do Android ainda não está disponível.",
+                Toast.LENGTH_SHORT
+            ).show();
+        }
+    }
+
+    void enviarMensagem(){
+
+        String texto=entrada.getText().toString().trim();
+
+        if(texto.isEmpty()){
+            Toast.makeText(
+                this,
+                "Digite uma mensagem primeiro.",
+                Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        mensagem.setText(
+            "Você: "+texto+"\n\nDaNikeAI está processando..."
+        );
+
+        entrada.setText("");
+        falarTexto("Olá, Anderson. Recebi sua mensagem: " + texto);
+
+        Toast.makeText(
+            this,
+            "Mensagem enviada",
+            Toast.LENGTH_SHORT
+        ).show();
+    }
+
+    void abrirGaleria(){
+
+        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        i.setType("image/*");
+        i.addCategory(Intent.CATEGORY_OPENABLE);
+
+        startActivityForResult(i,GALERIA);
+    }
+
+    @Override
+    protected void onActivityResult(
+        int requestCode,
+        int resultCode,
+        Intent data
+    ){
+
+        super.onActivityResult(
+            requestCode,
+            resultCode,
+            data
+        );
+
+        if(requestCode==GALERIA &&
+           resultCode==RESULT_OK &&
+           data!=null &&
+           data.getData()!=null){
+
+            mostrarFoto(data.getData());
+        }
+    }
+
+    void mostrarFoto(Uri foto){
+
+        LinearLayout painel=new LinearLayout(this);
+        painel.setOrientation(LinearLayout.VERTICAL);
+        painel.setPadding(
+            dp(18),dp(12),dp(18),dp(12)
+        );
+
+        painel.setBackgroundColor(
+            escuro
+                ? Color.rgb(5,10,16)
+                : Color.WHITE
+        );
+
+        TextView titulo=txt(
+            "🖼️  O QUE FAZER COM ESTA FOTO?",
+            19,
+            escuro?Color.WHITE:Color.BLACK
+        );
+
+        titulo.setTypeface(Typeface.DEFAULT_BOLD);
+
+        painel.addView(
+            titulo,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        ImageView preview=new ImageView(this);
+        preview.setImageURI(foto);
+        preview.setScaleType(
+            ImageView.ScaleType.CENTER_CROP
+        );
+
+        painel.addView(
+            preview,
+            new LinearLayout.LayoutParams(-1,dp(220))
+        );
+
+        EditText pedido=new EditText(this);
+
+        pedido.setHint(
+            "Ex.: remova o fundo, transforme em desenho..."
+        );
+
+        pedido.setTextColor(
+            escuro?Color.WHITE:Color.BLACK
+        );
+
+        pedido.setHintTextColor(
+            Color.rgb(105,115,125)
+        );
+
+        pedido.setTextSize(15);
+        pedido.setSingleLine(false);
+        pedido.setPadding(
+            dp(14),dp(10),dp(14),dp(10)
+        );
+
+        pedido.setBackground(
+            bg(
+                escuro
+                    ? Color.rgb(18,25,34)
+                    : Color.rgb(232,235,238),
+                18
+            )
+        );
+
+        LinearLayout.LayoutParams pp=
+            new LinearLayout.LayoutParams(-1,dp(85));
+
+        pp.setMargins(0,dp(12),0,dp(10));
+
+        painel.addView(pedido,pp);
+
+        Button enviarFoto=btn(
+            "➤  ENVIAR PARA A DANIKAI",
+            Color.rgb(20,125,185)
+        );
+
+        painel.addView(
+            enviarFoto,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        AlertDialog dialog=
+            new AlertDialog.Builder(this)
+                .setView(painel)
+                .setNegativeButton(
+                    "CANCELAR",
+                    null
+                )
+                .create();
+
+        enviarFoto.setOnClickListener(v->{
+
+            String pedidoTexto=
+                pedido.getText().toString().trim();
+
+            if(pedidoTexto.isEmpty()){
+
+                Toast.makeText(
+                    this,
+                    "Diga o que você quer fazer com a foto.",
+                    Toast.LENGTH_SHORT
+                ).show();
+
+                return;
+            }
+
+            dialog.dismiss();
+
+            mensagem.setText(
+                "🖼️ Foto recebida.\n\n"+
+                "Pedido: "+pedidoTexto+
+                "\n\nDaNikeAI está processando..."
+            );
+
+            Toast.makeText(
+                this,
+                "Imagem enviada para a DaNikeAI",
+                Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        dialog.show();
+    }
+
+    void configuracoes(){
+
+        LinearLayout painel=new LinearLayout(this);
+        painel.setOrientation(
+            LinearLayout.VERTICAL
+        );
+
+        painel.setPadding(
+            dp(20),dp(8),dp(20),dp(8)
+        );
+
+        ScrollView scroll=new ScrollView(this);
+        scroll.addView(painel);
+
+        TextView titulo=txt(
+            "⚙️  CONFIGURAÇÕES",
+            21,
+            Color.WHITE
+        );
+
+        titulo.setTypeface(
+            Typeface.DEFAULT_BOLD
+        );
+
+        painel.addView(
+            titulo,
+            new LinearLayout.LayoutParams(-1,dp(58))
+        );
+
+        TextView conta=txt(
+            "👤  Minha conta",
+            16,
+            Color.WHITE
+        );
+
+        conta.setGravity(
+            Gravity.CENTER_VERTICAL
+        );
+
+        painel.addView(
+            conta,
+            new LinearLayout.LayoutParams(-1,dp(50))
+        );
+
+        Switch modo=new Switch(this);
+
+        modo.setText("🌑  Modo escuro");
+        modo.setTextColor(Color.WHITE);
+        modo.setTextSize(16);
+        modo.setChecked(escuro);
+
+        painel.addView(
+            modo,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        Switch brain=new Switch(this);
+
+        brain.setText(
+            cerebro
+                ? "🧠  Cérebro: ATIVADO"
+                : "🧠  Cérebro: DESATIVADO"
+        );
+
+        brain.setTextColor(Color.WHITE);
+        brain.setTextSize(16);
+        brain.setChecked(cerebro);
+
+        painel.addView(
+            brain,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        Switch voz=new Switch(this);
+
+        voz.setText("🔊  Voz da DaNikeAI");
+        voz.setTextColor(Color.WHITE);
+        voz.setTextSize(16);
+        voz.setChecked(
+            prefs.getBoolean("voz",true)
+        );
+
+        painel.addView(
+            voz,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        Switch memoria=new Switch(this);
+
+        memoria.setText("🧠  Memória");
+        memoria.setTextColor(Color.WHITE);
+        memoria.setTextSize(16);
+        memoria.setChecked(
+            prefs.getBoolean("memoria",true)
+        );
+
+        painel.addView(
+            memoria,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        Switch notificacoes=new Switch(this);
+
+        notificacoes.setText("🔔  Notificações");
+        notificacoes.setTextColor(Color.WHITE);
+        notificacoes.setTextSize(16);
+        notificacoes.setChecked(
+            prefs.getBoolean("notificacoes",true)
+        );
+
+        painel.addView(
+            notificacoes,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        Switch controle=new Switch(this);
+
+        controle.setText("📱  Controle do dispositivo");
+        controle.setTextColor(Color.WHITE);
+        controle.setTextSize(16);
+        controle.setChecked(
+            prefs.getBoolean("controle",false)
+        );
+
+        painel.addView(
+            controle,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        TextView neon=txt(
+            "✨  Sistema Neon: ATIVADO",
+            16,
+            Color.rgb(40,220,255)
+        );
+
+        neon.setGravity(
+            Gravity.CENTER_VERTICAL
+        );
+
+        painel.addView(
+            neon,
+            new LinearLayout.LayoutParams(-1,dp(55))
+        );
+
+        AlertDialog dialog=
+            new AlertDialog.Builder(this)
+                .setView(scroll)
+                .setPositiveButton(
+                    "FECHAR",
+                    null
+                )
+                .create();
+
+        modo.setOnCheckedChangeListener(
+            (button,marcado)->{
+
+                escuro=marcado;
+
+                prefs.edit()
+                    .putBoolean(
+                        "modo_escuro",
+                        marcado
+                    )
+                    .apply();
+
+                dialog.dismiss();
+
+                montarHome();
+            }
+        );
+
+        brain.setOnCheckedChangeListener(
+            (button,marcado)->{
+
+                cerebro=marcado;
+
+                prefs.edit()
+                    .putBoolean(
+                        "cerebro",
+                        marcado
+                    )
+                    .apply();
+
+                brain.setText(
+                    marcado
+                        ? "🧠  Cérebro: ATIVADO"
+                        : "🧠  Cérebro: DESATIVADO"
+                );
+
+                mensagem.setText(
+                    marcado
+                        ? "🧠 Cérebro DaNikeAI ativado."
+                        : "🧠 Cérebro DaNikeAI desativado."
+                );
+            }
+        );
+
+        voz.setOnCheckedChangeListener(
+            (button,marcado)->{
+
+                prefs.edit()
+                    .putBoolean("voz",marcado)
+                    .apply();
+            }
+        );
+
+        memoria.setOnCheckedChangeListener(
+            (button,marcado)->{
+
+                prefs.edit()
+                    .putBoolean("memoria",marcado)
+                    .apply();
+            }
+        );
+
+        notificacoes.setOnCheckedChangeListener(
+            (button,marcado)->{
+
+                prefs.edit()
+                    .putBoolean(
+                        "notificacoes",
+                        marcado
+                    )
+                    .apply();
+            }
+        );
+
+        controle.setOnCheckedChangeListener(
+            (button,marcado)->{
+
+                prefs.edit()
+                    .putBoolean(
+                        "controle",
+                        marcado
+                    )
+                    .apply();
+
+                Toast.makeText(
+                    this,
+                    marcado
+                        ? "Controle autorizado"
+                        : "Controle desativado",
+                    Toast.LENGTH_SHORT
+                ).show();
+            }
+        );
+
+        dialog.show();
+    }
+
+}

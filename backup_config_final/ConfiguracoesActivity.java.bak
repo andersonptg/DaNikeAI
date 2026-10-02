@@ -1,0 +1,378 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.Switch;
+import android.widget.TextView;
+import android.widget.Toast;
+
+public class ConfiguracoesActivity extends Activity {
+
+    private SharedPreferences config;
+
+    private int azul = Color.rgb(0, 210, 255);
+    private int branco = Color.WHITE;
+    private int cinza = Color.rgb(160, 180, 195);
+    private int fundo = Color.rgb(2, 10, 20);
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        getWindow().setStatusBarColor(Color.BLACK);
+        getWindow().setNavigationBarColor(Color.BLACK);
+
+        config = getSharedPreferences("danike_config", MODE_PRIVATE);
+
+        LinearLayout raiz = new LinearLayout(this);
+        raiz.setOrientation(LinearLayout.VERTICAL);
+        raiz.setPadding(dp(18), dp(18), dp(18), dp(18));
+        raiz.setBackgroundColor(fundo);
+
+        TextView titulo = texto("⚙️  CONFIGURAÇÕES", 24, branco);
+        titulo.setTypeface(null, Typeface.BOLD);
+        titulo.setGravity(Gravity.CENTER);
+        raiz.addView(titulo, lp(-1, 60));
+
+        TextView subtitulo = texto(
+                "Central de controle da DaNike AI",
+                14,
+                cinza
+        );
+        subtitulo.setGravity(Gravity.CENTER);
+        raiz.addView(subtitulo, lp(-1, 35));
+
+        ScrollView scroll = new ScrollView(this);
+
+        LinearLayout lista = new LinearLayout(this);
+        lista.setOrientation(LinearLayout.VERTICAL);
+        lista.setPadding(0, dp(12), 0, dp(12));
+
+        // 🧠 MEMÓRIA
+        lista.addView(tituloSecao("🧠  MEMÓRIA DA DANΙKE"));
+
+        Switch memoria = novoSwitch(
+                "Memória ativa",
+                "Permite guardar informações autorizadas por você",
+                config.getBoolean("memoria_ativa", true)
+        );
+
+        memoria.setOnCheckedChangeListener((b, ativo) -> {
+            config.edit()
+                    .putBoolean("memoria_ativa", ativo)
+                    .apply();
+
+            toast(ativo
+                    ? "🧠 Memória ativada"
+                    : "🧠 Memória desativada");
+        });
+
+        lista.addView(memoria);
+
+        lista.addView(botao(
+                "🧠  Memórias importantes",
+                "Gerenciar o que a DaNike deve lembrar",
+                v -> toast("Memórias: módulo será conectado")
+        ));
+
+        lista.addView(botao(
+                "💬  Conversas anteriores",
+                "Consultar histórico de conversas",
+                v -> toast("Histórico: módulo será conectado")
+        ));
+
+        lista.addView(botao(
+                "🗑️  Apagar memória",
+                "Remover informações armazenadas",
+                v -> confirmarApagarMemoria()
+        ));
+
+        // 🎨 APARÊNCIA
+        lista.addView(tituloSecao("🎨  APARÊNCIA"));
+
+        Switch modoEscuro = novoSwitch(
+                "Modo escuro",
+                "Usar a aparência neon escura da DaNike",
+                config.getBoolean("modo_escuro", true)
+        );
+
+        modoEscuro.setOnCheckedChangeListener((b, ativo) -> {
+            config.edit()
+                    .putBoolean("modo_escuro", ativo)
+                    .apply();
+
+            toast(ativo
+                    ? "🌙 Modo escuro ativado"
+                    : "☀️ Modo claro selecionado");
+        });
+
+        lista.addView(modoEscuro);
+
+        lista.addView(botao(
+                "☀️  Modo claro",
+                "Preparar versão clara da interface",
+                v -> {
+                    config.edit()
+                            .putBoolean("modo_escuro", false)
+                            .apply();
+
+                    modoEscuro.setChecked(false);
+                    toast("☀️ Modo claro selecionado");
+                }
+        ));
+
+        lista.addView(botao(
+                "🌙  Modo escuro",
+                "Usar a interface neon original",
+                v -> {
+                    config.edit()
+                            .putBoolean("modo_escuro", true)
+                            .apply();
+
+                    modoEscuro.setChecked(true);
+                    toast("🌙 Modo escuro selecionado");
+                }
+        ));
+
+        // 🎙️ VOZ
+        lista.addView(tituloSecao("🎙️  VOZ DA DANΙKE"));
+
+        Switch reconhecimento = novoSwitch(
+                "Reconhecimento de voz",
+                "Permitir comandos falados",
+                config.getBoolean("voz_ativa", true)
+        );
+
+        reconhecimento.setOnCheckedChangeListener((b, ativo) -> {
+            config.edit()
+                    .putBoolean("voz_ativa", ativo)
+                    .apply();
+
+            toast(ativo
+                    ? "🎙️ Reconhecimento ativado"
+                    : "🎙️ Reconhecimento desativado");
+        });
+
+        lista.addView(reconhecimento);
+
+        Switch falar = novoSwitch(
+                "Falar respostas",
+                "A DaNike poderá responder usando voz",
+                config.getBoolean("fala_ativa", true)
+        );
+
+        falar.setOnCheckedChangeListener((b, ativo) -> {
+            config.edit()
+                    .putBoolean("fala_ativa", ativo)
+                    .apply();
+
+            toast(ativo
+                    ? "🔊 Voz da DaNike ativada"
+                    : "🔇 Voz da DaNike desativada");
+        });
+
+        lista.addView(falar);
+
+        // 📱 DISPOSITIVO
+        lista.addView(tituloSecao("📱  DISPOSITIVO"));
+
+        lista.addView(botao(
+                "🎙️  Microfone",
+                "Permissão para ouvir você",
+                v -> toast("Microfone: será conectado às permissões do Android")
+        ));
+
+        lista.addView(botao(
+                "🔔  Notificações",
+                "Permitir notificações da DaNike",
+                v -> toast("Notificações: será conectado às configurações do Android")
+        ));
+
+        lista.addView(botao(
+                "♿  Acessibilidade",
+                "Permitir ações assistidas no dispositivo",
+                v -> toast("Acessibilidade: será conectado às configurações do Android")
+        ));
+
+        lista.addView(botao(
+                "📊  Uso de aplicativos",
+                "Permitir consulta de uso dos aplicativos",
+                v -> toast("Uso de apps: será conectado às configurações do Android")
+        ));
+
+        // 🌙 SEGUNDO PLANO
+        lista.addView(tituloSecao("🌙  SEGUNDO PLANO"));
+
+        Switch segundoPlano = novoSwitch(
+                "Assistente em segundo plano",
+                "Manter funções da DaNike disponíveis quando possível",
+                config.getBoolean("segundo_plano", false)
+        );
+
+        segundoPlano.setOnCheckedChangeListener((b, ativo) -> {
+            config.edit()
+                    .putBoolean("segundo_plano", ativo)
+                    .apply();
+
+            toast(ativo
+                    ? "🌙 Segundo plano ativado"
+                    : "🌙 Segundo plano desativado");
+        });
+
+        lista.addView(segundoPlano);
+
+        lista.addView(botao(
+                "🎙️  Chamar DaNike",
+                "Configurar forma de chamar a assistente",
+                v -> toast("Atalho de voz: será configurado")
+        ));
+
+        // 🔐 PRIVACIDADE
+        lista.addView(tituloSecao("🔐  PRIVACIDADE"));
+
+        lista.addView(botao(
+                "🔐  Permissões",
+                "Ver permissões concedidas à DaNike",
+                v -> toast("Central de permissões: será conectada ao Android")
+        ));
+
+        lista.addView(botao(
+                "💾  Backup da memória",
+                "Salvar uma cópia da memória da DaNike",
+                v -> toast("Backup: módulo será conectado")
+        ));
+
+        // ℹ️ SOBRE
+        lista.addView(tituloSecao("ℹ️  SOBRE"));
+
+        TextView sobre = texto(
+                "DaNike AI\n\n" +
+                "Versão 1.0.0\n\n" +
+                "Seu assistente inteligente 👑",
+                15,
+                Color.rgb(130, 210, 255)
+        );
+
+        sobre.setGravity(Gravity.CENTER);
+        sobre.setPadding(0, dp(25), 0, dp(25));
+
+        lista.addView(sobre, lp(-1, -2));
+
+        scroll.addView(lista);
+        raiz.addView(scroll, new LinearLayout.LayoutParams(
+                -1, 0, 1
+        ));
+
+        TextView fechar = texto("FECHAR", 16, branco);
+        fechar.setGravity(Gravity.CENTER);
+        fechar.setBackgroundColor(Color.rgb(10, 45, 65));
+
+        fechar.setOnClickListener(v -> finish());
+
+        raiz.addView(fechar, lp(-1, 55));
+
+        setContentView(raiz);
+    }
+
+    private TextView tituloSecao(String texto) {
+        TextView t = texto(texto, 14, azul);
+        t.setTypeface(null, Typeface.BOLD);
+        t.setPadding(dp(8), dp(20), dp(8), dp(8));
+        return t;
+    }
+
+    private Switch novoSwitch(
+            String titulo,
+            String descricao,
+            boolean ativo
+    ) {
+        Switch s = new Switch(this);
+
+        s.setText(titulo + "\n" + descricao);
+        s.setTextColor(branco);
+        s.setTextSize(16);
+        s.setChecked(ativo);
+        s.setPadding(dp(8), dp(8), dp(8), dp(8));
+
+        return s;
+    }
+
+    private TextView botao(
+            String titulo,
+            String descricao,
+            View.OnClickListener listener
+    ) {
+        TextView b = texto(
+                titulo + "\n" + descricao + "   ›",
+                16,
+                branco
+        );
+
+        b.setGravity(Gravity.CENTER_VERTICAL);
+        b.setPadding(dp(14), dp(10), dp(14), dp(10));
+        b.setBackgroundColor(Color.rgb(5, 22, 35));
+        b.setOnClickListener(listener);
+
+        return b;
+    }
+
+    private TextView texto(
+            String texto,
+            float tamanho,
+            int cor
+    ) {
+        TextView t = new TextView(this);
+        t.setText(texto);
+        t.setTextSize(tamanho);
+        t.setTextColor(cor);
+        return t;
+    }
+
+    private LinearLayout.LayoutParams lp(int largura, int altura) {
+        return new LinearLayout.LayoutParams(
+                largura,
+                altura
+        );
+    }
+
+    private int dp(int valor) {
+        return (int)(
+                valor *
+                getResources()
+                        .getDisplayMetrics()
+                        .density
+        );
+    }
+
+    private void toast(String mensagem) {
+        Toast.makeText(
+                this,
+                mensagem,
+                Toast.LENGTH_SHORT
+        ).show();
+    }
+
+    private void confirmarApagarMemoria() {
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("🗑️ Apagar memória")
+                .setMessage(
+                        "Isso apagará as configurações locais de memória da DaNikeAI."
+                )
+                .setNegativeButton("CANCELAR", null)
+                .setPositiveButton("APAGAR", (d, w) -> {
+                    config.edit()
+                            .remove("memoria_ativa")
+                            .apply();
+
+                    toast("🗑️ Memória local limpa");
+                })
+                .show();
+    }
+}

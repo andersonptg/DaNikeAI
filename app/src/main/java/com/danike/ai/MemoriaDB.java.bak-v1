@@ -1,0 +1,108 @@
+package com.danike.ai;
+
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
+import android.database.sqlite.SQLiteOpenHelper;
+
+public class MemoriaDB extends SQLiteOpenHelper {
+
+    private static final String NOME_BANCO = "danike_memoria.db";
+    private static final int VERSAO = 1;
+
+    public MemoriaDB(Context context) {
+        super(context, NOME_BANCO, null, VERSAO);
+    }
+
+    @Override
+    public void onCreate(SQLiteDatabase db) {
+
+        db.execSQL(
+            "CREATE TABLE memorias (" +
+            "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+            "texto TEXT NOT NULL," +
+            "categoria TEXT DEFAULT 'geral'," +
+            "criado_em INTEGER NOT NULL)"
+        );
+
+        db.execSQL(
+            "CREATE TABLE conversas (" +
+            "id INTEGER PRIMARY KEY AUTOINCREMENT," +
+            "pergunta TEXT NOT NULL," +
+            "resposta TEXT," +
+            "criado_em INTEGER NOT NULL)"
+        );
+    }
+
+    @Override
+    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        // Reservado para futuras versões do banco.
+    }
+
+    public long salvarMemoria(String texto, String categoria) {
+
+        SQLiteDatabase db = getWritableDatabase();
+
+        ContentValues valores = new ContentValues();
+        valores.put("texto", texto);
+        valores.put("categoria", categoria);
+        valores.put("criado_em", System.currentTimeMillis());
+
+        return db.insert("memorias", null, valores);
+    }
+
+    public long salvarConversa(String pergunta, String resposta) {
+
+        SQLiteDatabase db = getWritableDatabase();
+
+        ContentValues valores = new ContentValues();
+        valores.put("pergunta", pergunta);
+        valores.put("resposta", resposta);
+        valores.put("criado_em", System.currentTimeMillis());
+
+        return db.insert("conversas", null, valores);
+    }
+
+    public Cursor listarMemorias() {
+
+        SQLiteDatabase db = getReadableDatabase();
+
+        return db.query(
+            "memorias",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "id DESC"
+        );
+    }
+
+    public Cursor listarConversas() {
+
+        SQLiteDatabase db = getReadableDatabase();
+
+        return db.query(
+            "conversas",
+            null,
+            null,
+            null,
+            null,
+            null,
+            "id DESC"
+        );
+    }
+
+    public void apagarMemorias() {
+
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete("memorias", null, null);
+    }
+
+    public void apagarConversas() {
+
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete("conversas", null, null);
+    }
+}

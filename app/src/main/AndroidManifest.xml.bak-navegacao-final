@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <application
+        android:usesCleartextTraffic="true"
+        android:icon="@drawable/danike_icon"
+        android:theme="@style/AppTheme"
+        android:label="DaNikeAI"
+        android:allowBackup="true"
+        android:supportsRtl="true">
+
+        <!-- ABERTURA -->
+        <activity
+            android:name=".SplashActivity"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- LOGIN -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false" />
+
+        <!-- CADASTRO -->
+        <activity
+            android:name=".RegisterActivity"
+            android:exported="false" />
+
+        <!-- TELA PRINCIPAL -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
+
+        <!-- TELA DA INTELIGÊNCIA ARTIFICIAL -->
+        <activity
+            android:name=".IAActivity"
+            android:exported="false" />
+
+    </application>
+
+</manifest>

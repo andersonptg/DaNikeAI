@@ -1,0 +1,504 @@
+package com.danike.ai;
+
+import android.content.Context;
+import android.graphics.*;
+import android.os.Handler;
+import android.view.View;
+import java.util.Random;
+
+public class DaNikeAIFaceView extends View {
+
+    private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Handler handler = new Handler();
+    private final Random random = new Random();
+
+    private boolean falando = false;
+    private boolean piscando = false;
+    private float boca = 0f;
+    private float brilho = 0.7f;
+
+    private final Runnable piscarRunnable = new Runnable() {
+        @Override
+        public void run() {
+
+            piscando = true;
+            invalidate();
+
+            handler.postDelayed(() -> {
+                piscando = false;
+                invalidate();
+
+                // Próxima piscada entre 2,5 e 6 segundos
+                long proxima = 2500 + random.nextInt(3500);
+                handler.postDelayed(this, proxima);
+
+            }, 140);
+        }
+    };
+
+    public DaNikeAIFaceView(Context context) {
+        super(context);
+
+        setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+
+        handler.postDelayed(
+                piscarRunnable,
+                3000
+        );
+    }
+
+    public void setFalando(boolean valor) {
+        falando = valor;
+
+        if (!falando) {
+            boca = 0f;
+        }
+
+        invalidate();
+    }
+
+    public boolean isFalando() {
+        return falando;
+    }
+
+    public void setBoca(float valor) {
+        boca = Math.max(0f, Math.min(1f, valor));
+        invalidate();
+    }
+
+    @Override
+    protected void onDraw(Canvas c) {
+
+        super.onDraw(c);
+
+        float w = getWidth();
+        float h = getHeight();
+
+        float cx = w / 2f;
+        float cy = h / 2f;
+
+        float menor = Math.min(w, h);
+        float rosto = menor * 0.30f;
+
+        // =========================
+        // FUNDO
+        // =========================
+
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.rgb(1, 6, 13));
+        c.drawRect(0, 0, w, h, p);
+
+        // Halo neon
+        glow.setStyle(Paint.Style.FILL);
+        glow.setColor(Color.argb(
+                35,
+                0, 210, 255
+        ));
+        glow.setShadowLayer(
+                menor * 0.15f,
+                0, 0,
+                Color.rgb(0, 190, 255)
+        );
+
+        c.drawCircle(
+                cx,
+                cy,
+                menor * 0.42f,
+                glow
+        );
+
+        // =========================
+        // CABELO LONGO
+        // =========================
+
+        Path cabelo = new Path();
+
+        cabelo.moveTo(
+                cx - rosto * 0.90f,
+                cy - rosto * 0.95f
+        );
+
+        cabelo.cubicTo(
+                cx - rosto * 1.45f,
+                cy - rosto * 1.00f,
+                cx - rosto * 1.55f,
+                cy + rosto * 0.30f,
+                cx - rosto * 1.25f,
+                cy + rosto * 1.55f
+        );
+
+        cabelo.cubicTo(
+                cx - rosto * 0.90f,
+                cy + rosto * 1.72f,
+                cx - rosto * 0.75f,
+                cy + rosto * 0.85f,
+                cx - rosto * 0.65f,
+                cy + rosto * 0.55f
+        );
+
+        cabelo.lineTo(
+                cx + rosto * 0.65f,
+                cy + rosto * 0.55f
+        );
+
+        cabelo.cubicTo(
+                cx + rosto * 0.75f,
+                cy + rosto * 0.85f,
+                cx + rosto * 0.90f,
+                cy + rosto * 1.72f,
+                cx + rosto * 1.25f,
+                cy + rosto * 1.55f
+        );
+
+        cabelo.cubicTo(
+                cx + rosto * 1.55f,
+                cy + rosto * 0.30f,
+                cx + rosto * 1.45f,
+                cy - rosto * 1.00f,
+                cx + rosto * 0.90f,
+                cy - rosto * 0.95f
+        );
+
+        cabelo.close();
+
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.rgb(5, 18, 32));
+        p.setShadowLayer(
+                menor * 0.035f,
+                0,
+                0,
+                Color.rgb(0, 210, 255)
+        );
+
+        c.drawPath(cabelo, p);
+        p.clearShadowLayer();
+
+        // Mechas neon
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.009f);
+        p.setColor(Color.rgb(0, 130, 210));
+
+        c.drawArc(
+                new RectF(
+                        cx - rosto * 1.40f,
+                        cy - rosto * 1.20f,
+                        cx + rosto * 1.40f,
+                        cy + rosto * 1.60f
+                ),
+                120f,
+                120f,
+                false,
+                p
+        );
+
+        // =========================
+        // ROSTO
+        // =========================
+
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.rgb(10, 18, 30));
+
+        c.drawOval(
+                new RectF(
+                        cx - rosto,
+                        cy - rosto * 1.10f,
+                        cx + rosto,
+                        cy + rosto * 1.15f
+                ),
+                p
+        );
+
+        // Contorno
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.012f);
+
+        p.setColor(
+                falando
+                        ? Color.rgb(255, 190, 0)
+                        : Color.rgb(0, 220, 255)
+        );
+
+        c.drawOval(
+                new RectF(
+                        cx - rosto,
+                        cy - rosto * 1.10f,
+                        cx + rosto,
+                        cy + rosto * 1.15f
+                ),
+                p
+        );
+
+        // =========================
+        // OLHOS
+        // =========================
+
+        float olhoY = cy - rosto * 0.22f;
+        float olhoX = rosto * 0.40f;
+
+        if (piscando) {
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(menor * 0.018f);
+            p.setStrokeCap(Paint.Cap.ROUND);
+
+            p.setColor(
+                    falando
+                            ? Color.rgb(255, 195, 0)
+                            : Color.rgb(0, 220, 255)
+            );
+
+            c.drawLine(
+                    cx - olhoX - rosto * 0.15f,
+                    olhoY,
+                    cx - olhoX + rosto * 0.15f,
+                    olhoY,
+                    p
+            );
+
+            c.drawLine(
+                    cx + olhoX - rosto * 0.15f,
+                    olhoY,
+                    cx + olhoX + rosto * 0.15f,
+                    olhoY,
+                    p
+            );
+
+        } else {
+
+            int corOlho = falando
+                    ? Color.rgb(255, 195, 0)
+                    : Color.rgb(0, 220, 255);
+
+            // brilho
+            glow.setStyle(Paint.Style.FILL);
+            glow.setColor(Color.argb(
+                    90,
+                    Color.red(corOlho),
+                    Color.green(corOlho),
+                    Color.blue(corOlho)
+            ));
+
+            glow.setShadowLayer(
+                    menor * 0.06f,
+                    0,
+                    0,
+                    corOlho
+            );
+
+            c.drawOval(
+                    new RectF(
+                            cx - olhoX - rosto * 0.20f,
+                            olhoY - rosto * 0.10f,
+                            cx - olhoX + rosto * 0.20f,
+                            olhoY + rosto * 0.10f
+                    ),
+                    glow
+            );
+
+            c.drawOval(
+                    new RectF(
+                            cx + olhoX - rosto * 0.20f,
+                            olhoY - rosto * 0.10f,
+                            cx + olhoX + rosto * 0.20f,
+                            olhoY + rosto * 0.10f
+                    ),
+                    glow
+            );
+
+            glow.clearShadowLayer();
+
+            // olhos
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(corOlho);
+
+            c.drawOval(
+                    new RectF(
+                            cx - olhoX - rosto * 0.16f,
+                            olhoY - rosto * 0.075f,
+                            cx - olhoX + rosto * 0.16f,
+                            olhoY + rosto * 0.075f
+                    ),
+                    p
+            );
+
+            c.drawOval(
+                    new RectF(
+                            cx + olhoX - rosto * 0.16f,
+                            olhoY - rosto * 0.075f,
+                            cx + olhoX + rosto * 0.16f,
+                            olhoY + rosto * 0.075f
+                    ),
+                    p
+            );
+
+            // pupilas
+            p.setColor(Color.rgb(1, 7, 14));
+
+            c.drawCircle(
+                    cx - olhoX,
+                    olhoY,
+                    rosto * 0.065f,
+                    p
+            );
+
+            c.drawCircle(
+                    cx + olhoX,
+                    olhoY,
+                    rosto * 0.065f,
+                    p
+            );
+        }
+
+        // =========================
+        // SOBRANCELHAS
+        // =========================
+
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.009f);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setColor(Color.rgb(40, 130, 170));
+
+        RectF sobrancelhaEsquerda = new RectF(
+                cx - rosto * 0.72f,
+                cy - rosto * 0.58f,
+                cx - rosto * 0.08f,
+                cy - rosto * 0.25f
+        );
+
+        RectF sobrancelhaDireita = new RectF(
+                cx + rosto * 0.08f,
+                cy - rosto * 0.58f,
+                cx + rosto * 0.72f,
+                cy - rosto * 0.25f
+        );
+
+        c.drawArc(
+                sobrancelhaEsquerda,
+                200f,
+                140f,
+                false,
+                p
+        );
+
+        c.drawArc(
+                sobrancelhaDireita,
+                200f,
+                140f,
+                false,
+                p
+        );
+
+        // =========================
+        // NARIZ
+        // =========================
+
+        p.setColor(Color.rgb(55, 110, 135));
+        p.setStrokeWidth(menor * 0.007f);
+
+        Path nariz = new Path();
+
+        nariz.moveTo(
+                cx,
+                cy + rosto * 0.02f
+        );
+
+        nariz.lineTo(
+                cx - rosto * 0.08f,
+                cy + rosto * 0.30f
+        );
+
+        nariz.lineTo(
+                cx + rosto * 0.08f,
+                cy + rosto * 0.30f
+        );
+
+        c.drawPath(nariz, p);
+
+        // =========================
+        // BOCA
+        // =========================
+
+        float bocaY = cy + rosto * 0.57f;
+
+        float abertura = falando
+                ? rosto * (0.035f + boca * 0.18f)
+                : rosto * 0.025f;
+
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.012f);
+        p.setColor(
+                falando
+                        ? Color.rgb(255, 195, 0)
+                        : Color.rgb(0, 220, 255)
+        );
+
+        RectF bocaRect = new RectF(
+                cx - rosto * 0.30f,
+                bocaY - abertura,
+                cx + rosto * 0.30f,
+                bocaY + abertura
+        );
+
+        c.drawOval(bocaRect, p);
+
+        // =========================
+        // COROA
+        // =========================
+
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(menor * 0.010f);
+        p.setColor(Color.rgb(255, 195, 0));
+
+        Path coroa = new Path();
+
+        float top = cy - rosto * 1.22f;
+
+        coroa.moveTo(
+                cx - rosto * 0.25f,
+                top + rosto * 0.16f
+        );
+
+        coroa.lineTo(
+                cx - rosto * 0.30f,
+                top
+        );
+
+        coroa.lineTo(
+                cx - rosto * 0.10f,
+                top + rosto * 0.12f
+        );
+
+        coroa.lineTo(
+                cx,
+                top - rosto * 0.05f
+        );
+
+        coroa.lineTo(
+                cx + rosto * 0.10f,
+                top + rosto * 0.12f
+        );
+
+        coroa.lineTo(
+                cx + rosto * 0.30f,
+                top
+        );
+
+        coroa.lineTo(
+                cx + rosto * 0.25f,
+                top + rosto * 0.16f
+        );
+
+        coroa.close();
+
+        c.drawPath(coroa, p);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+
+        handler.removeCallbacksAndMessages(null);
+
+        super.onDetachedFromWindow();
+    }
+}

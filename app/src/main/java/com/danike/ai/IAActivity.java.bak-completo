@@ -1,0 +1,624 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.speech.tts.TextToSpeech;
+import android.speech.SpeechRecognizer;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.content.Intent;
+import android.os.Bundle;
+import java.util.ArrayList;
+import android.view.Gravity;
+import android.widget.*;
+import java.util.Locale;
+
+public class IAActivity extends Activity {
+
+    LinearLayout tela;
+    DaNikeAIFaceView rostoIA;
+    TextView statusIA;
+    TextView resposta;
+    EditText entrada;
+    TextToSpeech voz;
+    SpeechRecognizer reconhecedor;
+    Intent intentVoz;
+    boolean ouvindo = false;
+
+    int dp(float v){
+        return (int)(v * getResources().getDisplayMetrics().density + .5f);
+    }
+
+    GradientDrawable fundo(int cor, float raio){
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(cor);
+        g.setCornerRadius(dp(raio));
+        return g;
+    }
+
+    TextView texto(String s, float tamanho, int cor){
+        TextView t = new TextView(this);
+        t.setText(s);
+        t.setTextSize(tamanho);
+        t.setTextColor(cor);
+        return t;
+    }
+
+    Button botao(String s, int cor){
+        Button b = new Button(this);
+        b.setText(s);
+        b.setTextSize(14);
+        b.setTextColor(Color.WHITE);
+        b.setAllCaps(false);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setBackground(fundo(cor, 22));
+        return b;
+    }
+
+    @Override
+    protected void onCreate(Bundle b){
+        super.onCreate(b);
+
+        voz = new TextToSpeech(this, status -> {
+            if(status == TextToSpeech.SUCCESS){
+                voz.setLanguage(new Locale("pt","BR"));
+                voz.setSpeechRate(1.0f);
+                voz.setPitch(1.0f);
+            }
+        });
+
+        montarReconhecimentoVoz();
+        montarTela();
+    }
+
+    void montarReconhecimentoVoz(){
+
+        if(!SpeechRecognizer.isRecognitionAvailable(this)){
+            return;
+        }
+
+        reconhecedor = SpeechRecognizer.createSpeechRecognizer(this);
+
+        reconhecedor.setRecognitionListener(new RecognitionListener(){
+
+            public void onReadyForSpeech(Bundle params){
+                ouvindo = true;
+                statusIA.setText("🎤  OUVINDO...");
+                statusIA.setTextColor(Color.rgb(0,220,255));
+            }
+
+            public void onBeginningOfSpeech(){
+                ouvindo = true;
+            }
+
+            public void onRmsChanged(float rmsdB){}
+            public void onBufferReceived(byte[] buffer){}
+
+            public void onEndOfSpeech(){
+                ouvindo = false;
+            }
+
+            public void onError(int error){
+                ouvindo = false;
+                statusIA.setText("●  IA ONLINE");
+                statusIA.setTextColor(Color.rgb(60,255,130));
+            }
+
+            public void onResults(Bundle resultados){
+
+                ouvindo = false;
+
+                ArrayList<String> textos =
+                    resultados.getStringArrayList(
+                        SpeechRecognizer.RESULTS_RECOGNITION
+                    );
+
+                if(textos != null && !textos.isEmpty()){
+                    entrada.setText(textos.get(0));
+                    responder();
+                }
+            }
+
+            public void onPartialResults(Bundle resultados){}
+            public void onEvent(int eventType, Bundle params){}
+        });
+
+        intentVoz = new Intent(
+            RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+        );
+
+        intentVoz.putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+            RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+        );
+
+        intentVoz.putExtra(
+            RecognizerIntent.EXTRA_LANGUAGE,
+            "pt-BR"
+        );
+
+        intentVoz.putExtra(
+            RecognizerIntent.EXTRA_PARTIAL_RESULTS,
+            false
+        );
+    }
+
+    void montarTela(){
+
+        tela = new LinearLayout(this);
+        tela.setOrientation(LinearLayout.VERTICAL);
+        tela.setPadding(dp(14), dp(8), dp(14), dp(12));
+        tela.setBackgroundColor(Color.rgb(1,7,14));
+
+        // TOPO
+        LinearLayout topo = new LinearLayout(this);
+        topo.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView titulo = texto(
+                "DaNikeAI",
+                28,
+                Color.WHITE
+        );
+        titulo.setTypeface(Typeface.DEFAULT_BOLD);
+
+        topo.addView(
+                titulo,
+                new LinearLayout.LayoutParams(0, dp(52), 1)
+        );
+
+        Button voltar = botao(
+                "←",
+                Color.rgb(8,35,55)
+        );
+
+        topo.addView(
+                voltar,
+                new LinearLayout.LayoutParams(dp(55), dp(50))
+        );
+
+        tela.addView(topo);
+
+        voltar.setOnClickListener(v -> finish());
+
+        // SUBTITULO
+        TextView subtitulo = texto(
+                "🧠  CÉREBRO DA DaNikeAI",
+                15,
+                Color.rgb(0,220,255)
+        );
+        subtitulo.setTypeface(Typeface.DEFAULT_BOLD);
+        tela.addView(
+                subtitulo,
+                new LinearLayout.LayoutParams(-1, dp(32))
+        );
+
+        // STATUS
+        statusIA = texto(
+                "●  IA ONLINE",
+                13,
+                Color.rgb(60,255,130)
+        );
+
+        tela.addView(
+                statusIA,
+                new LinearLayout.LayoutParams(-1, dp(28))
+        );
+
+        // ROSTO
+        FrameLayout areaRosto = new FrameLayout(this);
+
+        rostoIA = new DaNikeAIFaceView(this);
+
+        int tamanho = Math.min(
+                dp(320),
+                getResources().getDisplayMetrics().widthPixels - dp(25)
+        );
+
+        areaRosto.addView(
+                rostoIA,
+                new FrameLayout.LayoutParams(
+                        tamanho,
+                        tamanho,
+                        Gravity.CENTER
+                )
+        );
+
+        tela.addView(
+                areaRosto,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(330)
+                )
+        );
+
+        // RESPOSTA
+        LinearLayout painel = new LinearLayout(this);
+        painel.setOrientation(LinearLayout.VERTICAL);
+        painel.setPadding(
+                dp(12),
+                dp(8),
+                dp(12),
+                dp(8)
+        );
+
+        GradientDrawable painelFundo =
+                fundo(Color.rgb(3,14,27), 22);
+
+        painelFundo.setStroke(
+                dp(2),
+                Color.rgb(0,180,255)
+        );
+
+        painel.setBackground(painelFundo);
+
+        TextView tituloResposta = texto(
+                "DaNikeAI  •  Resposta",
+                15,
+                Color.rgb(255,195,0)
+        );
+
+        tituloResposta.setTypeface(Typeface.DEFAULT_BOLD);
+
+        painel.addView(
+                tituloResposta,
+                new LinearLayout.LayoutParams(-1, dp(30))
+        );
+
+        resposta = texto(
+                "Olá, Anderson.\n\n"
+                + "Sou a DaNikeAI. Faça uma pergunta para começar.",
+                16,
+                Color.WHITE
+        );
+
+        resposta.setGravity(Gravity.CENTER_VERTICAL);
+        resposta.setPadding(dp(8),dp(4),dp(8),dp(4));
+
+        ScrollView scrollResposta = new ScrollView(this);
+        scrollResposta.setFillViewport(true);
+        scrollResposta.addView(resposta);
+
+        painel.addView(
+                scrollResposta,
+                new LinearLayout.LayoutParams(-1, dp(105))
+        );
+
+        tela.addView(
+                painel,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(145)
+                )
+        );
+
+        // CAMPO
+        LinearLayout linha = new LinearLayout(this);
+        linha.setGravity(Gravity.CENTER_VERTICAL);
+
+        entrada = new EditText(this);
+        entrada.setHint("Digite sua pergunta...");
+        entrada.setHintTextColor(Color.rgb(110,130,150));
+        entrada.setTextColor(Color.WHITE);
+        entrada.setTextSize(15);
+        entrada.setSingleLine(true);
+        entrada.setPadding(dp(14),0,dp(10),0);
+
+        GradientDrawable campo =
+                fundo(Color.rgb(7,18,30), 22);
+
+        campo.setStroke(
+                dp(1),
+                Color.rgb(0,210,255)
+        );
+
+        entrada.setBackground(campo);
+
+        linha.addView(
+                entrada,
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(54),
+                        1
+                )
+        );
+
+        Button enviar = botao(
+                "➤",
+                Color.rgb(12,110,180)
+        );
+
+        LinearLayout.LayoutParams ep =
+                new LinearLayout.LayoutParams(
+                        dp(60),
+                        dp(54)
+                );
+
+        ep.setMargins(dp(6),0,0,0);
+
+        linha.addView(enviar, ep);
+
+        tela.addView(
+                linha,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(58)
+                )
+        );
+
+        // BOTÕES
+        LinearLayout acoes = new LinearLayout(this);
+        acoes.setGravity(Gravity.CENTER);
+        acoes.setPadding(0,dp(7),0,0);
+
+        Button falar = botao(
+                "🔊 OUVIR",
+                Color.rgb(18,70,105)
+        );
+
+        Button parar = botao(
+                "⏹ PARAR",
+                Color.rgb(90,20,80)
+        );
+
+        Button salvar = botao(
+                "💾 SALVAR",
+                Color.rgb(18,70,105)
+        );
+
+        Button deletar = botao(
+                "🗑 DELETAR",
+                Color.rgb(95,20,45)
+        );
+
+        Button[] botoes = {
+                falar, parar, salvar, deletar
+        };
+
+        for(Button b : botoes){
+
+            LinearLayout.LayoutParams p =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(46),
+                            1
+                    );
+
+            p.setMargins(dp(2),0,dp(2),0);
+
+            acoes.addView(b,p);
+        }
+
+        tela.addView(
+                acoes,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(55)
+                )
+        );
+
+        setContentView(tela);
+
+        // ENVIAR
+        enviar.setOnClickListener(v -> responder());
+
+        // MICROFONE
+        Button microfone = botao(
+                "🎤 FALAR",
+                Color.rgb(12,110,180)
+        );
+
+        tela.addView(
+                microfone,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(48)
+                )
+        );
+
+        microfone.setOnClickListener(v -> {
+
+            if(reconhecedor == null){
+                Toast.makeText(
+                        this,
+                        "Reconhecimento de voz indisponível.",
+                        Toast.LENGTH_SHORT
+                ).show();
+                return;
+            }
+
+            if(ouvindo){
+                reconhecedor.stopListening();
+                ouvindo = false;
+                statusIA.setText("●  IA ONLINE");
+                statusIA.setTextColor(Color.rgb(60,255,130));
+            }else{
+                statusIA.setText("🎤  PREPARANDO...");
+                statusIA.setTextColor(Color.rgb(0,220,255));
+                reconhecedor.startListening(intentVoz);
+            }
+        });
+
+        entrada.setOnEditorActionListener(
+                (v, action, event) -> {
+                    responder();
+                    return true;
+                }
+        );
+
+        // OUVIR
+        falar.setOnClickListener(v -> {
+
+            String texto = resposta.getText().toString();
+
+            if(voz != null && !texto.isEmpty()){
+
+                statusIA.setText("🔊  FALANDO...");
+                statusIA.setTextColor(
+                        Color.rgb(255,195,0)
+                );
+
+                rostoIA.setFalando(true);
+
+                voz.speak(
+                        texto,
+                        TextToSpeech.QUEUE_FLUSH,
+                        null,
+                        "DaNikeAI"
+                );
+            }
+        });
+
+        // PARAR
+        parar.setOnClickListener(v -> {
+
+            if(voz != null){
+                voz.stop();
+            }
+
+            rostoIA.setFalando(false);
+
+            statusIA.setText("●  IA ONLINE");
+            statusIA.setTextColor(
+                    Color.rgb(60,255,130)
+            );
+        });
+
+        // SALVAR
+        salvar.setOnClickListener(v -> {
+
+            getSharedPreferences(
+                    "DaNikeAI_Dados",
+                    0
+            ).edit()
+             .putString(
+                     "ultima_resposta_ia",
+                     resposta.getText().toString()
+             )
+             .apply();
+
+            Toast.makeText(
+                    this,
+                    "Resposta salva.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        // DELETAR
+        deletar.setOnClickListener(v -> {
+
+            resposta.setText(
+                    "A resposta foi apagada."
+            );
+
+            getSharedPreferences(
+                    "DaNikeAI_Dados",
+                    0
+            ).edit()
+             .remove("ultima_resposta_ia")
+             .apply();
+
+            if(voz != null){
+                voz.stop();
+            }
+
+            rostoIA.setFalando(false);
+
+            statusIA.setText("●  IA ONLINE");
+            statusIA.setTextColor(
+                    Color.rgb(60,255,130)
+            );
+        });
+    }
+
+    void responder(){
+
+        String pergunta =
+                entrada.getText().toString().trim();
+
+        if(pergunta.isEmpty()){
+            Toast.makeText(
+                    this,
+                    "Digite uma pergunta.",
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        statusIA.setText("🟡  PENSANDO...");
+        statusIA.setTextColor(
+                Color.rgb(255,195,0)
+        );
+
+        resposta.setText(
+                "Você perguntou:\n\n"
+                + pergunta
+                + "\n\nDaNikeAI está consultando o Gemini..."
+        );
+
+        entrada.setText("");
+
+        GeminiAPI.perguntar(
+                pergunta,
+                new GeminiAPI.Callback(){
+
+                    @Override
+                    public void sucesso(String texto){
+
+                        runOnUiThread(() -> {
+
+                            resposta.setText(texto);
+
+                            if(voz != null){
+                                statusIA.setText("🔊  FALANDO...");
+                                statusIA.setTextColor(Color.rgb(255,195,0));
+                                rostoIA.setFalando(true);
+                                voz.speak(texto, TextToSpeech.QUEUE_FLUSH, null, "DaNikeAI");
+                            }
+
+                            statusIA.setText("●  IA ONLINE");
+                            statusIA.setTextColor(
+                                    Color.rgb(60,255,130)
+                            );
+
+                        });
+                    }
+
+                    @Override
+                    public void erro(String mensagem){
+
+                        runOnUiThread(() -> {
+
+                            resposta.setText(
+                                    "Não consegui falar com o Gemini.\n\n"
+                                    + mensagem
+                            );
+
+                            statusIA.setText("🔴  ERRO NA IA");
+                            statusIA.setTextColor(
+                                    Color.rgb(255,70,70)
+                            );
+
+                        });
+                    }
+                }
+        );
+    }
+
+    @Override
+    protected void onDestroy(){
+
+        if(voz != null){
+            voz.stop();
+            voz.shutdown();
+        }
+
+        if(rostoIA != null){
+            rostoIA.setFalando(false);
+        }
+
+        super.onDestroy();
+    }
+}
