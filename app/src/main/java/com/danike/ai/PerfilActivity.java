@@ -57,6 +57,10 @@ public class PerfilActivity extends Activity {
         );
         nome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
 
+        DadosUsuario.nome(this, nomeAtual -> {
+            nome.setText(nomeAtual);
+        });
+
         raiz.addView(nome,
             new LinearLayout.LayoutParams(-1, dp(40)));
 

@@ -389,22 +389,7 @@ public class IAActivity extends Activity {
         LinearLayout instagram = criarInstagramBadge();
         topo.addView(instagram,
                 new LinearLayout.LayoutParams(dp(166), dp(48)));
-
-        Button configuracoes = botao("⚙", Color.TRANSPARENT);
-        configuracoes.setTextSize(23);
-        GradientDrawable cfg = fundo(Color.argb(45, 0, 160, 255), 25);
-        cfg.setStroke(dp(1), Color.rgb(0, 225, 255));
-        configuracoes.setBackground(cfg);
-        topo.addView(configuracoes,
-                new LinearLayout.LayoutParams(dp(50), dp(50)));
-
-        tela.addView(topo,
-                new LinearLayout.LayoutParams(-1, dp(62)));
-
-        configuracoes.setOnClickListener(v ->
-                startActivity(new Intent(IAActivity.this, ConfiguracoesActivity.class)));
-
-        // STATUS
+// STATUS
         LinearLayout statusLinha = new LinearLayout(this);
         statusLinha.setGravity(Gravity.CENTER_VERTICAL);
 
@@ -456,7 +441,11 @@ public class IAActivity extends Activity {
         saudacaoBox.setOrientation(LinearLayout.VERTICAL);
         saudacaoBox.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView saudacao = texto("Olá, Anderson.", 21, Color.WHITE, true);
+        TextView saudacao = texto("Olá, Usuário.", 21, Color.WHITE, true);
+        DadosUsuario.nome(this, nomeUsuario -> {
+            saudacao.setText("Olá, " + nomeUsuario + ".");
+        });
+
         TextView ajuda = texto(
                 "Estou pronta. O que vamos criar hoje?",
                 12,
@@ -471,6 +460,11 @@ public class IAActivity extends Activity {
                 new FrameLayout.LayoutParams(
                         dp(245), dp(72),
                         Gravity.LEFT | Gravity.CENTER_VERTICAL));
+
+        DadosUsuario.nome(this,
+                nomeUsuario ->
+                        saudacao.setText(
+                                "Olá, " + nomeUsuario + "."));
 
         tela.addView(palco,
                 new LinearLayout.LayoutParams(-1, dp(148)));
@@ -591,13 +585,13 @@ public class IAActivity extends Activity {
         Button navConversas = navButton("◉", "Conversas");
         Button navMemoria = navButton("🧠", "Memória");
         Button navFalar = navButton("🎤", "Falar");
-        Button navConfig = navButton("⚙", "Opções");
+        Button navMembros = navButton("♛", "Membros");
 
         nav.addView(navChat, new LinearLayout.LayoutParams(0, dp(58), 1));
         nav.addView(navConversas, new LinearLayout.LayoutParams(0, dp(58), 1));
         nav.addView(navMemoria, new LinearLayout.LayoutParams(0, dp(58), 1));
         nav.addView(navFalar, new LinearLayout.LayoutParams(0, dp(58), 1));
-        nav.addView(navConfig, new LinearLayout.LayoutParams(0, dp(58), 1));
+        nav.addView(navMembros, new LinearLayout.LayoutParams(0, dp(58), 1));
 
         tela.addView(nav,
                 new LinearLayout.LayoutParams(-1, dp(62)));
@@ -617,9 +611,9 @@ public class IAActivity extends Activity {
             setBotaoAtivo(navFalar, true);
             alternarMicrofone();
         });
-        navConfig.setOnClickListener(v -> {
-            setBotaoAtivo(navConfig, true);
-            startActivity(new Intent(IAActivity.this, ConfiguracoesActivity.class));
+        navMembros.setOnClickListener(v -> {
+            setBotaoAtivo(navMembros, true);
+            startActivity(new Intent(IAActivity.this, MembrosActivity.class));
         });
 
         enviar.setOnClickListener(v -> responder());
@@ -764,13 +758,24 @@ public class IAActivity extends Activity {
         return b;
     }
 
-    private TextView adicionarDigitando() {
+    private View adicionarDigitando() {
         if (chatLista == null) return null;
-        TextView b = criarBolha(
-                "DANIKEAI\n•••  digitando...", false);
-        chatLista.addView(b);
+
+        TypingDotsView dots =
+                new TypingDotsView(this);
+
+        LinearLayout.LayoutParams lp =
+                new LinearLayout.LayoutParams(
+                        dp(94), dp(48));
+
+        lp.gravity = Gravity.LEFT;
+        lp.setMargins(
+                dp(4),dp(4),dp(4),dp(4));
+
+        chatLista.addView(dots,lp);
         rolarChatFinal();
-        return b;
+
+        return dots;
     }
 
     private void rolarChatFinal() {
@@ -778,6 +783,60 @@ public class IAActivity extends Activity {
             chatScroll.post(() ->
                     chatScroll.fullScroll(View.FOCUS_DOWN));
         }
+    }
+
+    private String responderInformacaoLocal(String pergunta) {
+
+        if (pergunta == null) return null;
+
+        String p =
+                java.text.Normalizer.normalize(
+                        pergunta.toLowerCase(
+                                java.util.Locale.ROOT),
+                        java.text.Normalizer.Form.NFD)
+                        .replaceAll("\\p{M}","")
+                        .trim();
+
+        boolean data =
+                p.contains("que dia e hoje")
+                || p.contains("qual a data de hoje")
+                || p.contains("data de hoje")
+                || p.equals("hoje");
+
+        boolean hora =
+                p.contains("que horas sao")
+                || p.contains("qual a hora")
+                || p.contains("hora agora")
+                || p.contains("horas agora");
+
+        java.util.Calendar agora =
+                java.util.Calendar.getInstance();
+
+        if (data) {
+            java.text.SimpleDateFormat formato =
+                    new java.text.SimpleDateFormat(
+                            "EEEE, d 'de' MMMM 'de' yyyy",
+                            new java.util.Locale(
+                                    "pt","BR"));
+
+            return "Hoje é " +
+                    formato.format(agora) +
+                    ".";
+        }
+
+        if (hora) {
+            java.text.SimpleDateFormat formato =
+                    new java.text.SimpleDateFormat(
+                            "HH:mm",
+                            new java.util.Locale(
+                                    "pt","BR"));
+
+            return "Agora são " +
+                    formato.format(agora) +
+                    ".";
+        }
+
+        return null;
     }
 
     void responder() {
@@ -799,6 +858,22 @@ public class IAActivity extends Activity {
             salvarMensagemSessao(
                     0,
                     "🧠 Memória salva. Vou lembrar disso.");
+            return;
+        }
+
+        String respostaLocal =
+                responderInformacaoLocal(pergunta);
+
+        if (respostaLocal != null) {
+            adicionarBolhaUsuario(pergunta);
+            adicionarBolhaIA(respostaLocal);
+            salvarMensagemSessao(1, pergunta);
+            salvarMensagemSessao(0, respostaLocal);
+            entrada.setText("");
+
+            if (falaAutomatica)
+                falarTexto(respostaLocal);
+
             return;
         }
 
@@ -830,7 +905,7 @@ public class IAActivity extends Activity {
         adicionarBolhaUsuario(pergunta);
         salvarMensagemSessao(1, pergunta);
 
-        TextView digitando = adicionarDigitando();
+        View digitando = adicionarDigitando();
         entrada.setText("");
 
         GeminiAPI.perguntar(
@@ -928,12 +1003,40 @@ public class IAActivity extends Activity {
         return false;
     }
 
+    private String limparTextoParaFala(
+            String textoFala) {
+
+        if (textoFala == null) return "";
+
+        String s = textoFala
+                .replaceAll("https?://\\S+"," ")
+                .replaceAll("```[\\s\\S]*?```"," ")
+                .replaceAll(
+                        "[*_#`~\\[\\]{}()<>|/\\\\:;!?+=•●◉〽]",
+                        " ")
+                .replaceAll(
+                        "[^\\p{L}\\p{N}\\s,.]",
+                        " ")
+                .replaceAll("\\s*,\\s*",", ")
+                .replaceAll("\\s*\\.\\s*",". ")
+                .replaceAll("\\s{2,}"," ")
+                .trim();
+
+        return s;
+    }
+
     private void falarTexto(String textoFala) {
+
         if (voz == null
                 || textoFala == null
                 || textoFala.trim().isEmpty()) {
             return;
         }
+
+        String falaLimpa =
+                limparTextoParaFala(textoFala);
+
+        if (falaLimpa.isEmpty()) return;
 
         falando = true;
         atualizarStatusOnline();
@@ -950,7 +1053,7 @@ public class IAActivity extends Activity {
         }
 
         voz.speak(
-                textoFala,
+                falaLimpa,
                 TextToSpeech.QUEUE_FLUSH,
                 null,
                 "DaNikeAI");
@@ -1072,6 +1175,17 @@ public class IAActivity extends Activity {
     }
 
     private void salvarMensagemSessao(int tipo, String textoMensagem) {
+
+        boolean cerebroAtivo =
+                getSharedPreferences(
+                        "danike_config",
+                        MODE_PRIVATE)
+                        .getBoolean(
+                                "cerebro_ativo",
+                                true);
+
+        if (!cerebroAtivo) return;
+
         if (sessaoAtual <= 0)
             garantirSessao();
 
@@ -1481,6 +1595,75 @@ public class IAActivity extends Activity {
     // ============================================================
     // VISUAL — NÃO altera DaNikeFaceView
     // ============================================================
+
+    class TypingDotsView extends View {
+
+        Paint p =
+                new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        float fase = 0;
+
+        TypingDotsView(android.content.Context c) {
+            super(c);
+
+            setBackground(
+                    fundo(
+                            Color.argb(
+                                    100,0,55,115),
+                            20));
+
+            postInvalidateDelayed(120);
+        }
+
+        @Override
+        protected void onDraw(Canvas c) {
+
+            super.onDraw(c);
+
+            float cy =
+                    getHeight() / 2f;
+
+            float centro =
+                    getWidth() / 2f;
+
+            fase += .22f;
+
+            for(int i=0;i<3;i++) {
+
+                float x =
+                        centro
+                        + (i-1) * dp(18);
+
+                float pulso =
+                        (float)Math.sin(
+                                fase + i*.8f);
+
+                float raio =
+                        dp(4)
+                        + Math.max(0,pulso)
+                        * dp(2);
+
+                p.setStyle(
+                        Paint.Style.FILL);
+
+                p.setColor(
+                        Color.rgb(
+                                0,225,255));
+
+                p.setShadowLayer(
+                        dp(9),0,0,
+                        Color.rgb(
+                                0,225,255));
+
+                c.drawCircle(
+                        x,cy,raio,p);
+
+                p.clearShadowLayer();
+            }
+
+            postInvalidateDelayed(120);
+        }
+    }
 
     class SpeakingGlow extends View {
         Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);

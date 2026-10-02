@@ -262,7 +262,7 @@ public class AdmActivity extends Activity {
 
         compartilhar.setOnClickListener(v -> AppDistribuicao.compartilhar(
                 this,
-                "LINK_DO_APK_DANIKAI"
+                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk"
         ));
 
         LinearLayout grade6 = new LinearLayout(this);
@@ -280,7 +280,7 @@ public class AdmActivity extends Activity {
 
         baixarApp.setOnClickListener(v -> AppDistribuicao.baixarApk(
                 this,
-                "LINK_DO_APK_DANIKAI"
+                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk"
         ));
 
         raiz.addView(secao("🚨  IDENTIFICAÇÃO DE ERROS DO APP", VERMELHO));
@@ -965,59 +965,159 @@ public class AdmActivity extends Activity {
 
 
     private void mostrarAtualizacao() {
-        final android.app.AlertDialog dialog =
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(35, 10, 35, 10);
+
+        android.widget.EditText versao = new android.widget.EditText(this);
+        versao.setHint("Ex.: 1.1.0");
+        versao.setSingleLine(true);
+
+        android.widget.EditText codigo = new android.widget.EditText(this);
+        codigo.setHint("Código da versão: Ex. 2");
+        codigo.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        codigo.setSingleLine(true);
+
+        android.widget.EditText link = new android.widget.EditText(this);
+        link.setHint("Link do APK");
+        link.setSingleLine(true);
+        link.setText("https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk");
+
+        android.widget.EditText titulo = new android.widget.EditText(this);
+        titulo.setHint("Título");
+        titulo.setSingleLine(true);
+        titulo.setText("ATUALIZAÇÃO DISPONÍVEL");
+
+        android.widget.EditText mensagem = new android.widget.EditText(this);
+        mensagem.setHint("Mensagem para os usuários");
+        mensagem.setSingleLine(false);
+        mensagem.setText("Uma nova versão do DaNikeAI está disponível.");
+
+        android.widget.CheckBox obrigatoria = new android.widget.CheckBox(this);
+        obrigatoria.setText("Atualização obrigatória");
+
+        layout.addView(versao);
+        layout.addView(codigo);
+        layout.addView(link);
+        layout.addView(titulo);
+        layout.addView(mensagem);
+        layout.addView(obrigatoria);
+
+        android.app.AlertDialog dialog =
                 new android.app.AlertDialog.Builder(this)
                         .setTitle("📲 ATUALIZAÇÃO DO DANIKAI")
-                        .setMessage(
-                                "Versão instalada: 1.0\n\n" +
-                                "Gerenciamento de atualização\n\n" +
-                                "• Nova versão\n" +
-                                "• Link do APK\n" +
-                                "• Mensagem para usuários\n" +
-                                "• Atualização obrigatória ou opcional"
-                        )
-                        .setPositiveButton("CONFIGURAR", (d, w) -> {
-                            android.widget.EditText entrada =
-                                    new android.widget.EditText(this);
-
-                            entrada.setHint("Ex.: 1.1.0");
-                            entrada.setSingleLine(true);
-                            entrada.setPadding(35, 20, 35, 20);
-
-                            new android.app.AlertDialog.Builder(this)
-                                    .setTitle("NOVA VERSÃO")
-                                    .setMessage(
-                                            "Informe o número da próxima versão:"
-                                    )
-                                    .setView(entrada)
-                                    .setNegativeButton("CANCELAR", null)
-                                    .setPositiveButton("CONTINUAR",
-                                            (d2, w2) -> {
-                                                String versao =
-                                                        entrada.getText()
-                                                                .toString()
-                                                                .trim();
-
-                                                if (versao.isEmpty()) {
-                                                    Toast.makeText(
-                                                            this,
-                                                            "Informe a versão.",
-                                                            Toast.LENGTH_SHORT
-                                                    ).show();
-                                                    return;
-                                                }
-
-                                                Toast.makeText(
-                                                        this,
-                                                        "Versão " + versao +
-                                                                " preparada.",
-                                                        Toast.LENGTH_LONG
-                                                ).show();
-                                            })
-                                    .show();
-                        })
-                        .setNegativeButton("FECHAR", null)
+                        .setMessage("Configure a próxima versão que os usuários receberão.")
+                        .setView(layout)
+                        .setNegativeButton("CANCELAR", null)
+                        .setPositiveButton("PUBLICAR", null)
                         .create();
+
+        dialog.setOnShowListener(d -> {
+            dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
+                    .setOnClickListener(v -> {
+
+                        String nomeVersao =
+                                versao.getText().toString().trim();
+
+                        String textoCodigo =
+                                codigo.getText().toString().trim();
+
+                        String apkUrl =
+                                link.getText().toString().trim();
+
+                        String textoTitulo =
+                                titulo.getText().toString().trim();
+
+                        String textoMensagem =
+                                mensagem.getText().toString().trim();
+
+                        if (nomeVersao.isEmpty() ||
+                                textoCodigo.isEmpty() ||
+                                apkUrl.isEmpty()) {
+
+                            android.widget.Toast.makeText(
+                                    this,
+                                    "Preencha versão, código e link do APK.",
+                                    android.widget.Toast.LENGTH_LONG
+                            ).show();
+                            return;
+                        }
+
+                        int versionCode;
+
+                        try {
+                            versionCode = Integer.parseInt(textoCodigo);
+                        } catch (Exception e) {
+                            android.widget.Toast.makeText(
+                                    this,
+                                    "Código da versão inválido.",
+                                    android.widget.Toast.LENGTH_LONG
+                            ).show();
+                            return;
+                        }
+
+                        java.util.Map<String, Object> dados =
+                                new java.util.HashMap<>();
+
+                        dados.put("enabled", true);
+                        dados.put("versionCode", versionCode);
+                        dados.put("versionName", nomeVersao);
+                        dados.put("apkUrl", apkUrl);
+                        dados.put(
+                                "title",
+                                textoTitulo.isEmpty()
+                                        ? "ATUALIZAÇÃO DISPONÍVEL"
+                                        : textoTitulo
+                        );
+                        dados.put(
+                                "message",
+                                textoMensagem.isEmpty()
+                                        ? "Uma nova versão do DaNikeAI está disponível."
+                                        : textoMensagem
+                        );
+                        dados.put(
+                                "mandatory",
+                                obrigatoria.isChecked()
+                        );
+                        dados.put(
+                                "publicadoEm",
+                                com.google.firebase.firestore.FieldValue.serverTimestamp()
+                        );
+
+                        com.google.firebase.firestore.FirebaseFirestore
+                                .getInstance()
+                                .collection("config")
+                                .document("update")
+                                .set(dados)
+                                .addOnSuccessListener(unused -> {
+                                    android.widget.Toast.makeText(
+                                            this,
+                                            "✅ Atualização publicada no Firebase!",
+                                            android.widget.Toast.LENGTH_LONG
+                                    ).show();
+
+                                    dialog.dismiss();
+                                })
+                                .addOnFailureListener(e -> {
+                                    String detalhe = e.getMessage();
+                                    if (detalhe == null || detalhe.trim().isEmpty()) {
+                                        detalhe = e.getClass().getSimpleName();
+                                    }
+
+                                    android.util.Log.e(
+                                            "DaNikeADM",
+                                            "ERRO AO PUBLICAR ATUALIZACAO",
+                                            e
+                                    );
+
+                                    android.widget.Toast.makeText(
+                                            this,
+                                            "❌ FALHA NO FIREBASE: " + detalhe,
+                                            android.widget.Toast.LENGTH_LONG
+                                    ).show();
+                                });
+                    });
+        });
 
         dialog.show();
     }
