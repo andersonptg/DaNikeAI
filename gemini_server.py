@@ -2,6 +2,7 @@ import os
 import json
 import urllib.request
 import urllib.error
+from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 ENV = os.path.expanduser("~/.config/danikeai.env")
@@ -22,6 +23,9 @@ INSTRUCAO = (
     "Escreva de forma confortável para leitura em voz alta, usando vírgulas e pontos."
 )
 
+
+def data_hora_atual():
+    return datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
 def carregar_chave():
     try:
@@ -67,6 +71,10 @@ def chamar_modelo(modelo, pergunta, chave):
                     {
                         "text": (
                             INSTRUCAO
+                            + "\n\nDATA E HORA ATUAIS DO SERVIDOR: "
+                            + data_hora_atual()
+                            + "\nUse esta data e hora como referência atual. "
+                            + "Não invente outra data ou hora. "
                             + "\n\nPergunta do usuário:\n"
                             + pergunta
                         )
