@@ -122,6 +122,7 @@ public class IAActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+
         getWindow().setSoftInputMode(
                 android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
         );
@@ -336,7 +337,9 @@ public class IAActivity extends Activity {
                 if (textoReconhecido.equalsIgnoreCase("stop")
                         || textoReconhecido.equalsIgnoreCase("parar")
                         || textoReconhecido.equalsIgnoreCase("pare")
-                        || textoReconhecido.equalsIgnoreCase("parar de falar")) {
+                        || textoReconhecido.equalsIgnoreCase("parar de falar")
+                        || textoReconhecido.equalsIgnoreCase("obrigado")
+                        || textoReconhecido.equalsIgnoreCase("obrigada")) {
                     modoEscutaContinua = false;
                     pararFala();
                     return;
@@ -717,9 +720,13 @@ public class IAActivity extends Activity {
 
                     if (recurso[0].contains("Rosto flutuante")) {
                         rostoFlutuante = true;
+                        modoEscutaContinua = true;
+
                         preferenciasIZy.edit()
                                 .putBoolean("rosto_flutuante", true)
                                 .apply();
+
+                        iniciarEscutaContinua();
 
                         try {
                             Intent servico = new Intent(
@@ -764,9 +771,19 @@ public class IAActivity extends Activity {
 
                     if (recurso[0].contains("Rosto flutuante")) {
                         rostoFlutuante = false;
+                        modoEscutaContinua = false;
+
                         preferenciasIZy.edit()
                                 .putBoolean("rosto_flutuante", false)
                                 .apply();
+
+                        if (reconhecedor != null) {
+                            try {
+                                reconhecedor.stopListening();
+                            } catch (Exception ignored) {}
+                        }
+
+                        ouvindo = false;
 
                         try {
                             stopService(new Intent(
@@ -1487,21 +1504,63 @@ public class IAActivity extends Activity {
     }
 
     private TextView criarBolha(String textoMensagem, boolean usuario) {
-        TextView b = texto(textoMensagem, 14, Color.WHITE, false);
-        b.setPadding(dp(14), dp(10), dp(14), dp(10));
+        String horaAtual = new java.text.SimpleDateFormat(
+                "HH:mm",
+                java.util.Locale.getDefault()
+        ).format(new java.util.Date());
+
+        String textoCompleto = textoMensagem + "\n" + horaAtual;
+
+        TextView b = texto(textoCompleto, 14, Color.WHITE, false);
+        b.setPadding(dp(14), dp(10), dp(14), dp(8));
         b.setGravity(Gravity.START);
         b.setLineSpacing(0, 1.08f);
+
+        android.text.SpannableString spannable =
+                new android.text.SpannableString(textoCompleto);
+
+        int inicioHora = textoCompleto.length() - horaAtual.length();
+
+        spannable.setSpan(
+                new android.text.style.RelativeSizeSpan(0.72f),
+                inicioHora,
+                textoCompleto.length(),
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+
+        spannable.setSpan(
+                new android.text.style.ForegroundColorSpan(
+                        Color.argb(150, 210, 230, 245)
+                ),
+                inicioHora,
+                textoCompleto.length(),
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+
+        spannable.setSpan(
+                new android.text.style.AlignmentSpan.Standard(
+                        android.text.Layout.Alignment.ALIGN_OPPOSITE
+                ),
+                inicioHora,
+                textoCompleto.length(),
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+        );
+
+        b.setText(spannable);
 
         GradientDrawable bg = fundo(
                 usuario
                         ? Color.argb(120, 85, 10, 170)
                         : Color.argb(100, 0, 55, 115),
-                20);
+                20
+        );
 
-        bg.setStroke(dp(1),
+        bg.setStroke(
+                dp(1),
                 usuario
                         ? Color.rgb(195, 65, 255)
-                        : Color.rgb(0, 205, 255));
+                        : Color.rgb(0, 205, 255)
+        );
 
         b.setBackground(bg);
 
@@ -1511,10 +1570,12 @@ public class IAActivity extends Activity {
         LinearLayout.LayoutParams lp =
                 new LinearLayout.LayoutParams(
                         (int) (largura * (usuario ? .78f : .84f)),
-                        -2);
+                        -2
+                );
 
         lp.gravity = usuario ? Gravity.RIGHT : Gravity.LEFT;
         lp.setMargins(dp(4), dp(4), dp(4), dp(4));
+
         b.setLayoutParams(lp);
 
         return b;
@@ -1571,6 +1632,21 @@ public class IAActivity extends Activity {
                 java.text.Normalizer.Form.NFD
         ).replaceAll("\\p{M}", "").trim();
 
+        boolean dataHora =
+                p.contains("data e hora")
+                || p.contains("data de hoje e hora")
+                || p.contains("data de hoje e horas")
+                || p.contains("data e horas")
+                || p.contains("dia e hora")
+                || p.contains("dia e horas")
+                || p.contains("data de hoje e horario")
+                || p.contains("qual a data e hora")
+                || p.contains("qual e a data e hora")
+                || p.contains("que dia e que horas")
+                || p.contains("que dia e que hora")
+                || p.contains("data de hoje e horas de agora")
+                || p.contains("data de hoje e hora de agora");
+
         boolean data =
                 p.contains("que dia e hoje")
                 || p.contains("qual e a data de hoje")
@@ -1587,7 +1663,6 @@ public class IAActivity extends Activity {
 
         boolean hora =
                 p.contains("que horas sao")
-                || p.contains("que horas sao agora")
                 || p.contains("qual e a hora")
                 || p.contains("qual a hora")
                 || p.contains("qual o horario")
@@ -1595,28 +1670,34 @@ public class IAActivity extends Activity {
                 || p.contains("hora agora")
                 || p.contains("horas agora")
                 || p.contains("me fala a hora")
-                || p.contains("me diga a hora");
+                || p.contains("me diga a hora")
+                || p.contains("que horas sao agora");
 
-        java.util.Calendar agora = java.util.Calendar.getInstance(
-                java.util.TimeZone.getTimeZone("America/Sao_Paulo")
-        );
+        java.util.Calendar agora = java.util.Calendar.getInstance();
+
+        java.text.SimpleDateFormat formatoData =
+                new java.text.SimpleDateFormat(
+                        "EEEE, d 'de' MMMM 'de' yyyy",
+                        new java.util.Locale("pt", "BR")
+                );
+
+        java.text.SimpleDateFormat formatoHora =
+                new java.text.SimpleDateFormat(
+                        "HH:mm",
+                        new java.util.Locale("pt", "BR")
+                );
+
+        if (dataHora) {
+            return "Hoje é " + formatoData.format(agora)
+                    + " e agora são " + formatoHora.format(agora) + ".";
+        }
 
         if (data) {
-            java.text.SimpleDateFormat formato =
-                    new java.text.SimpleDateFormat(
-                            "EEEE, d 'de' MMMM 'de' yyyy",
-                            new java.util.Locale("pt", "BR")
-                    );
-            return "Hoje é " + formato.format(agora) + ".";
+            return "Hoje é " + formatoData.format(agora) + ".";
         }
 
         if (hora) {
-            java.text.SimpleDateFormat formato =
-                    new java.text.SimpleDateFormat(
-                            "HH:mm",
-                            new java.util.Locale("pt", "BR")
-                    );
-            return "Agora são " + formato.format(agora) + ".";
+            return "Agora são " + formatoHora.format(agora) + ".";
         }
 
         return null;
@@ -1838,7 +1919,7 @@ public class IAActivity extends Activity {
         if (rostoIA != null)
             rostoIA.setFalando(true);
 
-        if (brilhoFala != null) {
+        if (brilhoFala != null && (modoEscutaContinua || rostoFlutuante)) {
             brilhoFala.setVisibility(View.VISIBLE);
             brilhoFala.animate()
                     .alpha(1f)
@@ -2617,7 +2698,8 @@ public class IAActivity extends Activity {
 
         SpeakingGlow(Context c) {
             super(c);
-            setAlpha(.92f);
+            setAlpha(1f);
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
             postInvalidateDelayed(30);
         }
 
@@ -2625,19 +2707,78 @@ public class IAActivity extends Activity {
         protected void onDraw(Canvas c) {
             super.onDraw(c);
 
-            float cx = getWidth() / 2f;
-            float cy = getHeight() / 2f;
-            pulso += .08f;
+            pulso += 0.07f;
 
-            float r = dp(65) + (float) Math.sin(pulso) * dp(9);
+            float onda = (float) ((Math.sin(pulso) + 1.0) / 2.0);
+            float brilho = 0.45f + (onda * 0.55f);
 
-            p.setStyle(Paint.Style.FILL);
-            p.setColor(Color.argb(55, 255, 190, 25));
+            float margem = dp(5);
+            float raio = dp(24);
+
+            RectF borda = new RectF(
+                    margem,
+                    margem,
+                    getWidth() - margem,
+                    getHeight() - margem
+            );
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(dp(3.5f));
+
+            // Neon ciano
+            p.setColor(Color.argb(
+                    (int) (210 * brilho),
+                    0, 235, 255
+            ));
+
             p.setShadowLayer(
-                    dp(28), 0, 0,
-                    Color.rgb(255, 185, 25));
+                    dp(18),
+                    0, 0,
+                    Color.argb(
+                            (int) (230 * brilho),
+                            0, 225, 255
+                    )
+            );
 
-            c.drawCircle(cx, cy, r, p);
+            c.drawRoundRect(
+                    borda,
+                    raio,
+                    raio,
+                    p
+            );
+
+            p.clearShadowLayer();
+
+            // Segunda camada violeta para dar profundidade
+            p.setStrokeWidth(dp(1.8f));
+            p.setColor(Color.argb(
+                    (int) (175 * brilho),
+                    190, 70, 255
+            ));
+
+            p.setShadowLayer(
+                    dp(10),
+                    0, 0,
+                    Color.argb(
+                            (int) (190 * brilho),
+                            190, 70, 255
+                    )
+            );
+
+            RectF interna = new RectF(
+                    dp(9),
+                    dp(9),
+                    getWidth() - dp(9),
+                    getHeight() - dp(9)
+            );
+
+            c.drawRoundRect(
+                    interna,
+                    dp(19),
+                    dp(19),
+                    p
+            );
+
             p.clearShadowLayer();
 
             postInvalidateDelayed(30);

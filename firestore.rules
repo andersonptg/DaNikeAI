@@ -26,6 +26,19 @@ service cloud.firestore {
         && request.auth.uid == "nd9zWE3GF2hOJDg4BfgTtaSy3H33";
     }
 
+
+    match /have_usuarios/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Perfil público HAVE: nunca deve conter e-mail ou outros dados privados.
+    match /have_perfis_publicos/{uid} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == uid;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
     match /{document=**} {
       allow read, write: if false;
     }

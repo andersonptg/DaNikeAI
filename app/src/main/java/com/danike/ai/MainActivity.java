@@ -39,25 +39,14 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
 
         b.setText(emoji + "\n" + titulo + "\n" + subtitulo);
-        b.setTextSize(16);
+        b.setTextSize(15);
         b.setTextColor(Color.WHITE);
         b.setAllCaps(false);
         b.setGravity(Gravity.CENTER);
         b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        b.setPadding(dp(14), dp(10), dp(14), dp(10));
+        b.setPadding(dp(18), dp(12), dp(18), dp(12));
 
-        GradientDrawable fundo = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{
-                        Color.rgb(4, 18, 34),
-                        Color.rgb(7, 38, 64),
-                        Color.rgb(3, 17, 31)
-                }
-        );
-
-        fundo.setCornerRadius(dp(28));
-        fundo.setStroke(dp(1), Color.rgb(0, 220, 255));
-
+        NeonCardDrawable fundo = new NeonCardDrawable(titulo);
         b.setBackground(fundo);
 
         if (android.os.Build.VERSION.SDK_INT >= 21) {
@@ -95,6 +84,20 @@ public class MainActivity extends Activity {
 
         prefs = getSharedPreferences("DaNikeAI_Dados", 0);
         escuro = prefs.getBoolean("modo_escuro", true);
+
+        boolean onboardingConcluido =
+                getSharedPreferences(
+                        "DaNikeAI_Onboarding",
+                        MODE_PRIVATE
+                ).getBoolean("concluido", false);
+
+        if (!onboardingConcluido) {
+            startActivity(
+                    new Intent(this, OnboardingActivity.class)
+            );
+            finish();
+            return;
+        }
 
         montarHome();
 
@@ -153,8 +156,11 @@ public class MainActivity extends Activity {
                 )
         );
 
+        String nomeUsuario = prefs.getString("nome", "Usuário").trim();
+        if (nomeUsuario.isEmpty()) nomeUsuario = "Usuário";
+
         TextView saudacao = txt(
-                "Olá, usuário 👋",
+                "Olá, " + nomeUsuario + " 👋",
                 19,
                 Color.rgb(190, 225, 245)
         );
@@ -306,9 +312,9 @@ public class MainActivity extends Activity {
         // =========================
 
         Button rave = card(
-                "Tela de Rave",
+                "Have",
                 "Acessar",
-                "🪩"
+                "▶"
         );
 
         LinearLayout.LayoutParams raveParams =
@@ -388,13 +394,10 @@ public class MainActivity extends Activity {
         });
 
         rave.setOnClickListener(v -> {
-
-            Intent intent =
-                    new Intent(
-                            MainActivity.this,
-                            ManutencaoActivity.class
-                    );
-
+            Intent intent = new Intent(
+                    MainActivity.this,
+                    HaveLoginActivity.class
+            );
             startActivity(intent);
         });
 

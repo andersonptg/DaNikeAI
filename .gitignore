@@ -9,3 +9,12 @@ __pycache__/
 service-account.json
 *.backup
 *.apk
+
+__pycache__/
+*.pyc
+*.backup_have
+*.bak
+*.bak2
+*_backup_*
+*.backup_manual
+*.backup-home

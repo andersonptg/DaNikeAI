@@ -12,7 +12,7 @@ PORT = int(os.getenv("PORT", "8766"))
 
 MODELOS = [
     "gemini-3.5-flash-lite",
-    "gemini-2.5-flash",
+    "gemini-3.8-flash",
 ]
 
 INSTRUCAO = (
@@ -20,7 +20,7 @@ INSTRUCAO = (
     "Seja clara, natural e direta. "
     "Não use emojis, markdown, asteriscos, hashtags, listas com símbolos ou links, "
     "a menos que o usuário peça. "
-    "Escreva de forma confortável para leitura em voz alta, usando vírgulas e pontos."
+    "Escreva de forma confortável para leitura em voz alta, usando vírgulas e pontos. ""Quando a pergunta depender de informações atuais, recentes, notícias, preços, resultados, eventos, pessoas, empresas, locais ou qualquer dado que possa ter mudado, use a Pesquisa Google para verificar a informação antes de responder. ""Para perguntas que não precisam de informação atual, responda normalmente sem pesquisar."
 )
 
 
@@ -82,7 +82,7 @@ def chamar_modelo(modelo, pergunta, chave):
                 ]
             }
         ],
-        "generationConfig": {
+        "tools": [{"google_search": {}}],"generationConfig": {
             "maxOutputTokens": 1200
         }
     }).encode("utf-8")
@@ -128,6 +128,85 @@ def chamar_modelo(modelo, pergunta, chave):
         return 0, {"erro": str(e)}
 
 
+def carregar_tmdb_token():
+    try:
+        with open(ENV, "r", encoding="utf-8") as f:
+            for linha in f:
+                linha = linha.strip()
+                if linha.startswith("TMDB_ACCESS_TOKEN="):
+                    return linha.split("=", 1)[1].strip()
+    except Exception:
+        pass
+
+    return os.getenv("TMDB_ACCESS_TOKEN", "").strip()
+
+
+
+
+def buscar_catalogo_have():
+    token = carregar_tmdb_token()
+
+    if not token:
+        return {"results": [], "erro": "TMDB não configurado"}
+
+    # Principais serviços que o Have pode exibir.
+    # Os IDs são os IDs oficiais do TMDB para provedores.
+    provedores = {
+        "Netflix": 8,
+        "Disney+": 337,
+        "Globoplay": 307,
+        "Prime Video": 119,
+        "Max": 1899,
+    }
+
+    resultados = []
+
+    for nome, provider_id in provedores.items():
+        url = (
+            "https://api.themoviedb.org/3/discover/movie"
+            "?watch_region=BR"
+            "&with_watch_providers=" + str(provider_id) +
+            "&with_watch_monetization_types=flatrate"
+            "&sort_by=popularity.desc"
+            "&language=pt-BR"
+            "&page=1"
+        )
+
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Authorization": "Bearer " + token,
+                "Accept": "application/json"
+            }
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resposta:
+                dados = json.loads(
+                    resposta.read().decode("utf-8")
+                )
+
+            for filme in dados.get("results", [])[:10]:
+                filme["have_provider"] = nome
+                filme["have_provider_id"] = provider_id
+                resultados.append(filme)
+
+        except Exception as e:
+            print("[TMDB]", nome, e)
+
+    # Remove duplicados mantendo a primeira ocorrência.
+    unicos = {}
+    for filme in resultados:
+        mid = filme.get("id")
+        if mid and mid not in unicos:
+            unicos[mid] = filme
+
+    return {
+        "results": list(unicos.values()),
+        "total": len(unicos),
+        "image_base": "https://image.tmdb.org/t/p/w780"
+    }
+
 class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, formato, *args):
@@ -152,6 +231,10 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(resposta)
 
     def do_GET(self):
+        if self.path == "/have/catalog":
+            self.enviar_json(200, buscar_catalogo_have())
+            return
+
         if self.path == "/":
             self.enviar_json(
                 200,
@@ -249,11 +332,12 @@ class Handler(BaseHTTPRequestHandler):
                     504
                 ):
                     print(
-                        "Modelo",
+                        "DIAGNOSTICO:",
                         modelo,
                         "falhou HTTP",
                         codigo,
-                        "- tentando próximo."
+                        "detalhes:",
+                        resultado.get("error", resultado.get("erro", "sem detalhes"))
                     )
                     continue
 
