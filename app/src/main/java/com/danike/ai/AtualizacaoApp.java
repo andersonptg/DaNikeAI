@@ -8,6 +8,13 @@ import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
 import android.widget.Toast;
+import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.view.ViewGroup;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Button;
 
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -131,59 +138,125 @@ public final class AtualizacaoApp {
             String apkUrl,
             boolean obrigatoria
     ) {
-
         if (activity == null
                 || activity.isFinishing()
                 || activity.isDestroyed()) {
             return;
         }
 
-        String texto =
-                mensagem
-                        + "\n\n"
-                        + "DaNikeAI "
-                        + versionName;
+        final AlertDialog dialog = new AlertDialog.Builder(activity).create();
 
-        AlertDialog.Builder builder =
-                new AlertDialog.Builder(activity)
-                        .setTitle(titulo)
-                        .setMessage(texto)
-                        .setPositiveButton(
-                                "ATUALIZAR AGORA",
-                                (dialog, which) -> {
+        LinearLayout principal = new LinearLayout(activity);
+        principal.setOrientation(LinearLayout.VERTICAL);
+        principal.setPadding(34, 28, 34, 24);
+        principal.setGravity(Gravity.CENTER_HORIZONTAL);
 
-                                    if (apkUrl == null
-                                            || apkUrl.trim().isEmpty()) {
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setColor(Color.rgb(8, 10, 18));
+        fundo.setCornerRadius(28);
+        fundo.setStroke(2, Color.rgb(0, 220, 255));
+        principal.setBackground(fundo);
 
-                                        Toast.makeText(
-                                                activity,
-                                                "Link da atualização não configurado.",
-                                                Toast.LENGTH_LONG
-                                        ).show();
+        TextView logo = new TextView(activity);
+        logo.setText("⚡ DaNikeAI");
+        logo.setTextColor(Color.rgb(0, 235, 255));
+        logo.setTextSize(25);
+        logo.setGravity(Gravity.CENTER);
+        logo.setTypeface(null, android.graphics.Typeface.BOLD);
 
-                                        return;
-                                    }
+        TextView tituloView = new TextView(activity);
+        tituloView.setText("ATUALIZAÇÃO DISPONÍVEL");
+        tituloView.setTextColor(Color.WHITE);
+        tituloView.setTextSize(20);
+        tituloView.setGravity(Gravity.CENTER);
+        tituloView.setTypeface(null, android.graphics.Typeface.BOLD);
+        tituloView.setPadding(0, 16, 0, 4);
 
-                                    AppDistribuicao.baixarApk(
-                                            activity,
-                                            apkUrl
-                                    );
-                                }
-                        );
+        TextView versaoView = new TextView(activity);
+        versaoView.setText("DaNikeAI " + versionName);
+        versaoView.setTextColor(Color.rgb(170, 80, 255));
+        versaoView.setTextSize(17);
+        versaoView.setGravity(Gravity.CENTER);
+        versaoView.setTypeface(null, android.graphics.Typeface.BOLD);
 
-        if (obrigatoria) {
+        TextView mensagemView = new TextView(activity);
+        mensagemView.setText(
+                mensagem == null || mensagem.trim().isEmpty()
+                        ? "Uma nova versão está disponível para você."
+                        : mensagem
+        );
+        mensagemView.setTextColor(Color.LTGRAY);
+        mensagemView.setTextSize(15);
+        mensagemView.setGravity(Gravity.CENTER);
+        mensagemView.setPadding(10, 18, 10, 22);
 
-            builder.setCancelable(false);
+        Button atualizar = new Button(activity);
+        atualizar.setText("ATUALIZAR");
+        atualizar.setTextColor(Color.WHITE);
+        atualizar.setTextSize(15);
+        atualizar.setAllCaps(false);
+        atualizar.setTypeface(null, android.graphics.Typeface.BOLD);
 
-        } else {
+        GradientDrawable fundoAtualizar = new GradientDrawable();
+        fundoAtualizar.setColor(Color.rgb(25, 80, 105));
+        fundoAtualizar.setCornerRadius(18);
+        fundoAtualizar.setStroke(2, Color.rgb(0, 235, 255));
+        atualizar.setBackground(fundoAtualizar);
 
-            builder.setNegativeButton(
-                    "LEMBRAR DEPOIS",
-                    null
-            );
+        LinearLayout.LayoutParams pBotao =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        58
+                );
+        pBotao.setMargins(0, 4, 0, 10);
+        principal.addView(logo);
+        principal.addView(tituloView);
+        principal.addView(versaoView);
+        principal.addView(mensagemView);
+        principal.addView(atualizar, pBotao);
+
+        if (!obrigatoria) {
+            Button depois = new Button(activity);
+            depois.setText("LEMBRAR MAIS TARDE");
+            depois.setTextColor(Color.LTGRAY);
+            depois.setTextSize(14);
+            depois.setAllCaps(false);
+
+            GradientDrawable fundoDepois = new GradientDrawable();
+            fundoDepois.setColor(Color.TRANSPARENT);
+            fundoDepois.setCornerRadius(18);
+            fundoDepois.setStroke(1, Color.rgb(90, 90, 110));
+            depois.setBackground(fundoDepois);
+
+            principal.addView(depois, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 52));
+
+            depois.setOnClickListener(v -> dialog.dismiss());
         }
 
-        builder.show();
+        atualizar.setOnClickListener(v -> {
+            if (apkUrl == null || apkUrl.trim().isEmpty()) {
+                Toast.makeText(
+                        activity,
+                        "Link da atualização não configurado.",
+                        Toast.LENGTH_LONG
+                ).show();
+                return;
+            }
+
+            atualizar.setText("BAIXANDO...");
+            atualizar.setEnabled(false);
+
+            AppDistribuicao.baixarApk(activity, apkUrl);
+        });
+
+        dialog.setView(principal);
+        dialog.setCanceledOnTouchOutside(!obrigatoria);
+        if (obrigatoria) {
+            dialog.setCancelable(false);
+        }
+
+        dialog.show();
     }
 
     private static void baixarAtualizacao(

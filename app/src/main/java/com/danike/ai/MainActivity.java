@@ -10,6 +10,13 @@ import android.view.animation.*;
 import android.widget.*;
 
 public class MainActivity extends Activity {
+    private View pontoIA;
+    private View pontoFilmes;
+    private View pontoHistorico;
+    private View pontoPerfil;
+    private View pontoHave;
+
+
 
     LinearLayout tela;
     boolean escuro = true;
@@ -205,7 +212,19 @@ public class MainActivity extends Activity {
 
         iaParams.setMargins(0, dp(10), 0, dp(16));
 
-        conteudo.addView(ia, iaParams);
+        FrameLayout containerIA = new FrameLayout(this);
+        containerIA.setClipChildren(false);
+        containerIA.addView(ia, new FrameLayout.LayoutParams(-1, -1));
+
+        pontoIA = criarIndicadorManutencao();
+
+        FrameLayout.LayoutParams pontoIAParams =
+                new FrameLayout.LayoutParams(dp(14), dp(14),
+                        Gravity.TOP | Gravity.END);
+        pontoIAParams.setMargins(0, dp(2), dp(2), 0);
+        containerIA.addView(pontoIA, pontoIAParams);
+
+        conteudo.addView(containerIA, iaParams);
 
         // =========================
         // CAPA FILMES
@@ -225,7 +244,19 @@ public class MainActivity extends Activity {
 
         filmesParams.setMargins(0, 0, 0, dp(16));
 
-        conteudo.addView(filmes, filmesParams);
+        FrameLayout containerFilmes = new FrameLayout(this);
+        containerFilmes.setClipChildren(false);
+        containerFilmes.addView(filmes, new FrameLayout.LayoutParams(-1, -1));
+
+        pontoFilmes = criarIndicadorManutencao();
+
+        FrameLayout.LayoutParams pontoFilmesParams =
+                new FrameLayout.LayoutParams(dp(14), dp(14),
+                        Gravity.TOP | Gravity.END);
+        pontoFilmesParams.setMargins(0, dp(2), dp(2), 0);
+        containerFilmes.addView(pontoFilmes, pontoFilmesParams);
+
+        conteudo.addView(containerFilmes, filmesParams);
 
         // =========================
         // CAPA HISTÓRICO
@@ -245,7 +276,19 @@ public class MainActivity extends Activity {
 
         historicoParams.setMargins(0, 0, 0, dp(16));
 
-        conteudo.addView(historico, historicoParams);
+        FrameLayout containerHistorico = new FrameLayout(this);
+        containerHistorico.setClipChildren(false);
+        containerHistorico.addView(historico, new FrameLayout.LayoutParams(-1, -1));
+
+        pontoHistorico = criarIndicadorManutencao();
+
+        FrameLayout.LayoutParams pontoHistoricoParams =
+                new FrameLayout.LayoutParams(dp(14), dp(14),
+                        Gravity.TOP | Gravity.END);
+        pontoHistoricoParams.setMargins(0, dp(2), dp(2), 0);
+        containerHistorico.addView(pontoHistorico, pontoHistoricoParams);
+
+        conteudo.addView(containerHistorico, historicoParams);
 
         // =========================
         // CAPA PERFIL
@@ -265,7 +308,19 @@ public class MainActivity extends Activity {
 
         perfilParams.setMargins(0, 0, 0, dp(16));
 
-        conteudo.addView(perfil, perfilParams);
+        FrameLayout containerPerfil = new FrameLayout(this);
+        containerPerfil.setClipChildren(false);
+        containerPerfil.addView(perfil, new FrameLayout.LayoutParams(-1, -1));
+
+        pontoPerfil = criarIndicadorManutencao();
+
+        FrameLayout.LayoutParams pontoPerfilParams =
+                new FrameLayout.LayoutParams(dp(14), dp(14),
+                        Gravity.TOP | Gravity.END);
+        pontoPerfilParams.setMargins(0, dp(2), dp(2), 0);
+        containerPerfil.addView(pontoPerfil, pontoPerfilParams);
+
+        conteudo.addView(containerPerfil, perfilParams);
 
         // =========================
         // ADM — SOMENTE DONO
@@ -325,7 +380,65 @@ public class MainActivity extends Activity {
 
         raveParams.setMargins(0, 0, 0, dp(20));
 
-        conteudo.addView(rave, raveParams);
+        FrameLayout containerHave = new FrameLayout(this);
+        containerHave.setClipChildren(false);
+        containerHave.addView(rave, new FrameLayout.LayoutParams(-1, -1));
+
+        pontoHave = criarIndicadorManutencao();
+
+        FrameLayout.LayoutParams pontoHaveParams =
+                new FrameLayout.LayoutParams(dp(14), dp(14),
+                        Gravity.TOP | Gravity.END);
+        pontoHaveParams.setMargins(0, dp(2), dp(2), 0);
+        containerHave.addView(pontoHave, pontoHaveParams);
+
+        conteudo.addView(containerHave, raveParams);
+
+        // ==============================
+        // COMPARTILHAR APP
+        // ==============================
+        Button compartilharApp = card(
+                "Compartilhar App",
+                "Envie para seus amigos",
+                "📲"
+        );
+
+        LinearLayout.LayoutParams compartilharParams =
+                new LinearLayout.LayoutParams(-1, dp(135));
+        compartilharParams.setMargins(0, 0, 0, dp(20));
+        conteudo.addView(compartilharApp, compartilharParams);
+
+        compartilharApp.setOnClickListener(v -> {
+            try {
+                String versao = getPackageManager()
+                        .getPackageInfo(getPackageName(), 0)
+                        .versionName;
+
+                String link = "https://play.google.com/store/apps/details?id="
+                        + getPackageName();
+
+                String mensagem =
+                        "🚀 Baixe o DaNikeAI!\n\n"
+                        + "Versão atual: " + versao + "\n\n"
+                        + link;
+
+                Intent compartilhar = new Intent(Intent.ACTION_SEND);
+                compartilhar.setType("text/plain");
+                compartilhar.putExtra(Intent.EXTRA_TEXT, mensagem);
+
+                startActivity(Intent.createChooser(
+                        compartilhar,
+                        "Compartilhar DaNikeAI"
+                ));
+
+            } catch (Exception e) {
+                Toast.makeText(
+                        MainActivity.this,
+                        "Não foi possível compartilhar o app.",
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        });
 
         scroll.addView(conteudo);
 
@@ -345,60 +458,91 @@ public class MainActivity extends Activity {
 
         setContentView(raiz);
 
+        carregarIndicadoresManutencao(
+                pontoIA,
+                pontoFilmes,
+                pontoHistorico,
+                pontoPerfil,
+                pontoHave
+        );
+
         // =========================
         // CLIQUES
         // =========================
 
         ia.setOnClickListener(v -> {
-
-            Intent intent =
-                    new Intent(
-                            MainActivity.this,
-                            IAActivity.class
-                    );
-
-            startActivity(intent);
+            abrirAreaComManutencao(
+                    "ia",
+                    "IA",
+                    () -> {
+                        Intent intent =
+                                new Intent(
+                                        MainActivity.this,
+                                        IAActivity.class
+                                );
+                        startActivity(intent);
+                    }
+            );
         });
 
         filmes.setOnClickListener(v -> {
-
-            Intent intent =
-                    new Intent(
-                            MainActivity.this,
-                            com.danike.ai.filmes.FilmesActivity.class
-                    );
-
-            startActivity(intent);
+            abrirAreaComManutencao(
+                    "filmes",
+                    "FILMES",
+                    () -> {
+                        Intent intent =
+                                new Intent(
+                                        MainActivity.this,
+                                        com.danike.ai.filmes.FilmesActivity.class
+                                );
+                        startActivity(intent);
+                    }
+            );
         });
 
         historico.setOnClickListener(v -> {
-
-            Intent intent =
-                    new Intent(
-                            MainActivity.this,
-                            HistoricoActivity.class
-                    );
-
-            startActivity(intent);
+            abrirAreaComManutencao(
+                    "historico",
+                    "HISTÓRICO",
+                    () -> {
+                        Intent intent =
+                                new Intent(
+                                        MainActivity.this,
+                                        HistoricoActivity.class
+                                );
+                        startActivity(intent);
+                    }
+            );
         });
 
         perfil.setOnClickListener(v -> {
-
-            Intent intent =
-                    new Intent(
-                            MainActivity.this,
-                            PerfilActivity.class
-                    );
-
-            startActivity(intent);
+            abrirAreaComManutencao(
+                    "perfil",
+                    "PERFIL",
+                    () -> {
+                        Intent intent =
+                                new Intent(
+                                        MainActivity.this,
+                                        PerfilActivity.class
+                                );
+                        startActivity(intent);
+                    }
+            );
         });
 
         rave.setOnClickListener(v -> {
-            Intent intent = new Intent(
-                    MainActivity.this,
-                    HaveLoginActivity.class
+            abrirAreaComManutencao(
+                    "have",
+                    "HAVE",
+                    () -> {
+                        Intent intent =
+                                new Intent(
+                                        MainActivity.this,
+                                        HaveLoginActivity.class
+                                );
+                        startActivity(intent);
+                    }
             );
-            startActivity(intent);
         });
 
         if (adm != null) {
@@ -447,6 +591,255 @@ public class MainActivity extends Activity {
             animarEntrada(rave, 700);
         } else {
             animarEntrada(rave, 580);
+        }
+    }
+
+    // =========================
+    // MANUTENÇÃO INDIVIDUAL
+    // =========================
+
+    private boolean ehDonoDaNike() {
+        try {
+            com.google.firebase.auth.FirebaseUser u =
+                    com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+
+            return u != null
+                    && "lipesanderson@gmail.com".equalsIgnoreCase(
+                            String.valueOf(u.getEmail())
+                    );
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private void abrirAreaComManutencao(
+            String area,
+            String titulo,
+            Runnable abrirNormal
+    ) {
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("config")
+                .document("areas")
+                .get()
+                .addOnSuccessListener(doc -> {
+
+                    Boolean valor = doc.getBoolean("manutencao_" + area);
+                    boolean emManutencao = valor != null && valor;
+
+                    if (emManutencao && !ehDonoDaNike()) {
+                        mostrarTelaManutencao(titulo);
+                    } else {
+                        abrirNormal.run();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    // Se o Firebase não responder, não bloqueia o usuário.
+                    abrirNormal.run();
+                });
+    }
+
+    private View criarIndicadorManutencao() {
+        View ponto = new View(this);
+
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setShape(GradientDrawable.OVAL);
+        fundo.setColor(Color.rgb(0, 255, 100));
+        fundo.setStroke(dp(2), Color.WHITE);
+
+        ponto.setBackground(fundo);
+        ponto.setElevation(dp(12));
+
+        android.animation.ObjectAnimator pulsar =
+                android.animation.ObjectAnimator.ofFloat(
+                        ponto,
+                        "alpha",
+                        1f, 0.35f, 1f
+                );
+
+        pulsar.setDuration(900);
+        pulsar.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        pulsar.setInterpolator(
+                new android.view.animation.AccelerateDecelerateInterpolator()
+        );
+        pulsar.start();
+
+        return ponto;
+    }
+
+    private void definirCorIndicador(View ponto, boolean manutencao) {
+        if (ponto == null) return;
+
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setShape(GradientDrawable.OVAL);
+
+        if (manutencao) {
+            fundo.setColor(Color.rgb(255, 30, 55));
+        } else {
+            fundo.setColor(Color.rgb(0, 255, 100));
+        }
+
+        fundo.setStroke(dp(2), Color.WHITE);
+        ponto.setBackground(fundo);
+    }
+
+    private void carregarIndicadoresManutencao(
+            View pontoIA,
+            View pontoFilmes,
+            View pontoHistorico,
+            View pontoPerfil,
+            View pontoHave
+    ) {
+        com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                .collection("config")
+                .document("areas")
+                .get()
+                .addOnSuccessListener(doc -> {
+                    definirCorIndicador(
+                            pontoIA,
+                            Boolean.TRUE.equals(doc.getBoolean("manutencao_ia"))
+                    );
+
+                    definirCorIndicador(
+                            pontoFilmes,
+                            Boolean.TRUE.equals(doc.getBoolean("manutencao_filmes"))
+                    );
+
+                    definirCorIndicador(
+                            pontoHistorico,
+                            Boolean.TRUE.equals(doc.getBoolean("manutencao_historico"))
+                    );
+
+                    definirCorIndicador(
+                            pontoPerfil,
+                            Boolean.TRUE.equals(doc.getBoolean("manutencao_perfil"))
+                    );
+
+                    definirCorIndicador(
+                            pontoHave,
+                            Boolean.TRUE.equals(doc.getBoolean("manutencao_have"))
+                    );
+                })
+                .addOnFailureListener(e -> {
+                    // Sem resposta do Firebase, mantém os indicadores verdes.
+                });
+    }
+
+    private void mostrarTelaManutencao(String titulo) {
+        final android.app.Dialog dialog =
+                new android.app.Dialog(this);
+
+        LinearLayout fundo = new LinearLayout(this);
+        fundo.setOrientation(LinearLayout.VERTICAL);
+        fundo.setGravity(Gravity.CENTER);
+        fundo.setPadding(dp(28), dp(30), dp(28), dp(30));
+
+        GradientDrawable fundoNeon = new GradientDrawable();
+        fundoNeon.setColor(Color.rgb(3, 8, 20));
+        fundoNeon.setCornerRadius(dp(24));
+        fundoNeon.setStroke(dp(2), Color.rgb(0, 220, 255));
+        fundo.setBackground(fundoNeon);
+
+        TextView ferramentas = new TextView(this);
+        ferramentas.setText("🔧        🔧");
+        ferramentas.setTextSize(42);
+        ferramentas.setGravity(Gravity.CENTER);
+        ferramentas.setTextColor(Color.rgb(0, 230, 255));
+
+        TextView tituloView = new TextView(this);
+        tituloView.setText(titulo + " EM MANUTENÇÃO");
+        tituloView.setTextSize(23);
+        tituloView.setGravity(Gravity.CENTER);
+        tituloView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        tituloView.setTextColor(Color.WHITE);
+        tituloView.setPadding(0, dp(18), 0, dp(10));
+
+        TextView mensagem = new TextView(this);
+        mensagem.setText(
+                "Estamos realizando melhorias nesta área.\n\n" +
+                "Ela estará disponível novamente em breve."
+        );
+        mensagem.setTextSize(15);
+        mensagem.setGravity(Gravity.CENTER);
+        mensagem.setTextColor(Color.rgb(170, 210, 230));
+        mensagem.setPadding(0, dp(5), 0, dp(22));
+
+        Button voltar = new Button(this);
+        voltar.setText("VOLTAR");
+        voltar.setTextColor(Color.WHITE);
+        voltar.setTextSize(14);
+        voltar.setAllCaps(false);
+        voltar.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        GradientDrawable botao = new GradientDrawable();
+        botao.setColor(Color.rgb(5, 15, 32));
+        botao.setCornerRadius(dp(16));
+        botao.setStroke(dp(2), Color.rgb(0, 220, 255));
+        voltar.setBackground(botao);
+
+        fundo.addView(
+                ferramentas,
+                new LinearLayout.LayoutParams(-1, dp(70))
+        );
+        fundo.addView(
+                tituloView,
+                new LinearLayout.LayoutParams(-1, dp(70))
+        );
+        fundo.addView(
+                mensagem,
+                new LinearLayout.LayoutParams(-1, dp(95))
+        );
+        fundo.addView(
+                voltar,
+                new LinearLayout.LayoutParams(-1, dp(55))
+        );
+
+        voltar.setOnClickListener(v -> dialog.dismiss());
+
+        android.view.animation.RotateAnimation giro1 =
+                new android.view.animation.RotateAnimation(
+                        0, 360,
+                        android.view.animation.Animation.RELATIVE_TO_SELF, .5f,
+                        android.view.animation.Animation.RELATIVE_TO_SELF, .5f
+                );
+        giro1.setDuration(1800);
+        giro1.setRepeatCount(android.view.animation.Animation.INFINITE);
+        giro1.setInterpolator(new android.view.animation.LinearInterpolator());
+
+        ferramentas.startAnimation(giro1);
+
+        dialog.setContentView(fundo);
+        android.view.Window janela = dialog.getWindow();
+
+        if (janela != null) {
+            janela.setBackgroundDrawableResource(android.R.color.transparent);
+            janela.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * .90f),
+                    android.view.WindowManager.LayoutParams.WRAP_CONTENT
+            );
+        }
+
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * .90f),
+                    android.view.WindowManager.LayoutParams.WRAP_CONTENT
+            );
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (pontoIA != null) {
+            carregarIndicadoresManutencao(
+                    pontoIA,
+                    pontoFilmes,
+                    pontoHistorico,
+                    pontoPerfil,
+                    pontoHave
+            );
         }
     }
 

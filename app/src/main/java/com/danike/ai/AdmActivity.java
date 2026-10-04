@@ -154,6 +154,72 @@ public class AdmActivity extends Activity {
 
         manutencaoBtn.setOnClickListener(v -> alternarManutencao());
 
+        // ==============================
+        // MANUTENÇÃO INDIVIDUAL DAS ÁREAS
+        // ==============================
+        raiz.addView(secao("🔧  MANUTENÇÃO DAS ÁREAS", VERMELHO));
+
+        LinearLayout manutencaoAreas1 = new LinearLayout(this);
+        manutencaoAreas1.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button manutencaoIA = quadrado(
+                manutencaoAreas1,
+                "🔧",
+                "MANUTENÇÃO IA",
+                "Controle individual",
+                AZUL
+        );
+
+        Button manutencaoFilmes = quadrado(
+                manutencaoAreas1,
+                "🔧",
+                "MANUTENÇÃO FILMES",
+                "Controle individual",
+                ROSA
+        );
+
+        raiz.addView(manutencaoAreas1);
+
+        LinearLayout manutencaoAreas2 = new LinearLayout(this);
+        manutencaoAreas2.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button manutencaoHistorico = quadrado(
+                manutencaoAreas2,
+                "🔧",
+                "MANUTENÇÃO HISTÓRICO",
+                "Controle individual",
+                DOURADO
+        );
+
+        Button manutencaoPerfil = quadrado(
+                manutencaoAreas2,
+                "🔧",
+                "MANUTENÇÃO PERFIL",
+                "Controle individual",
+                ROXO
+        );
+
+        raiz.addView(manutencaoAreas2);
+
+        LinearLayout manutencaoAreas3 = new LinearLayout(this);
+        manutencaoAreas3.setOrientation(LinearLayout.HORIZONTAL);
+
+        Button manutencaoHave = quadrado(
+                manutencaoAreas3,
+                "🔧",
+                "MANUTENÇÃO HAVE",
+                "Controle individual",
+                VERDE
+        );
+
+        raiz.addView(manutencaoAreas3);
+
+        manutencaoIA.setOnClickListener(v -> alternarManutencaoArea("ia", "IA"));
+        manutencaoFilmes.setOnClickListener(v -> alternarManutencaoArea("filmes", "FILMES"));
+        manutencaoHistorico.setOnClickListener(v -> alternarManutencaoArea("historico", "HISTÓRICO"));
+        manutencaoPerfil.setOnClickListener(v -> alternarManutencaoArea("perfil", "PERFIL"));
+        manutencaoHave.setOnClickListener(v -> alternarManutencaoArea("have", "HAVE"));
+
         ia.setOnClickListener(v -> {
             startActivity(new Intent(this, IAActivity.class));
         });
@@ -964,13 +1030,13 @@ public class AdmActivity extends Activity {
         android.widget.EditText versao = new android.widget.EditText(this);
         versao.setHint("Próxima versão");
         versao.setSingleLine(true);
-        versao.setText("1.6.7");
+        versao.setText("1.7.1");
 
         android.widget.EditText codigo = new android.widget.EditText(this);
         codigo.setHint("Código da próxima versão");
         codigo.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         codigo.setSingleLine(true);
-        codigo.setText("14");
+        codigo.setText("18");
 
         android.widget.EditText link = new android.widget.EditText(this);
         link.setHint("Link do APK");
@@ -1115,6 +1181,60 @@ public class AdmActivity extends Activity {
         });
 
         dialog.show();
+    }
+
+    private void alternarManutencaoArea(String area, String titulo) {
+        String campo = "manutencao_" + area;
+
+        db.collection("config")
+                .document("areas")
+                .get()
+                .addOnSuccessListener(doc -> {
+                    Boolean valor = doc.getBoolean(campo);
+                    boolean atual = valor != null && valor;
+                    boolean novo = !atual;
+
+                    new AlertDialog.Builder(this)
+                            .setTitle((novo ? "Ativar " : "Desativar ") + "manutenção")
+                            .setMessage(
+                                    novo
+                                            ? titulo + " ficará em manutenção para usuários comuns."
+                                            : titulo + " voltará a funcionar normalmente."
+                            )
+                            .setNegativeButton("CANCELAR", null)
+                            .setPositiveButton("CONFIRMAR", (d, w) -> {
+
+                                db.collection("config")
+                                        .document("areas")
+                                        .set(
+                                                Collections.singletonMap(campo, novo),
+                                                com.google.firebase.firestore.SetOptions.merge()
+                                        )
+                                        .addOnSuccessListener(v -> {
+                                            Toast.makeText(
+                                                    this,
+                                                    titulo + (novo
+                                                            ? " em manutenção."
+                                                            : " disponível novamente."),
+                                                    Toast.LENGTH_SHORT
+                                            ).show();
+                                        })
+                                        .addOnFailureListener(e ->
+                                                Toast.makeText(
+                                                        this,
+                                                        "Falha Firebase: " + e.getMessage(),
+                                                        Toast.LENGTH_LONG
+                                                ).show()
+                                        );
+                            });
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(
+                                this,
+                                "Falha ao consultar manutenção: " + e.getMessage(),
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
     }
 
     private void carregarManutencao() {
