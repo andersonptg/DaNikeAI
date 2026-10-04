@@ -353,7 +353,7 @@ public class OnboardingActivity extends Activity {
                 dp(20)
         );
 
-        manual(lista);
+        // Manual removido: o usuário entra direto na Home.
 
         scroll.addView(lista);
 
