@@ -2,8 +2,11 @@ package com.danike.ai;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.widget.Toast;
 
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -15,6 +18,10 @@ public final class AtualizacaoApp {
     private AtualizacaoApp() {}
 
     public static void verificar(Activity activity) {
+
+        if (activity == null || activity.isFinishing()) {
+            return;
+        }
 
         FirebaseFirestore.getInstance()
                 .collection("config")
@@ -32,37 +39,42 @@ public final class AtualizacaoApp {
                         return;
                     }
 
-                    Boolean habilitada =
-                            (Boolean) dados.get("enabled");
+                    Object enabledObj = dados.get("enabled");
 
-                    if (habilitada == null || !habilitada) {
+                    if (!(enabledObj instanceof Boolean)
+                            || !((Boolean) enabledObj)) {
                         return;
                     }
 
-                    Long versionCodeRemoto =
-                            (Long) dados.get("versionCode");
+                    Object versionCodeObj = dados.get("versionCode");
 
-                    if (versionCodeRemoto == null) {
+                    if (!(versionCodeObj instanceof Long)) {
                         return;
                     }
 
-                    int versaoAtual =
+                    long versaoRemota =
+                            (Long) versionCodeObj;
+
+                    long versaoAtual =
                             BuildConfig.VERSION_CODE;
 
-                    if (versionCodeRemoto <= versaoAtual) {
+                    if (versaoRemota <= versaoAtual) {
                         return;
                     }
 
                     String versionName =
                             String.valueOf(
-                                    dados.get("versionName")
+                                    dados.getOrDefault(
+                                            "versionName",
+                                            "nova versão"
+                                    )
                             );
 
                     String titulo =
                             String.valueOf(
                                     dados.getOrDefault(
                                             "title",
-                                            "ATUALIZAÇÃO DISPONÍVEL"
+                                            "Nova atualização"
                                     )
                             );
 
@@ -82,11 +94,14 @@ public final class AtualizacaoApp {
                                     )
                             );
 
-                    Boolean obrigatoria =
-                            (Boolean) dados.get("mandatory");
+                    boolean obrigatoria = false;
 
-                    if (obrigatoria == null) {
-                        obrigatoria = false;
+                    Object mandatoryObj =
+                            dados.get("mandatory");
+
+                    if (mandatoryObj instanceof Boolean) {
+                        obrigatoria =
+                                (Boolean) mandatoryObj;
                     }
 
                     mostrarDialogo(
@@ -97,6 +112,7 @@ public final class AtualizacaoApp {
                             apkUrl,
                             obrigatoria
                     );
+
                 })
                 .addOnFailureListener(e ->
                         android.util.Log.e(
@@ -116,14 +132,17 @@ public final class AtualizacaoApp {
             boolean obrigatoria
     ) {
 
-        if (activity.isFinishing()) {
+        if (activity == null
+                || activity.isFinishing()
+                || activity.isDestroyed()) {
             return;
         }
 
         String texto =
-                mensagem +
-                "\n\nNova versão: DaNikeAI " +
-                versionName;
+                mensagem
+                        + "\n\n"
+                        + "DaNikeAI "
+                        + versionName;
 
         AlertDialog.Builder builder =
                 new AlertDialog.Builder(activity)
@@ -133,14 +152,15 @@ public final class AtualizacaoApp {
                                 "ATUALIZAR AGORA",
                                 (dialog, which) -> {
 
-                                    if (apkUrl == null ||
-                                            apkUrl.trim().isEmpty()) {
+                                    if (apkUrl == null
+                                            || apkUrl.trim().isEmpty()) {
 
                                         Toast.makeText(
                                                 activity,
-                                                "O link da atualização ainda não foi configurado.",
+                                                "Link da atualização não configurado.",
                                                 Toast.LENGTH_LONG
                                         ).show();
+
                                         return;
                                     }
 
@@ -164,5 +184,30 @@ public final class AtualizacaoApp {
         }
 
         builder.show();
+    }
+
+    private static void baixarAtualizacao(
+            Activity activity,
+            String apkUrl
+    ) {
+
+        try {
+
+            Intent intent =
+                    new Intent(
+                            Intent.ACTION_VIEW,
+                            Uri.parse(apkUrl)
+                    );
+
+            activity.startActivity(intent);
+
+        } catch (Exception e) {
+
+            Toast.makeText(
+                    activity,
+                    "Não foi possível abrir a atualização.",
+                    Toast.LENGTH_LONG
+            ).show();
+        }
     }
 }

@@ -1,46 +1,33 @@
 package com.danike.ai;
 
-import android.app.*;
-import android.speech.tts.TextToSpeech;
-import java.io.*;
-import java.net.*;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-import android.os.*;
-import android.content.*;
+import android.app.Activity;
+import android.os.Bundle;
+import android.content.Intent;
 import android.graphics.*;
 import android.graphics.drawable.*;
-import android.net.Uri;
 import android.view.*;
 import android.view.animation.*;
 import android.widget.*;
 
 public class MainActivity extends Activity {
 
-    LinearLayout tela,rosto;
-    DaNikeFaceView face;
-    TextView status,mensagem;
-    EditText entrada;
-    boolean escuro=true,cerebro=true,vozPronta=false;
-    SharedPreferences prefs;
-    TextToSpeech voz;
-    Button pararFala;
-    TextView legendaFala;
-    final int GALERIA=1001;
+    LinearLayout tela;
+    boolean escuro = true;
+    android.content.SharedPreferences prefs;
 
-    int dp(float v){
-        return (int)(v*getResources().getDisplayMetrics().density+.5f);
+    int dp(float v) {
+        return (int)(v * getResources().getDisplayMetrics().density + .5f);
     }
 
-    GradientDrawable bg(int cor,float raio){
-        GradientDrawable g=new GradientDrawable();
+    GradientDrawable bg(int cor, float raio) {
+        GradientDrawable g = new GradientDrawable();
         g.setColor(cor);
         g.setCornerRadius(dp(raio));
         return g;
     }
 
-    TextView txt(String s,float tam,int cor){
-        TextView t=new TextView(this);
+    TextView txt(String s, float tam, int cor) {
+        TextView t = new TextView(this);
         t.setText(s);
         t.setTextSize(tam);
         t.setTextColor(cor);
@@ -48,347 +35,236 @@ public class MainActivity extends Activity {
         return t;
     }
 
-    Button btn(String s,int cor){
-        Button b=new Button(this);
-        b.setText(s);
-        b.setTextSize(15);
+    Button card(String titulo, String subtitulo, String emoji) {
+        Button b = new Button(this);
+
+        b.setText(emoji + "\n" + titulo + "\n" + subtitulo);
+        b.setTextSize(16);
         b.setTextColor(Color.WHITE);
         b.setAllCaps(false);
-        b.setTypeface(Typeface.DEFAULT_BOLD);
-        b.setBackground(bg(cor,22));
+        b.setGravity(Gravity.CENTER);
+        b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        b.setPadding(dp(14), dp(10), dp(14), dp(10));
+
+        GradientDrawable fundo = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(4, 18, 34),
+                        Color.rgb(7, 38, 64),
+                        Color.rgb(3, 17, 31)
+                }
+        );
+
+        fundo.setCornerRadius(dp(28));
+        fundo.setStroke(dp(1), Color.rgb(0, 220, 255));
+
+        b.setBackground(fundo);
+
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            b.setElevation(dp(7));
+        }
+
+        b.setStateListAnimator(null);
+
+        b.setOnTouchListener((v, event) -> {
+            if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                v.animate()
+                        .scaleX(.97f)
+                        .scaleY(.97f)
+                        .alpha(.88f)
+                        .setDuration(100)
+                        .start();
+            } else if (event.getAction() == MotionEvent.ACTION_UP
+                    || event.getAction() == MotionEvent.ACTION_CANCEL) {
+                v.animate()
+                        .scaleX(1f)
+                        .scaleY(1f)
+                        .alpha(1f)
+                        .setDuration(160)
+                        .start();
+            }
+            return false;
+        });
+
         return b;
     }
 
     @Override
-    protected void onCreate(Bundle b){
+    protected void onCreate(Bundle b) {
         super.onCreate(b);
-        voz=new TextToSpeech(this,status->{
-            if(status==TextToSpeech.SUCCESS){
-                int idioma=voz.setLanguage(new Locale("pt","BR"));
-                voz.setSpeechRate(1.0f);
-                voz.setPitch(1.0f);
 
-                if(idioma!=TextToSpeech.LANG_MISSING_DATA &&
-                   idioma!=TextToSpeech.LANG_NOT_SUPPORTED){
-                    vozPronta=true;
-                }
-            }
-        });
-
-        prefs=getSharedPreferences("DaNikeAI_Dados",0);
-        escuro=prefs.getBoolean("modo_escuro",true);
-        cerebro=prefs.getBoolean("cerebro",true);
+        prefs = getSharedPreferences("DaNikeAI_Dados", 0);
+        escuro = prefs.getBoolean("modo_escuro", true);
 
         montarHome();
+
+        AtualizacaoApp.verificar(this);
     }
 
-    void montarHome(){
+    void montarHome() {
 
-        tela=new LinearLayout(this);
+        tela = new LinearLayout(this);
         tela.setOrientation(LinearLayout.VERTICAL);
-        tela.setPadding(dp(16),dp(8),dp(16),dp(18));
+        tela.setPadding(
+                dp(14),
+                dp(12),
+                dp(14),
+                dp(14)
+        );
 
-        ScrollView scroll=new ScrollView(this);
+        NeonBackgroundView fundo =
+                new NeonBackgroundView(this);
+
+        FrameLayout raiz = new FrameLayout(this);
+
+        raiz.addView(
+                fundo,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+
+        ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(Color.TRANSPARENT);
+        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
-        LinearLayout conteudo=new LinearLayout(this);
+        LinearLayout conteudo = new LinearLayout(this);
         conteudo.setOrientation(LinearLayout.VERTICAL);
+        conteudo.setPadding(0, dp(5), 0, dp(20));
 
-        // TOPO
-        LinearLayout topo=new LinearLayout(this);
-        topo.setGravity(Gravity.CENTER_VERTICAL);
+        // =========================
+        // CABEÇALHO
+        // =========================
 
-        TextView nome=txt(
-            "DaNikeAI",
-            29,
-            Color.WHITE
-        );
-        nome.setTypeface(Typeface.DEFAULT_BOLD);
-
-        topo.addView(
-            nome,
-            new LinearLayout.LayoutParams(0,dp(58),1)
+        TextView titulo = txt(
+                "DaNikeAI",
+                30,
+                Color.WHITE
         );
 
-        Button falar=btn(
-            "🔽  TOQUE PARA FALAR",
-            Color.rgb(12,75,125)
-        );
-        falar.setTextSize(14);
-
-        topo.addView(
-            falar,
-            new LinearLayout.LayoutParams(dp(175),dp(52))
-        );
-
-        Button config=btn("⚙",Color.TRANSPARENT);
-        config.setTextSize(28);
-
-        topo.addView(
-            config,
-            new LinearLayout.LayoutParams(dp(55),dp(52))
-        );
-
-        conteudo.addView(topo);
-
-        // STATUS
-        status=txt(
-            "●  ONLINE",
-            13,
-            Color.rgb(60,255,130)
+        titulo.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
         );
 
         conteudo.addView(
-            status,
-            new LinearLayout.LayoutParams(-1,dp(30))
+                titulo,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(52)
+                )
         );
 
-        // ESFERA NEON - PRESERVADA
-        rosto=new LinearLayout(this);
-        rosto.setOrientation(LinearLayout.VERTICAL);
-        rosto.setGravity(Gravity.CENTER);
-
-        GradientDrawable rf=new GradientDrawable();
-        rf.setShape(GradientDrawable.OVAL);
-        rf.setColor(
-            escuro
-            ? Color.rgb(2,14,25)
-            : Color.rgb(220,238,245)
-        );
-
-        rosto.setBackground(rf);
-
-        int w=getResources().getDisplayMetrics().widthPixels;
-        int tamanho=Math.min(dp(410),w-dp(4));
-
-        LinearLayout.LayoutParams rp=
-            new LinearLayout.LayoutParams(tamanho,tamanho);
-
-        rp.gravity=Gravity.CENTER;
-        rp.setMargins(0,0,0,dp(6));
-
-        face=new DaNikeFaceView(this);
-
-        rosto.addView(
-            face,
-            new LinearLayout.LayoutParams(-1,-1)
-        );
-
-        conteudo.addView(rosto,rp);
-
-        // PERGUNTA DO USUARIO
-        mensagem=txt(
-            "Você: olá",
-            19,
-            Color.WHITE
+        TextView saudacao = txt(
+                "Olá, usuário 👋",
+                19,
+                Color.rgb(190, 225, 245)
         );
 
         conteudo.addView(
-            mensagem,
-            new LinearLayout.LayoutParams(-1,dp(48))
+                saudacao,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(42)
+                )
         );
 
-        // CAMPO DE TEXTO
-        LinearLayout linha=new LinearLayout(this);
-        linha.setGravity(Gravity.CENTER_VERTICAL);
-
-        entrada=new EditText(this);
-        entrada.setHint("Escreva sua mensagem...");
-        entrada.setTextColor(Color.WHITE);
-        entrada.setHintTextColor(Color.rgb(120,135,150));
-        entrada.setSingleLine(true);
-        entrada.setTextSize(16);
-        entrada.setPadding(dp(16),0,dp(10),0);
-
-        GradientDrawable campo=bg(
-            Color.rgb(8,18,30),
-            24
+        TextView descricao = txt(
+                "Escolha uma área para continuar",
+                14,
+                Color.rgb(125, 165, 190)
         );
-        campo.setStroke(dp(1),Color.rgb(0,210,255));
-        entrada.setBackground(campo);
-
-        linha.addView(
-            entrada,
-            new LinearLayout.LayoutParams(0,dp(58),1)
-        );
-
-        Button enviar=btn(
-            "➤",
-            Color.rgb(15,135,220)
-        );
-
-        LinearLayout.LayoutParams ep=
-            new LinearLayout.LayoutParams(dp(62),dp(58));
-
-        ep.setMargins(dp(7),0,0,0);
-        linha.addView(enviar,ep);
-
-        LinearLayout.LayoutParams lp=
-            new LinearLayout.LayoutParams(-1,dp(58));
-
-        lp.setMargins(0,dp(5),0,dp(12));
-
-        conteudo.addView(linha,lp);
-
-        // PAINEL DE RESPOSTA
-        LinearLayout painel=new LinearLayout(this);
-        painel.setOrientation(LinearLayout.VERTICAL);
-        painel.setPadding(dp(12),dp(10),dp(12),dp(10));
-
-        GradientDrawable painelBg=bg(
-            Color.rgb(3,14,27),
-            25
-        );
-        painelBg.setStroke(
-            dp(2),
-            Color.rgb(0,180,255)
-        );
-
-        painel.setBackground(painelBg);
-
-        LinearLayout cabecalho=new LinearLayout(this);
-        cabecalho.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView titulo=txt(
-            "DaNikeAI",
-            19,
-            Color.rgb(0,230,255)
-        );
-        titulo.setTypeface(Typeface.DEFAULT_BOLD);
-
-        cabecalho.addView(
-            titulo,
-            new LinearLayout.LayoutParams(0,dp(40),1)
-        );
-
-        TextView falando=txt(
-            "🔊  Falando...",
-            14,
-            Color.rgb(0,230,255)
-        );
-
-        cabecalho.addView(
-            falando,
-            new LinearLayout.LayoutParams(dp(130),dp(40))
-        );
-
-        painel.addView(cabecalho);
-
-        legendaFala=new TextView(this);
-        legendaFala.setText(
-            "A resposta da DaNikeAI aparecerá aqui."
-        );
-        legendaFala.setTextColor(Color.WHITE);
-        legendaFala.setTextSize(17);
-        legendaFala.setGravity(Gravity.CENTER_VERTICAL);
-        legendaFala.setPadding(dp(15),dp(12),dp(15),dp(12));
-
-        GradientDrawable legendaBg=bg(
-            Color.rgb(5,18,32),
-            20
-        );
-        legendaBg.setStroke(
-            dp(1),
-            Color.rgb(0,170,255)
-        );
-        legendaFala.setBackground(legendaBg);
-
-        painel.addView(
-            legendaFala,
-            new LinearLayout.LayoutParams(-1,dp(145))
-        );
-
-        // CONTROLES DA RESPOSTA
-        LinearLayout acoes=new LinearLayout(this);
-        acoes.setGravity(Gravity.CENTER);
-        acoes.setPadding(0,dp(9),0,0);
-
-        pararFala=btn(
-            "⏹  PARAR DE FALAR",
-            Color.rgb(95,20,105)
-        );
-
-        Button salvar=btn(
-            "💾  SALVAR",
-            Color.rgb(15,80,130)
-        );
-
-        Button deletar=btn(
-            "🗑  DELETAR",
-            Color.rgb(105,20,45)
-        );
-
-        LinearLayout.LayoutParams ap=
-            new LinearLayout.LayoutParams(0,dp(48),1);
-
-        ap.setMargins(dp(3),0,dp(3),0);
-
-        acoes.addView(pararFala,ap);
-        acoes.addView(salvar,ap);
-        acoes.addView(deletar,ap);
-
-        painel.addView(acoes);
 
         conteudo.addView(
-            painel,
-            new LinearLayout.LayoutParams(-1,dp(285))
+                descricao,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(34)
+                )
         );
 
-        // CRIAR IMAGEM
-        Button imagem=btn(
-            "🖼️  CRIAR IMAGEM",
-            Color.rgb(18,42,65)
+        // =========================
+        // CAPA IA
+        // =========================
+
+        Button ia = card(
+                "IA",
+                "Sua assistente IZy",
+                "🤖"
         );
 
-        LinearLayout.LayoutParams ip=
-            new LinearLayout.LayoutParams(-1,dp(48));
+        LinearLayout.LayoutParams iaParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(155)
+                );
 
-        ip.setMargins(0,dp(10),0,dp(8));
+        iaParams.setMargins(0, dp(10), 0, dp(16));
 
-        conteudo.addView(imagem,ip);
+        conteudo.addView(ia, iaParams);
 
-        // NAVEGAÇÃO INFERIOR — FILEIRA NEON COM ROLAGEM HORIZONTAL
-        HorizontalScrollView navScroll = new HorizontalScrollView(this);
-        navScroll.setHorizontalScrollBarEnabled(false);
-        navScroll.setFillViewport(false);
-        navScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        navScroll.setBackground(bg(Color.argb(220, 3, 9, 18), 18));
+        // =========================
+        // CAPA FILMES
+        // =========================
 
-        LinearLayout nav = new LinearLayout(this);
-        nav.setOrientation(LinearLayout.HORIZONTAL);
-        nav.setGravity(Gravity.CENTER_VERTICAL);
-        nav.setPadding(dp(7), dp(4), dp(7), dp(4));
+        Button filmes = card(
+                "Filmes",
+                "Explore seus filmes",
+                "🎬"
+        );
 
-        Button inicioBtn = btn("🏠\nInício", Color.rgb(7, 35, 55));
-        Button imagensBtn = btn("🤖\nIA", Color.rgb(8, 30, 52));
-        Button filmesBtn = btn("🎬\nFilmes", Color.rgb(12, 28, 50));
-        Button historicoBtn = btn("🕘\nHistórico", Color.rgb(12, 28, 50));
-        Button perfilBtn = btn("👤\nPerfil", Color.rgb(12, 28, 50));
-        Button memoriaBtn = btn("🧠\nMemória", Color.rgb(12, 28, 50));
-        Button conversasBtn = btn("💬\nConversas", Color.rgb(12, 28, 50));
-        Button falarNavBtn = btn("🎙️\nFalar", Color.rgb(12, 28, 50));
-        Button configNavBtn = btn("⚙️\nConfig.", Color.rgb(12, 28, 50));
+        LinearLayout.LayoutParams filmesParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(155)
+                );
 
-        Button[] navs = {
-            inicioBtn, imagensBtn, filmesBtn, historicoBtn,
-            perfilBtn, memoriaBtn, conversasBtn, falarNavBtn, configNavBtn
-        };
+        filmesParams.setMargins(0, 0, 0, dp(16));
 
-        for (Button n : navs) {
-            n.setTextSize(11);
-            n.setTextColor(Color.rgb(175, 225, 255));
-            n.setMinWidth(0);
-            n.setPadding(dp(5), 0, dp(5), 0);
+        conteudo.addView(filmes, filmesParams);
 
-            LinearLayout.LayoutParams np =
-                    new LinearLayout.LayoutParams(dp(78), dp(55));
-            np.setMargins(dp(3), 0, dp(3), 0);
-            nav.addView(n, np);
-        }
+        // =========================
+        // CAPA HISTÓRICO
+        // =========================
 
-        // ADM: SOMENTE O PROPRIETÁRIO
-        android.widget.Button admBtn = null;
+        Button historico = card(
+                "Histórico",
+                "Veja suas atividades",
+                "🕘"
+        );
+
+        LinearLayout.LayoutParams historicoParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(155)
+                );
+
+        historicoParams.setMargins(0, 0, 0, dp(16));
+
+        conteudo.addView(historico, historicoParams);
+
+        // =========================
+        // CAPA PERFIL
+        // =========================
+
+        Button perfil = card(
+                "Perfil",
+                "Seus dados e informações",
+                "👤"
+        );
+
+        LinearLayout.LayoutParams perfilParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(155)
+                );
+
+        perfilParams.setMargins(0, 0, 0, dp(16));
+
+        conteudo.addView(perfil, perfilParams);
+
+        // =========================
+        // ADM — SOMENTE DONO
+        // =========================
+
         com.google.firebase.auth.FirebaseUser usuarioAtual = null;
 
         try {
@@ -402,216 +278,151 @@ public class MainActivity extends Activity {
                 usuarioAtual != null
                 && "lipesanderson@gmail.com".equalsIgnoreCase(
                         String.valueOf(usuarioAtual.getEmail())
-                   );
+                );
+
+        Button adm = null;
 
         if (ehDono) {
-            admBtn = btn("⚡\nADM", Color.rgb(45, 8, 18));
-            admBtn.setTextColor(Color.rgb(255, 100, 110));
-            admBtn.setTextSize(11);
-            admBtn.setMinWidth(0);
-            admBtn.setPadding(dp(5), 0, dp(5), 0);
+
+            adm = card(
+                    "ADM",
+                    "Painel administrativo",
+                    "⚡"
+            );
 
             LinearLayout.LayoutParams admParams =
-                    new LinearLayout.LayoutParams(dp(78), dp(55));
-            admParams.setMargins(dp(3), 0, dp(3), 0);
-            nav.addView(admBtn, admParams);
+                    new LinearLayout.LayoutParams(
+                            -1,
+                            dp(135)
+                    );
+
+            admParams.setMargins(0, dp(5), 0, dp(10));
+
+            conteudo.addView(adm, admParams);
         }
 
-        inicioBtn.setTextColor(Color.rgb(0, 225, 255));
+        // =========================
+        // RAVE — MANUTENÇÃO
+        // =========================
 
-        navScroll.addView(nav,
-                new HorizontalScrollView.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT,
-                        dp(63)
-                ));
-
-        conteudo.addView(
-                navScroll,
-                new LinearLayout.LayoutParams(-1, dp(65))
+        Button rave = card(
+                "Tela de Rave",
+                "Acessar",
+                "🪩"
         );
+
+        LinearLayout.LayoutParams raveParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(135)
+                );
+
+        raveParams.setMargins(0, 0, 0, dp(20));
+
+        conteudo.addView(rave, raveParams);
 
         scroll.addView(conteudo);
 
         tela.addView(
-            scroll,
-            new LinearLayout.LayoutParams(-1,0,1)
-        );
-
-        FrameLayout raiz=new FrameLayout(this);
-
-        NeonBackgroundView fundo=
-            new NeonBackgroundView(this);
-
-        raiz.addView(
-            fundo,
-            new FrameLayout.LayoutParams(-1,-1)
+                scroll,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
         );
 
         raiz.addView(
-            tela,
-            new FrameLayout.LayoutParams(-1,-1)
+                tela,
+                new FrameLayout.LayoutParams(-1, -1)
         );
 
         setContentView(raiz);
 
-        // FALAR / MICROFONE
-        falar.setOnClickListener(v -> {
+        // =========================
+        // CLIQUES
+        // =========================
 
-            if(status.getText().toString().contains("OUVINDO")){
+        ia.setOnClickListener(v -> {
 
-                status.setText("●  ONLINE");
-                status.setTextColor(
-                    Color.rgb(60,255,130)
-                );
-
-                falar.setText(
-                    "🔽  TOQUE PARA FALAR"
-                );
-
-                rosto.clearAnimation();
-
-            }else{
-
-                status.setText("●  OUVINDO...");
-                status.setTextColor(
-                    Color.rgb(35,220,255)
-                );
-
-                falar.setText(
-                    "⏹  PARAR DE OUVIR"
-                );
-
-                ScaleAnimation anim=
-                    new ScaleAnimation(
-                        1,1.05f,
-                        1,1.05f,
-                        Animation.RELATIVE_TO_SELF,.5f,
-                        Animation.RELATIVE_TO_SELF,.5f
+            Intent intent =
+                    new Intent(
+                            MainActivity.this,
+                            IAActivity.class
                     );
 
-                anim.setDuration(650);
-                anim.setRepeatMode(
-                    Animation.REVERSE
-                );
-                anim.setRepeatCount(
-                    Animation.INFINITE
-                );
-
-                rosto.startAnimation(anim);
-            }
+            startActivity(intent);
         });
 
-        // ENVIAR TEXTO
-        enviar.setOnClickListener(
-            v -> enviarMensagem()
-        );
+        filmes.setOnClickListener(v -> {
 
-        entrada.setOnEditorActionListener(
-            (v,action,event) -> {
-                enviarMensagem();
-                return true;
-            }
-        );
+            Intent intent =
+                    new Intent(
+                            MainActivity.this,
+                            com.danike.ai.filmes.FilmesActivity.class
+                    );
 
-        // PARAR A VOZ
-        pararFala.setOnClickListener(v -> {
-
-            if(voz!=null){
-                voz.stop();
-            }
-
-            falando.setText("🔇  Parado");
-
-            status.setText("●  ONLINE");
-            status.setTextColor(
-                Color.rgb(60,255,130)
-            );
+            startActivity(intent);
         });
 
-        // SALVAR RESPOSTA
-        salvar.setOnClickListener(v -> {
+        historico.setOnClickListener(v -> {
 
-            String r=legendaFala.getText().toString();
+            Intent intent =
+                    new Intent(
+                            MainActivity.this,
+                            HistoricoActivity.class
+                    );
 
-            prefs.edit()
-                .putString("ultima_resposta",r)
-                .apply();
-
-            Toast.makeText(
-                this,
-                "Resposta salva.",
-                Toast.LENGTH_SHORT
-            ).show();
+            startActivity(intent);
         });
 
-        // DELETAR RESPOSTA
-        deletar.setOnClickListener(v -> {
+        perfil.setOnClickListener(v -> {
 
-            legendaFala.setText(
-                "A resposta foi apagada."
-            );
+            Intent intent =
+                    new Intent(
+                            MainActivity.this,
+                            PerfilActivity.class
+                    );
 
-            prefs.edit()
-                .remove("ultima_resposta")
-                .apply();
-
-            if(voz!=null){
-                voz.stop();
-            }
+            startActivity(intent);
         });
 
-        // IMAGENS
-        imagem.setOnClickListener(
-            v -> abrirGaleria()
-        );
+        rave.setOnClickListener(v -> {
 
-        imagensBtn.setOnClickListener(v ->
-            startActivity(new Intent(this, IAActivity.class))
-        );
+            Intent intent =
+                    new Intent(
+                            MainActivity.this,
+                            ManutencaoActivity.class
+                    );
 
-        filmesBtn.setOnClickListener(v ->
-            startActivity(new Intent(this, com.danike.ai.filmes.FilmesActivity.class))
-        );
-        historicoBtn.setOnClickListener(v ->
-            startActivity(new Intent(this, HistoricoActivity.class))
-        );
+            startActivity(intent);
+        });
 
-        perfilBtn.setOnClickListener(v ->
-            startActivity(new Intent(this, PerfilActivity.class))
-        );
+        if (adm != null) {
 
-        memoriaBtn.setOnClickListener(v ->
-            startActivity(new Intent(this, MemoriasActivity.class))
-        );
+            adm.setOnClickListener(v -> {
 
-        conversasBtn.setOnClickListener(v ->
-            startActivity(new Intent(this, ConversasActivity.class))
-        );
-
-        falarNavBtn.setOnClickListener(v ->
-            falar.performClick()
-        );
-
-        configNavBtn.setOnClickListener(v ->
-            startActivity(new Intent(this, ConfiguracoesActivity.class))
-        );
-
-        if (admBtn != null) {
-            admBtn.setOnClickListener(v -> {
                 com.google.firebase.auth.FirebaseUser dono =
                         com.google.firebase.auth.FirebaseAuth
                                 .getInstance()
                                 .getCurrentUser();
 
                 if (dono != null &&
-                    "lipesanderson@gmail.com".equalsIgnoreCase(
-                        String.valueOf(dono.getEmail()))) {
+                        "lipesanderson@gmail.com".equalsIgnoreCase(
+                                String.valueOf(dono.getEmail())
+                        )) {
 
-                    startActivity(new Intent(this, AdmActivity.class));
+                    startActivity(
+                            new Intent(
+                                    MainActivity.this,
+                                    AdmActivity.class
+                            )
+                    );
 
                 } else {
+
                     Toast.makeText(
-                            this,
+                            MainActivity.this,
                             "Acesso administrativo não autorizado.",
                             Toast.LENGTH_SHORT
                     ).show();
@@ -619,582 +430,40 @@ public class MainActivity extends Activity {
             });
         }
 
-        config.setOnClickListener(
-            v -> configuracoes()
-        );
+        // =========================
+        // ANIMAÇÃO DE ENTRADA
+        // =========================
 
-        // CARREGA ÚLTIMA RESPOSTA
-        String ultima=
-            prefs.getString("ultima_resposta","");
+        animarEntrada(ia, 100);
+        animarEntrada(filmes, 220);
+        animarEntrada(historico, 340);
+        animarEntrada(perfil, 460);
 
-        if(!ultima.isEmpty()){
-            legendaFala.setText(ultima);
+        if (adm != null) {
+            animarEntrada(adm, 580);
+            animarEntrada(rave, 700);
+        } else {
+            animarEntrada(rave, 580);
         }
     }
 
-    void falarTexto(String texto){
-        if(voz!=null && vozPronta && prefs.getBoolean("voz",true)){
-            voz.speak(texto,TextToSpeech.QUEUE_FLUSH,null,"DaNikeAI");
-        }else{
-            Toast.makeText(
-                this,
-                "A voz do Android ainda não está disponível.",
-                Toast.LENGTH_SHORT
-            ).show();
-        }
-    }
+    void animarEntrada(View view, long atraso) {
 
-    void enviarMensagem(){
+        view.setAlpha(0f);
+        view.setTranslationY(dp(35));
+        view.setScaleX(.96f);
+        view.setScaleY(.96f);
 
-        String texto=entrada.getText().toString().trim();
-
-        if(texto.isEmpty()){
-            Toast.makeText(
-                this,
-                "Digite uma mensagem primeiro.",
-                Toast.LENGTH_SHORT
-            ).show();
-            return;
-        }
-
-        mensagem.setText(
-            "Você: "+texto+"\n\nDaNikeAI está pesquisando..."
-        );
-
-        entrada.setText("");
-
-        new Thread(() -> {
-            try {
-                URL url = new URL("http://127.0.0.1:8765/search");
-
-                HttpURLConnection conexao =
-                    (HttpURLConnection) url.openConnection();
-
-                conexao.setRequestMethod("POST");
-                conexao.setRequestProperty(
-                    "Content-Type",
-                    "application/json; charset=UTF-8"
-                );
-                conexao.setDoOutput(true);
-                conexao.setConnectTimeout(10000);
-                conexao.setReadTimeout(30000);
-
-                String json =
-                    "{\"query\":\"" +
-                    texto.replace("\\", "\\\\")
-                         .replace("\"", "\\\"")
-                         .replace("\n", " ") +
-                    "\"}";
-
-                try(OutputStream os = conexao.getOutputStream()){
-                    os.write(json.getBytes(StandardCharsets.UTF_8));
-                }
-
-                int codigo = conexao.getResponseCode();
-
-                InputStream stream =
-                    codigo >= 200 && codigo < 300
-                    ? conexao.getInputStream()
-                    : conexao.getErrorStream();
-
-                BufferedReader leitor =
-                    new BufferedReader(
-                        new InputStreamReader(
-                            stream,
-                            StandardCharsets.UTF_8
-                        )
-                    );
-
-                StringBuilder resposta = new StringBuilder();
-                String linha;
-
-                while((linha = leitor.readLine()) != null){
-                    resposta.append(linha);
-                }
-
-                String resultado = resposta.toString();
-
-                runOnUiThread(() -> {
-
-                    if(codigo >= 200 && codigo < 300){
-
-                        String textoResposta = resultado;
-
-                        int pos = resultado.indexOf("\"answer\":\"");
-
-                        if(pos >= 0){
-                            int inicioResposta =
-                                pos + "\"answer\":\"".length();
-
-                            int fimResposta =
-                                resultado.indexOf(
-                                    "\",\"images\"",
-                                    inicioResposta
-                                );
-
-                            if(fimResposta > inicioResposta){
-                                textoResposta =
-                                    resultado.substring(
-                                        inicioResposta,
-                                        fimResposta
-                                    );
-                            }
-                        }
-
-                        textoResposta =
-                            textoResposta
-                                .replace("\\n", "\n")
-                                .replace("\\\"", "\"")
-                                .replace("\\/", "/");
-
-                        mensagem.setText(
-                            "Você: "+texto+
-                            "\n\nDaNikeAI: "+textoResposta
-                        );
-
-                        falarTexto(textoResposta);
-
-                    }else{
-
-                        mensagem.setText(
-                            "Você: "+texto+
-                            "\n\nDaNikeAI: Não consegui acessar a pesquisa agora.\n"+
-                            "Código: "+codigo
-                        );
-
-                        falarTexto(
-                            "Não consegui acessar a pesquisa agora."
-                        );
-                    }
-
-                });
-
-                conexao.disconnect();
-
-            } catch(Exception e){
-
-                runOnUiThread(() -> {
-
-                    mensagem.setText(
-                        "Você: "+texto+
-                        "\n\nDaNikeAI: Erro ao pesquisar.\n"+
-                        e.getMessage()
-                    );
-
-                    falarTexto(
-                        "Tive um problema para acessar a internet."
-                    );
-                });
-            }
-        }).start();
-    }
-
-    void abrirGaleria(){
-
-        Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);
-        i.setType("image/*");
-        i.addCategory(Intent.CATEGORY_OPENABLE);
-
-        startActivityForResult(i,GALERIA);
-    }
-
-    @Override
-    protected void onActivityResult(
-        int requestCode,
-        int resultCode,
-        Intent data
-    ){
-
-        super.onActivityResult(
-            requestCode,
-            resultCode,
-            data
-        );
-
-        if(requestCode==GALERIA &&
-           resultCode==RESULT_OK &&
-           data!=null &&
-           data.getData()!=null){
-
-            mostrarFoto(data.getData());
-        }
-    }
-
-    void mostrarFoto(Uri foto){
-
-        LinearLayout painel=new LinearLayout(this);
-        painel.setOrientation(LinearLayout.VERTICAL);
-        painel.setPadding(
-            dp(18),dp(12),dp(18),dp(12)
-        );
-
-        painel.setBackgroundColor(
-            escuro
-                ? Color.rgb(5,10,16)
-                : Color.WHITE
-        );
-
-        TextView titulo=txt(
-            "🖼️  O QUE FAZER COM ESTA FOTO?",
-            19,
-            escuro?Color.WHITE:Color.BLACK
-        );
-
-        titulo.setTypeface(Typeface.DEFAULT_BOLD);
-
-        painel.addView(
-            titulo,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        ImageView preview=new ImageView(this);
-        preview.setImageURI(foto);
-        preview.setScaleType(
-            ImageView.ScaleType.CENTER_CROP
-        );
-
-        painel.addView(
-            preview,
-            new LinearLayout.LayoutParams(-1,dp(220))
-        );
-
-        EditText pedido=new EditText(this);
-
-        pedido.setHint(
-            "Ex.: remova o fundo, transforme em desenho..."
-        );
-
-        pedido.setTextColor(
-            escuro?Color.WHITE:Color.BLACK
-        );
-
-        pedido.setHintTextColor(
-            Color.rgb(105,115,125)
-        );
-
-        pedido.setTextSize(15);
-        pedido.setSingleLine(false);
-        pedido.setPadding(
-            dp(14),dp(10),dp(14),dp(10)
-        );
-
-        pedido.setBackground(
-            bg(
-                escuro
-                    ? Color.rgb(18,25,34)
-                    : Color.rgb(232,235,238),
-                18
-            )
-        );
-
-        LinearLayout.LayoutParams pp=
-            new LinearLayout.LayoutParams(-1,dp(85));
-
-        pp.setMargins(0,dp(12),0,dp(10));
-
-        painel.addView(pedido,pp);
-
-        Button enviarFoto=btn(
-            "➤  ENVIAR PARA A DANIKAI",
-            Color.rgb(20,125,185)
-        );
-
-        painel.addView(
-            enviarFoto,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        AlertDialog dialog=
-            new AlertDialog.Builder(this)
-                .setView(painel)
-                .setNegativeButton(
-                    "CANCELAR",
-                    null
+        view.animate()
+                .alpha(1f)
+                .translationY(0)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setStartDelay(atraso)
+                .setDuration(420)
+                .setInterpolator(
+                        new DecelerateInterpolator()
                 )
-                .create();
-
-        enviarFoto.setOnClickListener(v->{
-
-            String pedidoTexto=
-                pedido.getText().toString().trim();
-
-            if(pedidoTexto.isEmpty()){
-
-                Toast.makeText(
-                    this,
-                    "Diga o que você quer fazer com a foto.",
-                    Toast.LENGTH_SHORT
-                ).show();
-
-                return;
-            }
-
-            dialog.dismiss();
-
-            mensagem.setText(
-                "🖼️ Foto recebida.\n\n"+
-                "Pedido: "+pedidoTexto+
-                "\n\nDaNikeAI está processando..."
-            );
-
-            Toast.makeText(
-                this,
-                "Imagem enviada para a DaNikeAI",
-                Toast.LENGTH_SHORT
-            ).show();
-        });
-
-        dialog.show();
+                .start();
     }
-
-    void configuracoes(){
-
-        LinearLayout painel=new LinearLayout(this);
-        painel.setOrientation(
-            LinearLayout.VERTICAL
-        );
-
-        painel.setPadding(
-            dp(20),dp(8),dp(20),dp(8)
-        );
-
-        ScrollView scroll=new ScrollView(this);
-        scroll.addView(painel);
-
-        TextView titulo=txt(
-            "⚙️  CONFIGURAÇÕES",
-            21,
-            Color.WHITE
-        );
-
-        titulo.setTypeface(
-            Typeface.DEFAULT_BOLD
-        );
-
-        painel.addView(
-            titulo,
-            new LinearLayout.LayoutParams(-1,dp(58))
-        );
-
-        TextView conta=txt(
-            "👤  Minha conta",
-            16,
-            Color.WHITE
-        );
-
-        conta.setGravity(
-            Gravity.CENTER_VERTICAL
-        );
-
-        painel.addView(
-            conta,
-            new LinearLayout.LayoutParams(-1,dp(50))
-        );
-
-        Switch modo=new Switch(this);
-
-        modo.setText("🌑  Modo escuro");
-        modo.setTextColor(Color.WHITE);
-        modo.setTextSize(16);
-        modo.setChecked(escuro);
-
-        painel.addView(
-            modo,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        Switch brain=new Switch(this);
-
-        brain.setText(
-            cerebro
-                ? "🧠  Cérebro: ATIVADO"
-                : "🧠  Cérebro: DESATIVADO"
-        );
-
-        brain.setTextColor(Color.WHITE);
-        brain.setTextSize(16);
-        brain.setChecked(cerebro);
-
-        painel.addView(
-            brain,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        Switch voz=new Switch(this);
-
-        voz.setText("🔊  Voz da DaNikeAI");
-        voz.setTextColor(Color.WHITE);
-        voz.setTextSize(16);
-        voz.setChecked(
-            prefs.getBoolean("voz",true)
-        );
-
-        painel.addView(
-            voz,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        Switch memoria=new Switch(this);
-
-        memoria.setText("🧠  Memória");
-        memoria.setTextColor(Color.WHITE);
-        memoria.setTextSize(16);
-        memoria.setChecked(
-            prefs.getBoolean("memoria",true)
-        );
-
-        painel.addView(
-            memoria,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        Switch notificacoes=new Switch(this);
-
-        notificacoes.setText("🔔  Notificações");
-        notificacoes.setTextColor(Color.WHITE);
-        notificacoes.setTextSize(16);
-        notificacoes.setChecked(
-            prefs.getBoolean("notificacoes",true)
-        );
-
-        painel.addView(
-            notificacoes,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        Switch controle=new Switch(this);
-
-        controle.setText("📱  Controle do dispositivo");
-        controle.setTextColor(Color.WHITE);
-        controle.setTextSize(16);
-        controle.setChecked(
-            prefs.getBoolean("controle",false)
-        );
-
-        painel.addView(
-            controle,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        TextView neon=txt(
-            "✨  Sistema Neon: ATIVADO",
-            16,
-            Color.rgb(40,220,255)
-        );
-
-        neon.setGravity(
-            Gravity.CENTER_VERTICAL
-        );
-
-        painel.addView(
-            neon,
-            new LinearLayout.LayoutParams(-1,dp(55))
-        );
-
-        AlertDialog dialog=
-            new AlertDialog.Builder(this)
-                .setView(scroll)
-                .setPositiveButton(
-                    "FECHAR",
-                    null
-                )
-                .create();
-
-        modo.setOnCheckedChangeListener(
-            (button,marcado)->{
-
-                escuro=marcado;
-
-                prefs.edit()
-                    .putBoolean(
-                        "modo_escuro",
-                        marcado
-                    )
-                    .apply();
-
-                dialog.dismiss();
-
-                montarHome();
-            }
-        );
-
-        brain.setOnCheckedChangeListener(
-            (button,marcado)->{
-
-                cerebro=marcado;
-
-                prefs.edit()
-                    .putBoolean(
-                        "cerebro",
-                        marcado
-                    )
-                    .apply();
-
-                brain.setText(
-                    marcado
-                        ? "🧠  Cérebro: ATIVADO"
-                        : "🧠  Cérebro: DESATIVADO"
-                );
-
-                mensagem.setText(
-                    marcado
-                        ? "🧠 Cérebro DaNikeAI ativado."
-                        : "🧠 Cérebro DaNikeAI desativado."
-                );
-            }
-        );
-
-        voz.setOnCheckedChangeListener(
-            (button,marcado)->{
-
-                prefs.edit()
-                    .putBoolean("voz",marcado)
-                    .apply();
-            }
-        );
-
-        memoria.setOnCheckedChangeListener(
-            (button,marcado)->{
-
-                prefs.edit()
-                    .putBoolean("memoria",marcado)
-                    .apply();
-            }
-        );
-
-        notificacoes.setOnCheckedChangeListener(
-            (button,marcado)->{
-
-                prefs.edit()
-                    .putBoolean(
-                        "notificacoes",
-                        marcado
-                    )
-                    .apply();
-            }
-        );
-
-        controle.setOnCheckedChangeListener(
-            (button,marcado)->{
-
-                prefs.edit()
-                    .putBoolean(
-                        "controle",
-                        marcado
-                    )
-                    .apply();
-
-                Toast.makeText(
-                    this,
-                    marcado
-                        ? "Controle autorizado"
-                        : "Controle desativado",
-                    Toast.LENGTH_SHORT
-                ).show();
-            }
-        );
-
-        dialog.show();
-    }
-
 }

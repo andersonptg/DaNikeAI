@@ -56,6 +56,37 @@ public final class DadosUsuario {
                 );
     }
 
+    public static void salvarNome(Context context, String nome) {
+
+        String valor = nome == null ? "" : nome.trim();
+
+        if (valor.isEmpty()) {
+            valor = "Usuário";
+        }
+
+        context.getSharedPreferences(
+                "DaNikeAI_Dados",
+                Context.MODE_PRIVATE
+        ).edit()
+                .putString("nome", valor)
+                .apply();
+
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+
+            String uid = FirebaseAuth.getInstance()
+                    .getCurrentUser()
+                    .getUid();
+
+            FirebaseFirestore.getInstance()
+                    .collection("usuarios")
+                    .document(uid)
+                    .set(
+                            java.util.Collections.singletonMap("nome", valor),
+                            com.google.firebase.firestore.SetOptions.merge()
+                    );
+        }
+    }
+
     public interface Callback {
         void receber(String nome);
     }

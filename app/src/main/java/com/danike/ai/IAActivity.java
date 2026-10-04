@@ -66,6 +66,12 @@ public class IAActivity extends Activity {
     boolean falaAutomatica = true;
     boolean modoEscutaContinua = false;
 
+    // Preferências da IZy
+    private SharedPreferences preferenciasIZy;
+    private String nomeIA = "IZy";
+    private boolean rostoFlutuante = false;
+    private boolean efeitoBordas = true;
+
     ConnectivityManager.NetworkCallback conexaoCallback;
 
     ChatDB chatDB;
@@ -116,8 +122,17 @@ public class IAActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        getWindow().setSoftInputMode(
+                android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        );
 
         chatDB = new ChatDB(this);
+
+        preferenciasIZy = getSharedPreferences("DaNikeAI_IZy", MODE_PRIVATE);
+        nomeIA = preferenciasIZy.getString("nome_ia", "IZy").trim();
+        if (nomeIA.isEmpty()) nomeIA = "IZy";
+        rostoFlutuante = preferenciasIZy.getBoolean("rosto_flutuante", false);
+        efeitoBordas = preferenciasIZy.getBoolean("efeito_bordas", true);
 
         voz = new TextToSpeech(this, status -> {
             if (status == TextToSpeech.SUCCESS) {
@@ -327,6 +342,56 @@ public class IAActivity extends Activity {
                     return;
                 }
 
+                String nomeAtivacao = nomeIA == null
+                        ? "izy"
+                        : nomeIA.trim().toLowerCase(Locale.ROOT);
+
+                String fala = textoReconhecido
+                        .toLowerCase(Locale.ROOT)
+                        .trim();
+
+                boolean chamouIZy =
+                        fala.equals(nomeAtivacao)
+                        || fala.startsWith(nomeAtivacao + " ")
+                        || fala.startsWith(nomeAtivacao + ",")
+                        || fala.startsWith(nomeAtivacao + ".");
+
+                if (modoEscutaContinua && !chamouIZy) {
+                    iniciarEscutaContinuaComAtraso(250);
+                    return;
+                }
+
+                if (chamouIZy) {
+                    String comando = fala.length() > nomeAtivacao.length()
+                            ? textoReconhecido.substring(nomeAtivacao.length()).trim()
+                            : "";
+
+                    if (rostoFlutuante) {
+                        try {
+                            Intent servico = new Intent(
+                                    IAActivity.this,
+                                    DaNikeBackgroundService.class
+                            );
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                startForegroundService(servico);
+                            } else {
+                                startService(servico);
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    if (comando.isEmpty()) {
+                        falarTexto("Sim, estou aqui.");
+                        return;
+                    }
+
+                    entrada.setText(comando);
+                    responder();
+                    return;
+                }
+
                 entrada.setText(textoReconhecido);
                 responder();
             }
@@ -341,6 +406,402 @@ public class IAActivity extends Activity {
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
         intentVoz.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "pt-BR");
         intentVoz.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false);
+    }
+
+    private boolean recursoIZyAtivo(String recurso) {
+        if (recurso.contains("Microfone")) {
+            return Build.VERSION.SDK_INT < 23
+                    || checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (recurso.contains("Localização")) {
+            return Build.VERSION.SDK_INT < 23
+                    || checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED
+                    || checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (recurso.contains("Câmera")) {
+            return Build.VERSION.SDK_INT < 23
+                    || checkSelfPermission(Manifest.permission.CAMERA)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (recurso.contains("Contatos")) {
+            return Build.VERSION.SDK_INT < 23
+                    || checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (recurso.contains("Calendário")) {
+            return Build.VERSION.SDK_INT < 23
+                    || checkSelfPermission(Manifest.permission.READ_CALENDAR)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (recurso.contains("Notificações")) {
+            return Build.VERSION.SDK_INT < 33
+                    || checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                    == PackageManager.PERMISSION_GRANTED;
+        }
+
+        if (recurso.contains("Sobreposição")) {
+            return Build.VERSION.SDK_INT < 23
+                    || android.provider.Settings.canDrawOverlays(this);
+        }
+
+        if (recurso.contains("Segundo plano")) {
+            return rostoFlutuante || modoEscutaContinua;
+        }
+
+        if (recurso.contains("Rosto flutuante")) {
+            return rostoFlutuante
+                    && (Build.VERSION.SDK_INT < 23
+                    || android.provider.Settings.canDrawOverlays(this));
+        }
+
+        if (recurso.contains("Efeito nas bordas")) {
+            return efeitoBordas;
+        }
+
+        if (recurso.contains("Aparelho")
+                || recurso.contains("Fotos e arquivos")) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private void abrirConfiguracoesIZy() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+
+        LinearLayout painel = new LinearLayout(this);
+        painel.setOrientation(LinearLayout.VERTICAL);
+        painel.setPadding(dp(20), dp(12), dp(20), dp(8));
+        painel.setBackground(fundo(Color.rgb(7, 12, 27), 24));
+
+        TextView titulo = texto("⚙  IZy", 22, Color.WHITE, true);
+        painel.addView(titulo);
+
+        TextView subtitulo = texto(
+                "Acesso ao aparelho",
+                13, Color.rgb(0, 225, 255), true);
+        subtitulo.setPadding(0, dp(3), 0, dp(8));
+        painel.addView(subtitulo);
+
+        TextView aviso = texto(
+                "Ative somente os recursos que você deseja usar. " +
+                "Todos começam desativados.",
+                11, Color.LTGRAY, false);
+        aviso.setPadding(0, 0, 0, dp(12));
+        painel.addView(aviso);
+
+        // NOME DA IZy
+        TextView nomeIATitulo = texto(
+                "🤖  Nome da IZy",
+                13, Color.WHITE, true);
+        painel.addView(nomeIATitulo);
+
+        EditText nomeIAInput = new EditText(this);
+        nomeIAInput.setSingleLine(true);
+        nomeIAInput.setText(nomeIA);
+        nomeIAInput.setHint("Digite o nome da IA");
+        nomeIAInput.setHintTextColor(Color.rgb(100, 140, 170));
+        nomeIAInput.setTextColor(Color.WHITE);
+        nomeIAInput.setTextSize(14);
+        nomeIAInput.setPadding(dp(14), 0, dp(14), 0);
+
+        GradientDrawable nomeIAFundo =
+                fundo(Color.argb(80, 0, 210, 255), 18);
+        nomeIAFundo.setStroke(dp(1), Color.rgb(0, 210, 255));
+        nomeIAInput.setBackground(nomeIAFundo);
+
+        painel.addView(nomeIAInput,
+                new LinearLayout.LayoutParams(-1, dp(50)));
+
+        TextView nomeIAInfo = texto(
+                "Esse será o nome usado para chamar sua assistente.",
+                10, Color.rgb(150, 180, 200), false);
+        nomeIAInfo.setPadding(dp(4), dp(4), 0, dp(12));
+        painel.addView(nomeIAInfo);
+
+        Button salvarNomeIA = botao(
+                "SALVAR NOME",
+                Color.rgb(3, 55, 105));
+        salvarNomeIA.setTextSize(12);
+
+        GradientDrawable salvarNomeFundo =
+                fundo(Color.rgb(3, 55, 105), 18);
+        salvarNomeFundo.setStroke(dp(1), Color.rgb(0, 225, 255));
+        salvarNomeIA.setBackground(salvarNomeFundo);
+
+        painel.addView(salvarNomeIA,
+                new LinearLayout.LayoutParams(-1, dp(44)));
+
+        salvarNomeIA.setOnClickListener(v -> {
+            String novoNome = nomeIAInput.getText().toString().trim();
+
+            if (novoNome.isEmpty()) {
+                nomeIAInput.setError("Digite um nome para a IZy");
+                nomeIAInput.requestFocus();
+                return;
+            }
+
+            nomeIA = novoNome;
+
+            preferenciasIZy.edit()
+                    .putString("nome_ia", nomeIA)
+                    .apply();
+
+            Toast.makeText(
+                    this,
+                    "Nome da IA salvo: " + nomeIA,
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        Space espacoNomeIA = new Space(this);
+        painel.addView(espacoNomeIA,
+                new LinearLayout.LayoutParams(1, dp(12)));
+
+        String[][] recursos = {
+                {"🎤  Microfone", "Escuta comandos de voz e a palavra de ativação."},
+                {"📍  Localização", "Permite usar sua localização quando autorizada."},
+                {"📷  Câmera", "Permite usar a câmera quando você solicitar."},
+                {"🖼  Fotos e arquivos", "Permite selecionar imagens e arquivos."},
+                {"👤  Contatos", "Permite consultar contatos autorizados."},
+                {"📅  Calendário", "Permite consultar e gerenciar eventos."},
+                {"🔔  Notificações", "Permite recursos relacionados às notificações."},
+                {"🪟  Sobreposição", "Permite mostrar a IZy sobre outros aplicativos."},
+                {"🔋  Segundo plano", "Permite recursos da IZy em segundo plano."},
+                {"📱  Aparelho", "Permite consultar informações disponíveis do dispositivo."},
+                {"🤖  Rosto flutuante", "Mostra o rosto da IZy sobre outros aplicativos."},
+                {"✨  Efeito nas bordas", "Cria um efeito neon nas bordas quando a IZy fala."}
+        };
+
+        for (String[] recurso : recursos) {
+            LinearLayout linha = new LinearLayout(this);
+            linha.setOrientation(LinearLayout.HORIZONTAL);
+            linha.setGravity(Gravity.CENTER_VERTICAL);
+            linha.setPadding(dp(10), dp(6), dp(4), dp(6));
+            linha.setBackground(fundo(Color.argb(55, 0, 225, 255), 16));
+            linha.setElevation(dp(4));
+
+            LinearLayout textos = new LinearLayout(this);
+            textos.setOrientation(LinearLayout.VERTICAL);
+
+            TextView nome = texto(recurso[0], 13, Color.WHITE, true);
+            TextView desc = texto(recurso[1], 10, Color.rgb(150, 180, 200), false);
+
+            textos.addView(nome);
+            textos.addView(desc);
+
+            linha.addView(textos,
+                    new LinearLayout.LayoutParams(0, dp(52), 1));
+
+            Switch botao = new Switch(this);
+            botao.setText("");
+            botao.setChecked(recursoIZyAtivo(recurso[0]));
+            botao.setButtonTintList(
+                    android.content.res.ColorStateList.valueOf(
+                            Color.rgb(0, 225, 255)
+                    )
+            );
+
+            botao.setOnCheckedChangeListener((buttonView, marcado) -> {
+                if (marcado) {
+                    if (recurso[0].contains("Microfone") &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                            checkSelfPermission(Manifest.permission.RECORD_AUDIO)
+                                    != PackageManager.PERMISSION_GRANTED) {
+
+                        requestPermissions(
+                                new String[]{Manifest.permission.RECORD_AUDIO},
+                                PEDIR_MICROFONE
+                        );
+
+                        buttonView.setChecked(false);
+                        return;
+                    }
+
+                    if (recurso[0].contains("Localização") &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                            checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(
+                                new String[]{
+                                        Manifest.permission.ACCESS_FINE_LOCATION,
+                                        Manifest.permission.ACCESS_COARSE_LOCATION
+                                },
+                                7002
+                        );
+                        buttonView.setChecked(false);
+                        return;
+                    }
+
+                    if (recurso[0].contains("Câmera") &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                            checkSelfPermission(Manifest.permission.CAMERA)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(
+                                new String[]{Manifest.permission.CAMERA},
+                                7003
+                        );
+                        buttonView.setChecked(false);
+                        return;
+                    }
+
+                    if (recurso[0].contains("Contatos") &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                            checkSelfPermission(Manifest.permission.READ_CONTACTS)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(
+                                new String[]{Manifest.permission.READ_CONTACTS},
+                                7004
+                        );
+                        buttonView.setChecked(false);
+                        return;
+                    }
+
+                    if (recurso[0].contains("Calendário") &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                            checkSelfPermission(Manifest.permission.READ_CALENDAR)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(
+                                new String[]{Manifest.permission.READ_CALENDAR},
+                                7005
+                        );
+                        buttonView.setChecked(false);
+                        return;
+                    }
+
+                    if (recurso[0].contains("Notificações") &&
+                            Build.VERSION.SDK_INT >= 33 &&
+                            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                            != PackageManager.PERMISSION_GRANTED) {
+                        requestPermissions(
+                                new String[]{Manifest.permission.POST_NOTIFICATIONS},
+                                7006
+                        );
+                        buttonView.setChecked(false);
+                        return;
+                    }
+
+                    if (recurso[0].contains("Rosto flutuante") &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.M &&
+                            !android.provider.Settings.canDrawOverlays(this)) {
+
+                        Intent intentSobreposicao =
+                                new Intent(
+                                        android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        android.net.Uri.parse("package:" + getPackageName())
+                                );
+
+                        startActivity(intentSobreposicao);
+
+                        buttonView.setChecked(false);
+                        return;
+                    }
+
+                    linha.setBackground(
+                            fundo(Color.argb(105, 0, 225, 255), 16)
+                    );
+                    linha.setElevation(dp(8));
+
+                    if (recurso[0].contains("Microfone")) {
+                        modoEscutaContinua = true;
+                        iniciarEscutaContinua();
+                    }
+
+                    if (recurso[0].contains("Rosto flutuante")) {
+                        rostoFlutuante = true;
+                        preferenciasIZy.edit()
+                                .putBoolean("rosto_flutuante", true)
+                                .apply();
+
+                        try {
+                            Intent servico = new Intent(
+                                    this,
+                                    DaNikeBackgroundService.class
+                            );
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                startForegroundService(servico);
+                            } else {
+                                startService(servico);
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    if (recurso[0].contains("Efeito nas bordas")) {
+                        efeitoBordas = true;
+                        preferenciasIZy.edit()
+                                .putBoolean("efeito_bordas", true)
+                                .apply();
+                    }
+
+                } else {
+                    linha.setBackground(
+                            fundo(Color.argb(55, 0, 225, 255), 16)
+                    );
+                    linha.setElevation(dp(4));
+
+                    if (recurso[0].contains("Microfone")) {
+                        modoEscutaContinua = false;
+
+                        if (reconhecedor != null) {
+                            try {
+                                reconhecedor.stopListening();
+                            } catch (Exception ignored) {}
+                        }
+
+                        ouvindo = false;
+                        atualizarStatusOnline();
+                    }
+
+                    if (recurso[0].contains("Rosto flutuante")) {
+                        rostoFlutuante = false;
+                        preferenciasIZy.edit()
+                                .putBoolean("rosto_flutuante", false)
+                                .apply();
+
+                        try {
+                            stopService(new Intent(
+                                    this,
+                                    DaNikeBackgroundService.class
+                            ));
+                        } catch (Exception ignored) {
+                        }
+                    }
+
+                    if (recurso[0].contains("Efeito nas bordas")) {
+                        efeitoBordas = false;
+                        preferenciasIZy.edit()
+                                .putBoolean("efeito_bordas", false)
+                                .apply();
+                    }
+                }
+            });
+
+            linha.addView(botao,
+                    new LinearLayout.LayoutParams(dp(52), dp(52)));
+
+            LinearLayout.LayoutParams linhaParams =
+                    new LinearLayout.LayoutParams(-1, dp(64));
+            linhaParams.setMargins(0, 0, 0, dp(6));
+
+            painel.addView(linha, linhaParams);
+        }
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(painel);
+
+        builder.setView(scroll);
+        builder.setPositiveButton("Fechar", null);
+        builder.show();
     }
 
     void montarTela() {
@@ -370,7 +831,7 @@ public class IAActivity extends Activity {
         tituloBox.setOrientation(LinearLayout.VERTICAL);
         tituloBox.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView titulo = texto("DaNike AI", 25, Color.WHITE, true);
+        TextView titulo = texto("IZy", 25, Color.WHITE, true);
         TextView subtitulo = texto(
                 "SEU ASSISTENTE INTELIGENTE",
                 9,
@@ -389,6 +850,48 @@ public class IAActivity extends Activity {
         LinearLayout instagram = criarInstagramBadge();
         topo.addView(instagram,
                 new LinearLayout.LayoutParams(dp(166), dp(48)));
+
+        // ENGRENAGEM NEON — configurações da IZy
+        TextView botaoConfiguracoes = texto(
+                "⚙️",
+                27,
+                Color.rgb(0, 245, 255),
+                true
+        );
+
+        botaoConfiguracoes.setGravity(Gravity.CENTER);
+        botaoConfiguracoes.setMinWidth(dp(52));
+        botaoConfiguracoes.setMinHeight(dp(52));
+        botaoConfiguracoes.setPadding(
+                dp(5), dp(5), dp(5), dp(5)
+        );
+
+        GradientDrawable fundoConfiguracoes =
+                fundo(
+                        Color.argb(80, 0, 225, 255),
+                        18
+                );
+
+        fundoConfiguracoes.setStroke(
+                dp(2),
+                Color.rgb(0, 225, 255)
+        );
+
+        botaoConfiguracoes.setBackground(
+                fundoConfiguracoes
+        );
+
+        botaoConfiguracoes.setElevation(
+                dp(8)
+        );
+        botaoConfiguracoes.setOnClickListener(v -> abrirConfiguracoesIZy());
+
+        LinearLayout.LayoutParams engrenagemParams =
+                new LinearLayout.LayoutParams(dp(42), dp(42));
+        engrenagemParams.gravity = Gravity.CENTER_VERTICAL;
+        engrenagemParams.setMargins(dp(4), 0, 0, 0);
+
+        topo.addView(botaoConfiguracoes, engrenagemParams);
 // STATUS
         LinearLayout statusLinha = new LinearLayout(this);
         statusLinha.setGravity(Gravity.CENTER_VERTICAL);
@@ -399,7 +902,7 @@ public class IAActivity extends Activity {
         statusLinha.addView(statusIA,
                 new LinearLayout.LayoutParams(0, dp(30), 1));
 
-        TextView tecnologia = texto("DaNikeAI  •  Gemini", 9,
+        TextView tecnologia = texto("IZy  •  Gemini", 9,
                 Color.rgb(100, 160, 200), false);
         tecnologia.setGravity(Gravity.CENTER_VERTICAL | Gravity.RIGHT);
         statusLinha.addView(tecnologia,
@@ -441,30 +944,161 @@ public class IAActivity extends Activity {
         saudacaoBox.setOrientation(LinearLayout.VERTICAL);
         saudacaoBox.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView saudacao = texto("Olá, Usuário.", 21, Color.WHITE, true);
-        DadosUsuario.nome(this, nomeUsuario -> {
-            saudacao.setText("Olá, " + nomeUsuario + ".");
+        LinearLayout linhaSaudacao = new LinearLayout(this);
+        linhaSaudacao.setOrientation(LinearLayout.HORIZONTAL);
+        linhaSaudacao.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView saudacao = texto(
+                "Olá, Usuário.",
+                21,
+                Color.WHITE,
+                true
+        );
+
+        TextView editarNome = texto(
+                "✏",
+                18,
+                Color.rgb(0, 225, 255),
+                true
+        );
+
+        editarNome.setGravity(Gravity.CENTER);
+        editarNome.setPadding(dp(8), 0, 0, 0);
+
+        editarNome.setOnClickListener(v -> {
+
+            EditText campoNome = new EditText(this);
+            campoNome.setSingleLine(true);
+            campoNome.setHint("Digite seu nome");
+            campoNome.setTextColor(Color.WHITE);
+            campoNome.setHintTextColor(Color.rgb(120, 160, 190));
+            campoNome.setTextSize(16);
+
+            DadosUsuario.nome(this, nomeAtual ->
+                    campoNome.setText(nomeAtual)
+            );
+
+            LinearLayout caixaNome = new LinearLayout(this);
+            caixaNome.setPadding(
+                    dp(20), dp(5),
+                    dp(20), 0
+            );
+
+            caixaNome.addView(
+                    campoNome,
+                    new LinearLayout.LayoutParams(
+                            -1,
+                            dp(52)
+                    )
+            );
+
+            AlertDialog dialog = new AlertDialog.Builder(this)
+                    .setTitle("✏️ Alterar meu nome")
+                    .setMessage(
+                            "Como você quer que a IZy chame você?"
+                    )
+                    .setView(caixaNome)
+                    .setNegativeButton(
+                            "CANCELAR",
+                            null
+                    )
+                    .setPositiveButton(
+                            "SALVAR",
+                            null
+                    )
+                    .create();
+
+            dialog.setOnShowListener(d -> {
+
+                dialog.getButton(
+                        AlertDialog.BUTTON_POSITIVE
+                ).setOnClickListener(btn -> {
+
+                    String novoNome = campoNome
+                            .getText()
+                            .toString()
+                            .trim();
+
+                    if (novoNome.isEmpty()) {
+                        Toast.makeText(
+                                this,
+                                "Digite um nome.",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                        return;
+                    }
+
+                    DadosUsuario.salvarNome(
+                            this,
+                            novoNome
+                    );
+
+                    saudacao.setText(
+                            "Olá, " + novoNome + "."
+                    );
+
+                    dialog.dismiss();
+                });
+            });
+
+            dialog.show();
         });
+
+        linhaSaudacao.addView(
+                saudacao,
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(40),
+                        1
+                )
+        );
+
+        linhaSaudacao.addView(
+                editarNome,
+                new LinearLayout.LayoutParams(
+                        dp(42),
+                        dp(40)
+                )
+        );
 
         TextView ajuda = texto(
                 "Estou pronta. O que vamos criar hoje?",
                 12,
-                Color.rgb(165, 205, 235));
+                Color.rgb(165, 205, 235)
+        );
 
-        saudacaoBox.addView(saudacao,
-                new LinearLayout.LayoutParams(dp(205), dp(34)));
-        saudacaoBox.addView(ajuda,
-                new LinearLayout.LayoutParams(dp(230), dp(27)));
+        saudacaoBox.addView(
+                linhaSaudacao,
+                new LinearLayout.LayoutParams(
+                        dp(245),
+                        dp(40)
+                )
+        );
 
-        palco.addView(saudacaoBox,
+        saudacaoBox.addView(
+                ajuda,
+                new LinearLayout.LayoutParams(
+                        dp(230),
+                        dp(27)
+                )
+        );
+
+        palco.addView(
+                saudacaoBox,
                 new FrameLayout.LayoutParams(
-                        dp(245), dp(72),
-                        Gravity.LEFT | Gravity.CENTER_VERTICAL));
+                        dp(245),
+                        dp(72),
+                        Gravity.LEFT | Gravity.CENTER_VERTICAL
+                )
+        );
 
-        DadosUsuario.nome(this,
+        DadosUsuario.nome(
+                this,
                 nomeUsuario ->
                         saudacao.setText(
-                                "Olá, " + nomeUsuario + "."));
+                                "Olá, " + nomeUsuario + "."
+                        )
+        );
 
         tela.addView(palco,
                 new LinearLayout.LayoutParams(-1, dp(148)));
@@ -504,6 +1138,21 @@ public class IAActivity extends Activity {
         cabecalhoChat.addView(botaoVozResposta,
                 new LinearLayout.LayoutParams(dp(38), dp(28)));
 
+        // BOTÃO DISCRETO PARA APAGAR TODA A CONVERSA
+        Button botaoApagarConversa = botao("🗑️", Color.TRANSPARENT);
+        botaoApagarConversa.setTextSize(13);
+        botaoApagarConversa.setPadding(0, 0, 0, 0);
+        botaoApagarConversa.setBackground(
+                fundo(Color.argb(35, 255, 70, 120), 16));
+        botaoApagarConversa.setContentDescription("Apagar toda a conversa");
+
+        botaoApagarConversa.setOnClickListener(v -> confirmarApagarConversas());
+
+        LinearLayout.LayoutParams apagarParams =
+                new LinearLayout.LayoutParams(dp(38), dp(28));
+        apagarParams.setMargins(dp(4), 0, 0, 0);
+        cabecalhoChat.addView(botaoApagarConversa, apagarParams);
+
         painelChat.addView(cabecalhoChat,
                 new LinearLayout.LayoutParams(-1, dp(30)));
 
@@ -525,8 +1174,10 @@ public class IAActivity extends Activity {
         painelChat.addView(chatScroll,
                 new LinearLayout.LayoutParams(-1, 0, 1));
 
-        tela.addView(painelChat,
-                new LinearLayout.LayoutParams(-1, 0, 1));
+        LinearLayout.LayoutParams chatParams =
+                new LinearLayout.LayoutParams(-1, 0, 1);
+        chatParams.setMargins(0, 0, 0, dp(2));
+        tela.addView(painelChat, chatParams);
 
         botaoVozResposta.setOnClickListener(v -> {
             falaAutomatica = !falaAutomatica;
@@ -538,19 +1189,33 @@ public class IAActivity extends Activity {
             atualizarBotaoVozResposta();
         });
 
-        // ENTRADA
+        // BARRA DE MENSAGEM — ARQUIVO | TEXTO | MICROFONE | ENVIAR
         LinearLayout linhaMensagem = new LinearLayout(this);
         linhaMensagem.setGravity(Gravity.CENTER_VERTICAL);
         linhaMensagem.setPadding(0, dp(7), 0, dp(5));
 
+        // Botão de arquivo
+        Button botaoArquivo = botao("📎", Color.TRANSPARENT);
+        botaoArquivo.setTextSize(18);
+        botaoArquivo.setPadding(0, 0, 0, 0);
+        botaoArquivo.setContentDescription("Selecionar arquivo");
+        botaoArquivo.setBackground(
+                fundo(Color.argb(45, 0, 210, 255), 20));
+
+        LinearLayout.LayoutParams arquivoParams =
+                new LinearLayout.LayoutParams(dp(46), dp(54));
+        arquivoParams.setMargins(0, 0, dp(5), 0);
+        linhaMensagem.addView(botaoArquivo, arquivoParams);
+
+        // Campo de texto
         entrada = new EditText(this);
-        entrada.setHint("Digite sua mensagem para a DaNikeAI...");
+        entrada.setHint("Digite...");
         entrada.setHintTextColor(Color.rgb(80, 125, 165));
         entrada.setTextColor(Color.WHITE);
         entrada.setTextSize(14);
         entrada.setSingleLine(true);
         entrada.setImeOptions(EditorInfo.IME_ACTION_SEND);
-        entrada.setPadding(dp(15), 0, dp(10), 0);
+        entrada.setPadding(dp(14), 0, dp(8), 0);
 
         GradientDrawable campo =
                 fundo(Color.argb(180, 2, 14, 32), 27);
@@ -560,8 +1225,23 @@ public class IAActivity extends Activity {
         linhaMensagem.addView(entrada,
                 new LinearLayout.LayoutParams(0, dp(54), 1));
 
+        // Microfone para falar com a IZy
+        Button botaoMicrofoneMensagem = botao("🎤", Color.TRANSPARENT);
+        botaoMicrofoneMensagem.setTextSize(18);
+        botaoMicrofoneMensagem.setPadding(0, 0, 0, 0);
+        botaoMicrofoneMensagem.setContentDescription("Falar com a IZy");
+        botaoMicrofoneMensagem.setBackground(
+                fundo(Color.argb(45, 0, 210, 255), 20));
+
+        LinearLayout.LayoutParams micParams =
+                new LinearLayout.LayoutParams(dp(48), dp(54));
+        micParams.setMargins(dp(5), 0, dp(5), 0);
+        linhaMensagem.addView(botaoMicrofoneMensagem, micParams);
+
+        // Enviar
         Button enviar = botao("➤", Color.rgb(3, 55, 105));
         enviar.setTextSize(22);
+        enviar.setPadding(0, 0, 0, 0);
 
         GradientDrawable enviarFundo =
                 fundo(Color.rgb(3, 55, 105), 28);
@@ -569,51 +1249,107 @@ public class IAActivity extends Activity {
         enviar.setBackground(enviarFundo);
 
         LinearLayout.LayoutParams ep =
-                new LinearLayout.LayoutParams(dp(56), dp(54));
-        ep.setMargins(dp(7), 0, 0, 0);
+                new LinearLayout.LayoutParams(dp(52), dp(54));
         linhaMensagem.addView(enviar, ep);
+
+        // Ações da barra
+        botaoMicrofoneMensagem.setOnClickListener(v -> alternarMicrofone());
+
+        botaoArquivo.setOnClickListener(v -> {
+            Intent escolherArquivo =
+                    new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            escolherArquivo.addCategory(Intent.CATEGORY_OPENABLE);
+            escolherArquivo.setType("*/*");
+            startActivityForResult(escolherArquivo, 9101);
+        });
 
         tela.addView(linhaMensagem,
                 new LinearLayout.LayoutParams(-1, dp(60)));
 
-        // NAVEGAÇÃO NOVA
+        // AÇÕES DA IA — FAIXA HORIZONTAL
+        HorizontalScrollView faixaAcoes = new HorizontalScrollView(this);
+        faixaAcoes.setHorizontalScrollBarEnabled(false);
+        faixaAcoes.setOverScrollMode(View.OVER_SCROLL_NEVER);
+
         LinearLayout nav = new LinearLayout(this);
-        nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(2), dp(2), dp(2), dp(2));
+        nav.setOrientation(LinearLayout.HORIZONTAL);
+        nav.setGravity(Gravity.CENTER_VERTICAL);
+        nav.setPadding(dp(4), dp(4), dp(4), dp(4));
 
         Button navChat = navButton("💬", "Chat");
-        Button navConversas = navButton("◉", "Conversas");
-        Button navMemoria = navButton("🧠", "Memória");
-        Button navFalar = navButton("🎤", "Falar");
-        Button navMembros = navButton("♛", "Membros");
+        Button navConversas = navButton("🗂", "Conversas");
+        Button navMemoria = navButton("🧠", "Memórias");
+        Button navFalar = navButton("🗣", "Falar");
+        Button navMembros = navButton("👥", "Membros");
+        Button navNovo = navButton("➕", "Novo");
+        Button navConfig = navButton("⚙️", "Config.");
 
-        nav.addView(navChat, new LinearLayout.LayoutParams(0, dp(58), 1));
-        nav.addView(navConversas, new LinearLayout.LayoutParams(0, dp(58), 1));
-        nav.addView(navMemoria, new LinearLayout.LayoutParams(0, dp(58), 1));
-        nav.addView(navFalar, new LinearLayout.LayoutParams(0, dp(58), 1));
-        nav.addView(navMembros, new LinearLayout.LayoutParams(0, dp(58), 1));
+        Button[] acoes = {
+                navChat,
+                navConversas,
+                navMemoria,
+                navFalar,
+                navMembros,
+                navNovo,
+                navConfig
+        };
 
-        tela.addView(nav,
-                new LinearLayout.LayoutParams(-1, dp(62)));
+        for (Button acao : acoes) {
+            LinearLayout.LayoutParams ap =
+                    new LinearLayout.LayoutParams(dp(92), dp(62));
+            ap.setMargins(dp(3), 0, dp(3), 0);
+            nav.addView(acao, ap);
+        }
+
+        faixaAcoes.addView(nav,
+                new HorizontalScrollView.LayoutParams(
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                        dp(70)
+                ));
+
+        tela.addView(faixaAcoes,
+                new LinearLayout.LayoutParams(-1, dp(72)));
 
         setBotaoAtivo(navChat, true);
 
-        navChat.setOnClickListener(v -> setBotaoAtivo(navChat, true));
+        navChat.setOnClickListener(v ->
+                setBotaoAtivo(navChat, true));
+
         navConversas.setOnClickListener(v -> {
             setBotaoAtivo(navConversas, true);
             abrirConversas();
         });
+
         navMemoria.setOnClickListener(v -> {
             setBotaoAtivo(navMemoria, true);
             abrirMemorias();
         });
+
         navFalar.setOnClickListener(v -> {
             setBotaoAtivo(navFalar, true);
             alternarMicrofone();
         });
+
         navMembros.setOnClickListener(v -> {
             setBotaoAtivo(navMembros, true);
-            startActivity(new Intent(IAActivity.this, MembrosActivity.class));
+            startActivity(new Intent(
+                    IAActivity.this,
+                    MembrosActivity.class
+            ));
+        });
+
+        navNovo.setOnClickListener(v -> {
+            setBotaoAtivo(navNovo, true);
+            Toast.makeText(
+                    IAActivity.this,
+                    "Novos recursos da IZy em breve.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        navConfig.setOnClickListener(v -> {
+            setBotaoAtivo(navConfig, true);
+            abrirConfiguracoesIZy();
         });
 
         enviar.setOnClickListener(v -> responder());
@@ -629,6 +1365,27 @@ public class IAActivity extends Activity {
         });
 
         setContentView(raiz);
+
+        // TECLADO — mantém a barra de mensagem acima do teclado
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(raiz, (v, insets) -> {
+            int teclado = insets.getInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.ime()).bottom;
+
+            int sistema = insets.getInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.systemBars()).bottom;
+
+            int inferior = Math.max(teclado, sistema);
+
+            v.setPadding(
+                    v.getPaddingLeft(),
+                    v.getPaddingTop(),
+                    v.getPaddingRight(),
+                    inferior
+            );
+
+            return insets;
+        });
+        androidx.core.view.ViewCompat.requestApplyInsets(raiz);
     }
 
     private LinearLayout criarInstagramBadge() {
@@ -697,6 +1454,27 @@ public class IAActivity extends Activity {
                                     .start())
                     .start();
         }
+    }
+
+    private void confirmarApagarConversas() {
+        new AlertDialog.Builder(this)
+                .setTitle("🗑️ Apagar conversa?")
+                .setMessage("Você deseja realmente apagar tudo de uma só vez?")
+                .setNegativeButton("Não", null)
+                .setPositiveButton("Sim", (dialog, which) -> {
+                    if (chatDB != null) {
+                        chatDB.apagarConversas();
+                    }
+
+                    if (chatLista != null) {
+                        chatLista.removeAllViews();
+                    }
+
+                    if (resposta != null) {
+                        resposta.setText("");
+                    }
+                })
+                .show();
     }
 
     void atualizarBotaoVozResposta() {
@@ -786,54 +1564,59 @@ public class IAActivity extends Activity {
     }
 
     private String responderInformacaoLocal(String pergunta) {
-
         if (pergunta == null) return null;
 
-        String p =
-                java.text.Normalizer.normalize(
-                        pergunta.toLowerCase(
-                                java.util.Locale.ROOT),
-                        java.text.Normalizer.Form.NFD)
-                        .replaceAll("\\p{M}","")
-                        .trim();
+        String p = java.text.Normalizer.normalize(
+                pergunta.toLowerCase(java.util.Locale.ROOT),
+                java.text.Normalizer.Form.NFD
+        ).replaceAll("\\p{M}", "").trim();
 
         boolean data =
                 p.contains("que dia e hoje")
+                || p.contains("qual e a data de hoje")
                 || p.contains("qual a data de hoje")
                 || p.contains("data de hoje")
+                || p.contains("qual data do mes")
+                || p.contains("qual e a data do mes")
+                || p.contains("qual o dia de hoje")
+                || p.contains("que dia estamos")
+                || p.contains("em que data estamos")
+                || p.contains("qual a data estamos")
+                || p.contains("data do mes")
                 || p.equals("hoje");
 
         boolean hora =
                 p.contains("que horas sao")
+                || p.contains("que horas sao agora")
+                || p.contains("qual e a hora")
                 || p.contains("qual a hora")
+                || p.contains("qual o horario")
+                || p.contains("qual e o horario")
                 || p.contains("hora agora")
-                || p.contains("horas agora");
+                || p.contains("horas agora")
+                || p.contains("me fala a hora")
+                || p.contains("me diga a hora");
 
-        java.util.Calendar agora =
-                java.util.Calendar.getInstance();
+        java.util.Calendar agora = java.util.Calendar.getInstance(
+                java.util.TimeZone.getTimeZone("America/Sao_Paulo")
+        );
 
         if (data) {
             java.text.SimpleDateFormat formato =
                     new java.text.SimpleDateFormat(
                             "EEEE, d 'de' MMMM 'de' yyyy",
-                            new java.util.Locale(
-                                    "pt","BR"));
-
-            return "Hoje é " +
-                    formato.format(agora) +
-                    ".";
+                            new java.util.Locale("pt", "BR")
+                    );
+            return "Hoje é " + formato.format(agora) + ".";
         }
 
         if (hora) {
             java.text.SimpleDateFormat formato =
                     new java.text.SimpleDateFormat(
                             "HH:mm",
-                            new java.util.Locale(
-                                    "pt","BR"));
-
-            return "Agora são " +
-                    formato.format(agora) +
-                    ".";
+                            new java.util.Locale("pt", "BR")
+                    );
+            return "Agora são " + formato.format(agora) + ".";
         }
 
         return null;
@@ -861,8 +1644,16 @@ public class IAActivity extends Activity {
             return;
         }
 
-        String respostaLocal =
-                responderInformacaoLocal(pergunta);
+        String respostaLocal = null;
+        try {
+            respostaLocal = responderInformacaoLocal(pergunta);
+        } catch (Exception e) {
+            android.util.Log.e(
+                    "IAActivity",
+                    "Erro na informação local",
+                    e
+            );
+        }
 
         if (respostaLocal != null) {
             adicionarBolhaUsuario(pergunta);
@@ -902,6 +1693,8 @@ public class IAActivity extends Activity {
         statusIA.setText("●  PENSANDO...");
         statusIA.setTextColor(Color.rgb(255, 195, 0));
 
+        String contexto = montarContextoConversa();
+
         adicionarBolhaUsuario(pergunta);
         salvarMensagemSessao(1, pergunta);
 
@@ -910,6 +1703,7 @@ public class IAActivity extends Activity {
 
         GeminiAPI.perguntar(
                 pergunta,
+                contexto,
                 new GeminiAPI.Callback() {
                     @Override
                     public void sucesso(String textoResposta) {
@@ -1145,11 +1939,41 @@ public class IAActivity extends Activity {
                 && grantResults.length > 0
                 && grantResults[0]
                 == PackageManager.PERMISSION_GRANTED) {
-            alternarMicrofone();
+
+            modoEscutaContinua = true;
+            preferenciasIZy.edit()
+                    .putBoolean("microfone_ativo", true)
+                    .apply();
+
+            Toast.makeText(this,
+                    "🎤 Microfone autorizado. IZy está ouvindo.",
+                    Toast.LENGTH_SHORT).show();
+
+            iniciarEscutaContinua();
+
         } else if (requestCode == PEDIR_MICROFONE) {
+
+            modoEscutaContinua = false;
+            preferenciasIZy.edit()
+                    .putBoolean("microfone_ativo", false)
+                    .apply();
+
             Toast.makeText(this,
                     "Permissão do microfone negada.",
                     Toast.LENGTH_SHORT).show();
+        } else if (requestCode >= 7002 && requestCode <= 7006) {
+            boolean concedida = grantResults.length > 0
+                    && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+
+            if (concedida) {
+                Toast.makeText(this,
+                        "✅ Permissão autorizada para a IZy.",
+                        Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this,
+                        "Permissão não autorizada.",
+                        Toast.LENGTH_SHORT).show();
+            }
         }
     }
 
@@ -1194,6 +2018,34 @@ public class IAActivity extends Activity {
                 tipo,
                 textoMensagem);
 
+        com.google.firebase.auth.FirebaseUser usuario =
+                com.google.firebase.auth.FirebaseAuth
+                        .getInstance()
+                        .getCurrentUser();
+
+        if (usuario != null) {
+            String uid = usuario.getUid();
+
+            java.util.HashMap<String, Object> mensagem =
+                    new java.util.HashMap<>();
+
+            mensagem.put("tipo", tipo);
+            mensagem.put("texto", textoMensagem);
+            mensagem.put(
+                    "criadoEm",
+                    com.google.firebase.firestore.FieldValue
+                            .serverTimestamp());
+
+            com.google.firebase.firestore.FirebaseFirestore
+                    .getInstance()
+                    .collection("usuarios")
+                    .document(uid)
+                    .collection("conversas")
+                    .document("sessao_" + sessaoAtual)
+                    .collection("mensagens")
+                    .add(mensagem);
+        }
+
         if (tipo == 1
                 && "Nova conversa".equals(
                 chatDB.nomeSessao(sessaoAtual))) {
@@ -1218,6 +2070,7 @@ public class IAActivity extends Activity {
         chatLista.removeAllViews();
 
         Cursor c = chatDB.mensagens(sessaoAtual);
+        int totalLocal = 0;
 
         try {
             while (c.moveToNext()) {
@@ -1230,6 +2083,8 @@ public class IAActivity extends Activity {
                     adicionarBolhaUsuario(msg);
                 else
                     adicionarBolhaIA(msg);
+
+                totalLocal++;
             }
         } finally {
             c.close();
@@ -1239,6 +2094,63 @@ public class IAActivity extends Activity {
                 chatDB.nomeSessao(sessaoAtual));
 
         rolarChatFinal();
+
+        if (totalLocal == 0)
+            carregarSessaoDaNuvem();
+    }
+
+    private void carregarSessaoDaNuvem() {
+        com.google.firebase.auth.FirebaseUser usuario =
+                com.google.firebase.auth.FirebaseAuth
+                        .getInstance()
+                        .getCurrentUser();
+
+        if (usuario == null) return;
+
+        String uid = usuario.getUid();
+
+        com.google.firebase.firestore.FirebaseFirestore
+                .getInstance()
+                .collection("usuarios")
+                .document(uid)
+                .collection("conversas")
+                .document("sessao_" + sessaoAtual)
+                .collection("mensagens")
+                .orderBy(
+                        "criadoEm",
+                        com.google.firebase.firestore.Query.Direction.ASCENDING)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+                    if (snapshot.isEmpty()) return;
+
+                    chatLista.removeAllViews();
+
+                    for (com.google.firebase.firestore.DocumentSnapshot doc
+                            : snapshot.getDocuments()) {
+
+                        Long tipoLong = doc.getLong("tipo");
+                        String texto = doc.getString("texto");
+
+                        if (tipoLong == null
+                                || texto == null
+                                || texto.trim().isEmpty())
+                            continue;
+
+                        int tipo = tipoLong.intValue();
+
+                        if (tipo == 1)
+                            adicionarBolhaUsuario(texto);
+                        else
+                            adicionarBolhaIA(texto);
+
+                        chatDB.salvarMensagem(
+                                sessaoAtual,
+                                tipo,
+                                texto);
+                    }
+
+                    rolarChatFinal();
+                });
     }
 
     private void abrirConversas() {
@@ -1451,6 +2363,32 @@ public class IAActivity extends Activity {
     // BANCO DE CONVERSAS — separado da memória permanente
     // ============================================================
 
+    private String montarContextoConversa() {
+        if (sessaoAtual <= 0) return "";
+
+        StringBuilder contexto = new StringBuilder();
+        Cursor c = chatDB.mensagens(sessaoAtual);
+
+        try {
+            int total = 0;
+            while (c.moveToNext() && total < 20) {
+                int tipo = c.getInt(c.getColumnIndexOrThrow("tipo"));
+                String texto = c.getString(c.getColumnIndexOrThrow("texto"));
+
+                if (texto == null || texto.trim().isEmpty()) continue;
+
+                contexto.append(tipo == 1 ? "Usuário: " : "DaNikeAI: ");
+                contexto.append(texto.trim());
+            contexto.append("\n");
+                total++;
+            }
+        } finally {
+            c.close();
+        }
+
+        return contexto.toString().trim();
+    }
+
     static class ChatDB extends SQLiteOpenHelper {
 
         private static final String DB = "danike_chats.db";
@@ -1513,6 +2451,12 @@ public class IAActivity extends Activity {
             } finally {
                 c.close();
             }
+        }
+
+        void apagarConversas() {
+            SQLiteDatabase db = getWritableDatabase();
+            db.delete("mensagens", null, null);
+            db.delete("sessoes", null, null);
         }
 
         String nomeSessao(long id) {
@@ -1585,9 +2529,11 @@ public class IAActivity extends Activity {
 
         Cursor mensagens(long sessaoId) {
             return getReadableDatabase().rawQuery(
-                    "SELECT tipo,texto FROM mensagens " +
+                    "SELECT tipo,texto FROM (" +
+                            "SELECT tipo,texto,id FROM mensagens " +
                             "WHERE sessao_id=? " +
-                            "ORDER BY id ASC",
+                            "ORDER BY id DESC LIMIT 20" +
+                            ") ORDER BY id ASC",
                     new String[]{String.valueOf(sessaoId)});
         }
     }

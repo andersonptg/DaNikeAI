@@ -12,23 +12,38 @@ public class GeminiAPI {
     }
 
     public static void perguntar(String pergunta, Callback callback) {
+        perguntar(pergunta, "", callback);
+    }
 
+    public static void perguntar(String pergunta, String contexto, Callback callback) {
         new Thread(() -> {
             try {
+                String promptFinal = "";
+
+                if (contexto != null && !contexto.trim().isEmpty()) {
+                    promptFinal +=
+                        "CONTEXTO DA CONVERSA:\n" +
+                        contexto.trim() +
+                        "\n\n";
+                }
+
+                promptFinal +=
+                    "PERGUNTA ATUAL:\n" +
+                    pergunta;
 
                 String perguntaEscapada =
-                    pergunta.replace("\\", "\\\\")
-                            .replace("\"", "\\\"")
-                            .replace("\n", "\\n")
-                            .replace("\r", "\\r");
+                    promptFinal.replace("\\", "\\\\")
+                        .replace("\"", "\\\"")
+                        .replace("\n", "\\n")
+                        .replace("\r", "\\r");
 
                 String json =
-                    "{\"prompt\":\""
-                    + perguntaEscapada
-                    + "\"}";
+                    "{\"prompt\":\"" +
+                    perguntaEscapada +
+                    "\"}";
 
                 URL endereco =
-                    new URL("http://127.0.0.1:8766/ask");
+                    new URL("https://danikeai.onrender.com/ask");
 
                 HttpURLConnection conexao =
                     (HttpURLConnection) endereco.openConnection();

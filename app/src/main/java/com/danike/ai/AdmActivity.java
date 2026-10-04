@@ -265,23 +265,6 @@ public class AdmActivity extends Activity {
                 "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk"
         ));
 
-        LinearLayout grade6 = new LinearLayout(this);
-        grade6.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button baixarApp = quadrado(
-                grade6,
-                "⬇️",
-                "BAIXAR APP",
-                "Salvar APK",
-                DOURADO
-        );
-
-        raiz.addView(grade6);
-
-        baixarApp.setOnClickListener(v -> AppDistribuicao.baixarApk(
-                this,
-                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk"
-        ));
 
         raiz.addView(secao("🚨  IDENTIFICAÇÃO DE ERROS DO APP", VERMELHO));
 
@@ -969,14 +952,25 @@ public class AdmActivity extends Activity {
         layout.setOrientation(android.widget.LinearLayout.VERTICAL);
         layout.setPadding(35, 10, 35, 10);
 
+        android.widget.TextView versaoAtual = new android.widget.TextView(this);
+        versaoAtual.setText(
+                "📦 Versão atual: v" + BuildConfig.VERSION_NAME
+                        + "  •  Código " + BuildConfig.VERSION_CODE
+        );
+        versaoAtual.setTextSize(14);
+        versaoAtual.setTextColor(android.graphics.Color.rgb(120, 220, 255));
+        versaoAtual.setPadding(0, 10, 0, 16);
+
         android.widget.EditText versao = new android.widget.EditText(this);
-        versao.setHint("Ex.: 1.1.0");
+        versao.setHint("Próxima versão");
         versao.setSingleLine(true);
+        versao.setText("1.6.7");
 
         android.widget.EditText codigo = new android.widget.EditText(this);
-        codigo.setHint("Código da versão: Ex. 2");
+        codigo.setHint("Código da próxima versão");
         codigo.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
         codigo.setSingleLine(true);
+        codigo.setText("14");
 
         android.widget.EditText link = new android.widget.EditText(this);
         link.setHint("Link do APK");
@@ -996,6 +990,7 @@ public class AdmActivity extends Activity {
         android.widget.CheckBox obrigatoria = new android.widget.CheckBox(this);
         obrigatoria.setText("Atualização obrigatória");
 
+        layout.addView(versaoAtual);
         layout.addView(versao);
         layout.addView(codigo);
         layout.addView(link);

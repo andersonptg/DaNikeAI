@@ -173,6 +173,62 @@ TextView robo = new TextView(this);
                 new LinearLayout.LayoutParams(-1, dp(35))
         );
 
+        TextView statusOnline = new TextView(this);
+        statusOnline.setText("●  CONECTANDO...  •  DaNikeAI " + BuildConfig.VERSION_NAME);
+        statusOnline.setTextColor(Color.rgb(255, 195, 0));
+        statusOnline.setTextSize(11);
+        statusOnline.setTypeface(Typeface.DEFAULT_BOLD);
+        statusOnline.setGravity(Gravity.CENTER);
+
+        tela.addView(
+                statusOnline,
+                new LinearLayout.LayoutParams(-1, dp(28))
+        );
+
+        new Thread(() -> {
+            boolean online = false;
+
+            try {
+                java.net.HttpURLConnection conexao =
+                        (java.net.HttpURLConnection)
+                                new java.net.URL(
+                                        "https://danikeai.onrender.com/health"
+                                ).openConnection();
+
+                conexao.setConnectTimeout(3000);
+                conexao.setReadTimeout(3000);
+                conexao.setRequestMethod("GET");
+
+                online = conexao.getResponseCode() == 200;
+                conexao.disconnect();
+
+            } catch (Exception ignored) {
+                online = false;
+            }
+
+            boolean finalOnline = online;
+
+            runOnUiThread(() -> {
+                if (finalOnline) {
+                    statusOnline.setText(
+                            "●  ONLINE  •  DaNikeAI " +
+                            BuildConfig.VERSION_NAME
+                    );
+                    statusOnline.setTextColor(
+                            Color.rgb(80, 255, 150)
+                    );
+                } else {
+                    statusOnline.setText(
+                            "●  IA OFFLINE  •  DaNikeAI " +
+                            BuildConfig.VERSION_NAME
+                    );
+                    statusOnline.setTextColor(
+                            Color.rgb(255, 80, 80)
+                    );
+                }
+            });
+        }).start();
+
         EditText usuario = campo("E-MAIL OU USUÁRIO", false);
         EditText senha = campo("SENHA", true);
 
@@ -260,6 +316,15 @@ TextView robo = new TextView(this);
         tela.addView(
                 rodape,
                 new LinearLayout.LayoutParams(-1, dp(35))
+        );
+
+        setContentView(tela);
+
+        new android.os.Handler(
+                android.os.Looper.getMainLooper()
+        ).postDelayed(
+                () -> AtualizacaoApp.verificar(LoginActivity.this),
+                500
         );
 
         entrar.setOnClickListener(v -> {
@@ -350,7 +415,10 @@ TextView robo = new TextView(this);
 
                         ControleApp.verificar((manutencao, mensagemManutencao) -> {
 
-                            if (manutencao) {
+                            if (manutencao
+        && !(FirebaseAuth.getInstance().getCurrentUser() != null
+        && "lipesanderson@gmail.com".equalsIgnoreCase(
+                FirebaseAuth.getInstance().getCurrentUser().getEmail()))) {
 
                                 Intent intent = new Intent(
                                         LoginActivity.this,
@@ -403,6 +471,7 @@ TextView robo = new TextView(this);
                             );
 
                             startActivity(intent);
+                            AtualizacaoApp.verificar(LoginActivity.this);
                             finish();
                         }
                     });
