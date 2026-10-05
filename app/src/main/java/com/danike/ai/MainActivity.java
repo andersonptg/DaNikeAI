@@ -381,7 +381,7 @@ public class MainActivity extends Activity {
                 Color.rgb(0, 220, 255)
         );
 
-        equipeTopo.setBackground(new EquipeNeonDrawable());
+        // Fundo neon removido: classe EquipeNeonDrawable nao existe
 
         equipeTopo.setPadding(
                 dp(4),

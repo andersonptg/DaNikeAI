@@ -1963,49 +1963,94 @@ private boolean salvarPerfilEquipeLocal(
 
 
     private void mostrarAtualizacao() {
-        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        final String GITHUB_BUILD_URL =
+                "https://raw.githubusercontent.com/andersonptg/DaNikeAI/main/app/build.gradle";
+
+        final String APK_URL =
+                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk";
+
+        android.widget.LinearLayout layout =
+                new android.widget.LinearLayout(this);
+
         layout.setOrientation(android.widget.LinearLayout.VERTICAL);
         layout.setPadding(35, 10, 35, 10);
 
-        android.widget.TextView versaoAtual = new android.widget.TextView(this);
+        android.widget.TextView versaoAtual =
+                new android.widget.TextView(this);
+
         versaoAtual.setText(
-                "📦 Versão atual: v" + BuildConfig.VERSION_NAME
+                "📦 Versão instalada: v" + BuildConfig.VERSION_NAME
                         + "  •  Código " + BuildConfig.VERSION_CODE
         );
+
         versaoAtual.setTextSize(14);
-        versaoAtual.setTextColor(android.graphics.Color.rgb(120, 220, 255));
+        versaoAtual.setTextColor(
+                android.graphics.Color.rgb(120, 220, 255)
+        );
         versaoAtual.setPadding(0, 10, 0, 16);
 
-        android.widget.EditText versao = new android.widget.EditText(this);
+        android.widget.TextView statusGithub =
+                new android.widget.TextView(this);
+
+        statusGithub.setText(
+                "☁️ Consultando GitHub..."
+        );
+        statusGithub.setTextSize(13);
+        statusGithub.setTextColor(
+                android.graphics.Color.rgb(40, 255, 145)
+        );
+        statusGithub.setPadding(0, 0, 0, 12);
+
+        android.widget.EditText versao =
+                new android.widget.EditText(this);
+
         versao.setHint("Próxima versão");
         versao.setSingleLine(true);
-        versao.setText("1.7.1");
+        versao.setEnabled(false);
 
-        android.widget.EditText codigo = new android.widget.EditText(this);
+        android.widget.EditText codigo =
+                new android.widget.EditText(this);
+
         codigo.setHint("Código da próxima versão");
-        codigo.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        codigo.setInputType(
+                android.text.InputType.TYPE_CLASS_NUMBER
+        );
         codigo.setSingleLine(true);
-        codigo.setText("18");
+        codigo.setEnabled(false);
 
-        android.widget.EditText link = new android.widget.EditText(this);
+        android.widget.EditText link =
+                new android.widget.EditText(this);
+
         link.setHint("Link do APK");
         link.setSingleLine(true);
-        link.setText("https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk");
+        link.setEnabled(false);
+        link.setText(APK_URL);
 
-        android.widget.EditText titulo = new android.widget.EditText(this);
+        android.widget.EditText titulo =
+                new android.widget.EditText(this);
+
         titulo.setHint("Título");
         titulo.setSingleLine(true);
         titulo.setText("ATUALIZAÇÃO DISPONÍVEL");
 
-        android.widget.EditText mensagem = new android.widget.EditText(this);
+        android.widget.EditText mensagem =
+                new android.widget.EditText(this);
+
         mensagem.setHint("Mensagem para os usuários");
         mensagem.setSingleLine(false);
-        mensagem.setText("Uma nova versão do DaNikeAI está disponível.");
+        mensagem.setText(
+                "Uma nova versão do DaNikeAI está disponível."
+        );
 
-        android.widget.CheckBox obrigatoria = new android.widget.CheckBox(this);
-        obrigatoria.setText("Atualização obrigatória");
+        android.widget.CheckBox obrigatoria =
+                new android.widget.CheckBox(this);
+
+        obrigatoria.setText(
+                "Atualização obrigatória"
+        );
 
         layout.addView(versaoAtual);
+        layout.addView(statusGithub);
         layout.addView(versao);
         layout.addView(codigo);
         layout.addView(link);
@@ -2016,117 +2061,315 @@ private boolean salvarPerfilEquipeLocal(
         android.app.AlertDialog dialog =
                 new android.app.AlertDialog.Builder(this)
                         .setTitle("📲 ATUALIZAÇÃO DO DANIKAI")
-                        .setMessage("Configure a próxima versão que os usuários receberão.")
+                        .setMessage(
+                                "A versão e o código são puxados automaticamente do GitHub."
+                        )
                         .setView(layout)
-                        .setNegativeButton("CANCELAR", null)
-                        .setPositiveButton("PUBLICAR", null)
+                        .setNegativeButton(
+                                "CANCELAR",
+                                null
+                        )
+                        .setPositiveButton(
+                                "PUBLICAR",
+                                null
+                        )
                         .create();
 
         dialog.setOnShowListener(d -> {
-            dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE)
-                    .setOnClickListener(v -> {
 
-                        String nomeVersao =
-                                versao.getText().toString().trim();
+            android.widget.Button publicar =
+                    dialog.getButton(
+                            android.content.DialogInterface.BUTTON_POSITIVE
+                    );
 
-                        String textoCodigo =
-                                codigo.getText().toString().trim();
+            publicar.setEnabled(false);
 
-                        String apkUrl =
-                                link.getText().toString().trim();
+            new Thread(() -> {
 
-                        String textoTitulo =
-                                titulo.getText().toString().trim();
+                java.net.HttpURLConnection conexao = null;
 
-                        String textoMensagem =
-                                mensagem.getText().toString().trim();
+                try {
+                    java.net.URL url =
+                            new java.net.URL(GITHUB_BUILD_URL);
 
-                        if (nomeVersao.isEmpty() ||
-                                textoCodigo.isEmpty() ||
-                                apkUrl.isEmpty()) {
+                    conexao =
+                            (java.net.HttpURLConnection)
+                                    url.openConnection();
 
-                            android.widget.Toast.makeText(
-                                    this,
-                                    "Preencha versão, código e link do APK.",
-                                    android.widget.Toast.LENGTH_LONG
-                            ).show();
-                            return;
-                        }
+                    conexao.setRequestMethod("GET");
+                    conexao.setConnectTimeout(10000);
+                    conexao.setReadTimeout(10000);
+                    conexao.setRequestProperty(
+                            "User-Agent",
+                            "DaNikeAI-ADM"
+                    );
 
-                        int versionCode;
+                    int codigoHttp =
+                            conexao.getResponseCode();
 
-                        try {
-                            versionCode = Integer.parseInt(textoCodigo);
-                        } catch (Exception e) {
-                            android.widget.Toast.makeText(
-                                    this,
-                                    "Código da versão inválido.",
-                                    android.widget.Toast.LENGTH_LONG
-                            ).show();
-                            return;
-                        }
-
-                        java.util.Map<String, Object> dados =
-                                new java.util.HashMap<>();
-
-                        dados.put("enabled", true);
-                        dados.put("versionCode", versionCode);
-                        dados.put("versionName", nomeVersao);
-                        dados.put("apkUrl", apkUrl);
-                        dados.put(
-                                "title",
-                                textoTitulo.isEmpty()
-                                        ? "ATUALIZAÇÃO DISPONÍVEL"
-                                        : textoTitulo
+                    if (codigoHttp != 200) {
+                        throw new Exception(
+                                "GitHub respondeu HTTP " + codigoHttp
                         );
-                        dados.put(
-                                "message",
-                                textoMensagem.isEmpty()
-                                        ? "Uma nova versão do DaNikeAI está disponível."
-                                        : textoMensagem
+                    }
+
+                    java.io.BufferedReader leitor =
+                            new java.io.BufferedReader(
+                                    new java.io.InputStreamReader(
+                                            conexao.getInputStream(),
+                                            java.nio.charset.StandardCharsets.UTF_8
+                                    )
+                            );
+
+                    StringBuilder conteudo =
+                            new StringBuilder();
+
+                    String linha;
+
+                    while ((linha = leitor.readLine()) != null) {
+                        conteudo.append(linha).append("\n");
+                    }
+
+                    leitor.close();
+
+                    String buildGradle =
+                            conteudo.toString();
+
+                    java.util.regex.Matcher matcherCodigo =
+                            java.util.regex.Pattern.compile(
+                                    "versionCode\\s+(\\d+)"
+                            ).matcher(buildGradle);
+
+                    java.util.regex.Matcher matcherVersao =
+                            java.util.regex.Pattern.compile(
+                                    "versionName\\s+['\\\"]([^'\\\"]+)['\\\"]"
+                            ).matcher(buildGradle);
+
+                    if (!matcherCodigo.find()) {
+                        throw new Exception(
+                                "versionCode não encontrado no GitHub."
                         );
-                        dados.put(
-                                "mandatory",
-                                obrigatoria.isChecked()
+                    }
+
+                    if (!matcherVersao.find()) {
+                        throw new Exception(
+                                "versionName não encontrado no GitHub."
                         );
-                        dados.put(
-                                "publicadoEm",
-                                com.google.firebase.firestore.FieldValue.serverTimestamp()
+                    }
+
+                    String nomeVersao =
+                            matcherVersao.group(1);
+
+                    String textoCodigo =
+                            matcherCodigo.group(1);
+
+                    runOnUiThread(() -> {
+
+                        versao.setText(nomeVersao);
+                        codigo.setText(textoCodigo);
+                        link.setText(APK_URL);
+
+                        statusGithub.setText(
+                                "🟢 GitHub sincronizado\n"
+                                        + "Versão encontrada: v"
+                                        + nomeVersao
+                                        + "  •  Código "
+                                        + textoCodigo
                         );
 
-                        com.google.firebase.firestore.FirebaseFirestore
-                                .getInstance()
-                                .collection("config")
-                                .document("update")
-                                .set(dados)
-                                .addOnSuccessListener(unused -> {
-                                    android.widget.Toast.makeText(
-                                            this,
-                                            "✅ Atualização publicada no Firebase!",
-                                            android.widget.Toast.LENGTH_LONG
-                                    ).show();
+                        publicar.setEnabled(true);
 
-                                    dialog.dismiss();
-                                })
-                                .addOnFailureListener(e -> {
-                                    String detalhe = e.getMessage();
-                                    if (detalhe == null || detalhe.trim().isEmpty()) {
-                                        detalhe = e.getClass().getSimpleName();
-                                    }
-
-                                    android.util.Log.e(
-                                            "DaNikeADM",
-                                            "ERRO AO PUBLICAR ATUALIZACAO",
-                                            e
-                                    );
-
-                                    android.widget.Toast.makeText(
-                                            this,
-                                            "❌ FALHA NO FIREBASE: " + detalhe,
-                                            android.widget.Toast.LENGTH_LONG
-                                    ).show();
-                                });
+                        android.widget.Toast.makeText(
+                                this,
+                                "✅ Versão carregada automaticamente do GitHub.",
+                                android.widget.Toast.LENGTH_SHORT
+                        ).show();
                     });
+
+                } catch (Exception e) {
+
+                    runOnUiThread(() -> {
+
+                        statusGithub.setText(
+                                "🔴 Não foi possível consultar o GitHub."
+                        );
+
+                        statusGithub.setTextColor(
+                                android.graphics.Color.rgb(
+                                        255,
+                                        70,
+                                        100
+                                )
+                        );
+
+                        publicar.setEnabled(false);
+
+                        android.widget.Toast.makeText(
+                                this,
+                                "❌ Erro ao consultar GitHub: "
+                                        + e.getMessage(),
+                                android.widget.Toast.LENGTH_LONG
+                        ).show();
+                    });
+
+                } finally {
+
+                    if (conexao != null) {
+                        conexao.disconnect();
+                    }
+                }
+
+            }).start();
+
+            publicar.setOnClickListener(v -> {
+
+                String nomeVersao =
+                        versao.getText()
+                                .toString()
+                                .trim();
+
+                String textoCodigo =
+                        codigo.getText()
+                                .toString()
+                                .trim();
+
+                String apkUrl =
+                        link.getText()
+                                .toString()
+                                .trim();
+
+                String textoTitulo =
+                        titulo.getText()
+                                .toString()
+                                .trim();
+
+                String textoMensagem =
+                        mensagem.getText()
+                                .toString()
+                                .trim();
+
+                if (nomeVersao.isEmpty()
+                        || textoCodigo.isEmpty()
+                        || apkUrl.isEmpty()) {
+
+                    android.widget.Toast.makeText(
+                            this,
+                            "A versão do GitHub ainda não foi carregada.",
+                            android.widget.Toast.LENGTH_LONG
+                    ).show();
+
+                    return;
+                }
+
+                int versionCode;
+
+                try {
+
+                    versionCode =
+                            Integer.parseInt(textoCodigo);
+
+                } catch (Exception e) {
+
+                    android.widget.Toast.makeText(
+                            this,
+                            "Código da versão inválido.",
+                            android.widget.Toast.LENGTH_LONG
+                    ).show();
+
+                    return;
+                }
+
+                java.util.Map<String, Object> dados =
+                        new java.util.HashMap<>();
+
+                dados.put(
+                        "enabled",
+                        true
+                );
+
+                dados.put(
+                        "versionCode",
+                        versionCode
+                );
+
+                dados.put(
+                        "versionName",
+                        nomeVersao
+                );
+
+                dados.put(
+                        "apkUrl",
+                        apkUrl
+                );
+
+                dados.put(
+                        "title",
+                        textoTitulo.isEmpty()
+                                ? "ATUALIZAÇÃO DISPONÍVEL"
+                                : textoTitulo
+                );
+
+                dados.put(
+                        "message",
+                        textoMensagem.isEmpty()
+                                ? "Uma nova versão do DaNikeAI está disponível."
+                                : textoMensagem
+                );
+
+                dados.put(
+                        "mandatory",
+                        obrigatoria.isChecked()
+                );
+
+                dados.put(
+                        "publicadoEm",
+                        com.google.firebase.firestore.FieldValue
+                                .serverTimestamp()
+                );
+
+                com.google.firebase.firestore.FirebaseFirestore
+                        .getInstance()
+                        .collection("config")
+                        .document("update")
+                        .set(dados)
+                        .addOnSuccessListener(unused -> {
+
+                            android.widget.Toast.makeText(
+                                    this,
+                                    "✅ Atualização publicada no Firebase!",
+                                    android.widget.Toast.LENGTH_LONG
+                            ).show();
+
+                            dialog.dismiss();
+
+                        })
+                        .addOnFailureListener(e -> {
+
+                            String detalhe =
+                                    e.getMessage();
+
+                            if (detalhe == null
+                                    || detalhe.trim().isEmpty()) {
+
+                                detalhe =
+                                        e.getClass()
+                                                .getSimpleName();
+                            }
+
+                            android.util.Log.e(
+                                    "DaNikeADM",
+                                    "ERRO AO PUBLICAR ATUALIZACAO",
+                                    e
+                            );
+
+                            android.widget.Toast.makeText(
+                                    this,
+                                    "❌ FALHA NO FIREBASE: "
+                                            + detalhe,
+                                    android.widget.Toast.LENGTH_LONG
+                            ).show();
+                        });
+            });
         });
 
         dialog.show();
