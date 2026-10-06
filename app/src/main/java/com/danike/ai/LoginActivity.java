@@ -323,7 +323,7 @@ TextView robo = new TextView(this);
         new android.os.Handler(
                 android.os.Looper.getMainLooper()
         ).postDelayed(
-                () -> AtualizacaoApp.verificar(LoginActivity.this),
+                () -> { /* ATUALIZACAO MANUAL PELO ADM DESATIVADA */ },
                 500
         );
 
@@ -435,7 +435,7 @@ TextView robo = new TextView(this);
                             new android.os.Handler(
                                     android.os.Looper.getMainLooper()
                             ).postDelayed(
-                                    () -> AtualizacaoApp.verificar(LoginActivity.this),
+                                    () -> { /* ATUALIZACAO MANUAL PELO ADM DESATIVADA */ },
                                     1200
                             );
                                 finish();
@@ -473,7 +473,7 @@ TextView robo = new TextView(this);
                             );
 
                             startActivity(intent);
-                            AtualizacaoApp.verificar(LoginActivity.this);
+// ATUALIZACAO MANUAL PELO ADM DESATIVADA: AtualizacaoApp.verificar(LoginActivity.this);
                             finish();
                         }
                     });

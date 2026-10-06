@@ -800,31 +800,28 @@ atualizarListaEquipeAdm();
                         lixoParams
                 );
 
-                // Dois toques na foto OU na lixeira excluem.
+                // Dois toques na foto, lixeira ou avatar excluem.
                 final int indice = i;
+                final long[] ultimoToque = {0};
 
-                android.view.GestureDetector detector =
-                        new android.view.GestureDetector(
-                                this,
-                                new android.view.GestureDetector.SimpleOnGestureListener() {
-                                    @Override
-                                    public boolean onDoubleTap(
-                                            android.view.MotionEvent e
-                                    ) {
-                                        excluirPerfilEquipeLocal(
-                                                indice
-                                        );
-                                        return true;
-                                    }
-                                }
-                        );
-
-                avatar.setOnTouchListener(
+                android.view.View.OnTouchListener toqueDuplo =
                         (v, event) -> {
-                            detector.onTouchEvent(event);
+                            if (event.getAction() == android.view.MotionEvent.ACTION_UP) {
+                                long agora = android.os.SystemClock.elapsedRealtime();
+
+                                if (agora - ultimoToque[0] <= 350) {
+                                    ultimoToque[0] = 0;
+                                    excluirPerfilEquipeLocal(indice);
+                                } else {
+                                    ultimoToque[0] = agora;
+                                }
+                            }
                             return true;
-                        }
-                );
+                        };
+
+                avatar.setOnTouchListener(toqueDuplo);
+                foto.setOnTouchListener(toqueDuplo);
+                lixeira.setOnTouchListener(toqueDuplo);
 
                 item.addView(
                         avatar,

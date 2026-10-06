@@ -18,3 +18,31 @@ __pycache__/
 *_backup_*
 *.backup_manual
 *.backup-home
+
+# Segredos e credenciais
+.env
+*.env
+google-services.json
+google-services-*.json
+*.jks
+*.keystore
+
+# Build
+.gradle/
+build/
+app/build/
+*.apk
+*.aab
+
+# IDE
+.idea/
+*.iml
+local.properties
+
+# Termux / temporários
+*.log
+
+# Backups locais
+*.bak
+*.bak-*
+*ANTES*

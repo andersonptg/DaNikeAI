@@ -402,7 +402,17 @@ public class MainActivity extends Activity {
         TextView t = new TextView(this);
         t.setText(s);
         t.setTextSize(tam);
-        t.setTextColor(cor);
+
+        // Cores neon continuam recebidas normalmente.
+        // No modo claro, apenas branco puro de textos neutros
+        // vira uma cor escura para manter a leitura.
+        int corFinal = cor;
+
+        if (!escuro && cor == Color.WHITE) {
+            corFinal = Color.rgb(25, 30, 42);
+        }
+
+        t.setTextColor(corFinal);
         t.setGravity(Gravity.CENTER);
         return t;
     }
@@ -457,34 +467,35 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences("DaNikeAI_Dados", 0);
         escuro = prefs.getBoolean("modo_escuro", true);
 
-        android.content.SharedPreferences onboardingPrefs =
-                getSharedPreferences("DaNikeAI_Onboarding", MODE_PRIVATE);
-
-        boolean onboardingConcluido =
-                onboardingPrefs.getBoolean("concluido", false);
-
-        boolean apresentacaoNomeV2 =
-                onboardingPrefs.getBoolean("apresentacao_nome_v2", false);
-
-        if (!apresentacaoNomeV2) {
-            startActivity(
-                    new Intent(this, OnboardingActivity.class)
-            );
-            finish();
-            return;
-        }
-
-        if (!onboardingConcluido) {
-            startActivity(
-                    new Intent(this, OnboardingActivity.class)
-            );
-            finish();
-            return;
-        }
+        aplicarTemaSistema();
 
         montarHome();
 
-        AtualizacaoApp.verificar(this);
+        // ATUALIZACAO MANUAL PELO ADM DESATIVADA: AtualizacaoApp.verificar(this);
+    }
+
+    void aplicarTemaSistema() {
+        android.view.Window janela = getWindow();
+
+        if (escuro) {
+            janela.setStatusBarColor(Color.rgb(2, 6, 18));
+            janela.setNavigationBarColor(Color.rgb(2, 6, 18));
+
+            if (android.os.Build.VERSION.SDK_INT >= 23) {
+                janela.getDecorView().setSystemUiVisibility(0);
+            }
+
+        } else {
+            janela.setStatusBarColor(Color.rgb(242, 246, 252));
+            janela.setNavigationBarColor(Color.rgb(242, 246, 252));
+
+            if (android.os.Build.VERSION.SDK_INT >= 23) {
+                janela.getDecorView().setSystemUiVisibility(
+                        android.view.View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+                        | android.view.View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
+                );
+            }
+        }
     }
 
     void montarHome() {
@@ -500,6 +511,14 @@ public class MainActivity extends Activity {
 
         NeonBackgroundView fundo =
                 new NeonBackgroundView(this);
+
+        // O fundo estrutural acompanha o tema.
+        // Elementos neon continuam independentes e preservados.
+        if (!escuro) {
+            fundo.setAlpha(0.92f);
+        } else {
+            fundo.setAlpha(1.0f);
+        }
 
         raiz = new FrameLayout(this);
 
@@ -983,6 +1002,388 @@ public class MainActivity extends Activity {
         );
 
 
+
+        // =========================================================
+        // INSTAGRAM DA EQUIPE — PAINEL NEON
+        // =========================================================
+        LinearLayout painelInstagramEquipe =
+                new LinearLayout(this);
+        painelInstagramEquipe.setOrientation(
+                LinearLayout.VERTICAL
+        );
+        painelInstagramEquipe.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        GradientDrawable fundoPainelInstagram =
+                new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[] {
+                                Color.rgb(10, 7, 24),
+                                Color.rgb(18, 8, 38),
+                                Color.rgb(8, 18, 38)
+                        }
+                );
+        fundoPainelInstagram.setCornerRadius(
+                dp(20)
+        );
+        fundoPainelInstagram.setStroke(
+                dp(2),
+                Color.rgb(80, 130, 255)
+        );
+
+        painelInstagramEquipe.setBackground(
+                fundoPainelInstagram
+        );
+        painelInstagramEquipe.setElevation(
+                dp(10)
+        );
+        painelInstagramEquipe.setPadding(
+                dp(8),
+                dp(7),
+                dp(8),
+                dp(7)
+        );
+
+        HorizontalScrollView instagramScroll =
+                new HorizontalScrollView(this);
+        instagramScroll.setHorizontalScrollBarEnabled(
+                false
+        );
+        instagramScroll.setOverScrollMode(
+                View.OVER_SCROLL_NEVER
+        );
+
+        LinearLayout instagramLinha =
+                new LinearLayout(this);
+        instagramLinha.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+        instagramLinha.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        try {
+            org.json.JSONArray perfisInstagram =
+                    new org.json.JSONArray(equipeJson);
+
+            for (int i = 0;
+                    i < perfisInstagram.length();
+                    i++) {
+
+                org.json.JSONObject perfilInstagram =
+                        perfisInstagram.getJSONObject(i);
+
+                String usuarioInstagram =
+                        perfilInstagram.optString(
+                                "instagramUsuario",
+                                ""
+                        ).trim();
+
+                String linkInstagram =
+                        perfilInstagram.optString(
+                                "instagramLink",
+                                ""
+                        ).trim();
+
+                if (usuarioInstagram.isEmpty()) {
+                    continue;
+                }
+
+                if (linkInstagram.isEmpty()) {
+                    linkInstagram =
+                            "https://instagram.com/" +
+                            usuarioInstagram;
+                }
+
+                if (!linkInstagram.startsWith("http://") &&
+                        !linkInstagram.startsWith("https://")) {
+                    linkInstagram =
+                            "https://" + linkInstagram;
+                }
+
+                final String linkFinalInstagram =
+                        linkInstagram;
+
+                LinearLayout perfilBox =
+                        new LinearLayout(this);
+                perfilBox.setOrientation(
+                        LinearLayout.VERTICAL
+                );
+                perfilBox.setGravity(
+                        Gravity.CENTER
+                );
+                perfilBox.setPadding(
+                        dp(4),
+                        0,
+                        dp(4),
+                        0
+                );
+
+                // Logo do Instagram
+                TextView logoInstagram =
+                        txt("◎", 22, Color.WHITE);
+                logoInstagram.setGravity(
+                        Gravity.CENTER
+                );
+
+                GradientDrawable fundoLogoInstagram =
+                        new GradientDrawable(
+                                GradientDrawable.Orientation.TL_BR,
+                                new int[] {
+                                        Color.rgb(255, 55, 95),
+                                        Color.rgb(255, 35, 145),
+                                        Color.rgb(170, 35, 235),
+                                        Color.rgb(45, 145, 255)
+                                }
+                        );
+                fundoLogoInstagram.setShape(
+                        GradientDrawable.RECTANGLE
+                );
+                fundoLogoInstagram.setCornerRadius(
+                        dp(12)
+                );
+                fundoLogoInstagram.setStroke(
+                        dp(1),
+                        Color.WHITE
+                );
+
+                logoInstagram.setBackground(
+                        fundoLogoInstagram
+                );
+
+                LinearLayout.LayoutParams logoParams =
+                        new LinearLayout.LayoutParams(
+                                dp(38),
+                                dp(38)
+                        );
+                logoParams.setMargins(
+                        dp(2),
+                        0,
+                        dp(2),
+                        dp(5)
+                );
+
+                perfilBox.addView(
+                        logoInstagram,
+                        logoParams
+                );
+
+                // Nome + verificação
+                LinearLayout nomeBox =
+                        new LinearLayout(this);
+                nomeBox.setOrientation(
+                        LinearLayout.HORIZONTAL
+                );
+                nomeBox.setGravity(
+                        Gravity.CENTER
+                );
+                nomeBox.setPadding(
+                        dp(10),
+                        dp(6),
+                        dp(10),
+                        dp(6)
+                );
+
+                GradientDrawable fundoNome =
+                        new GradientDrawable();
+                fundoNome.setShape(
+                        GradientDrawable.RECTANGLE
+                );
+                fundoNome.setColor(
+                        Color.rgb(12, 10, 28)
+                );
+                fundoNome.setCornerRadius(
+                        dp(22)
+                );
+                fundoNome.setStroke(
+                        dp(1),
+                        Color.rgb(70, 120, 255)
+                );
+
+                nomeBox.setBackground(
+                        fundoNome
+                );
+                nomeBox.setElevation(
+                        dp(8)
+                );
+
+                TextView nomeInstagram =
+                        txt(
+                                "@" + usuarioInstagram,
+                                11,
+                                Color.WHITE
+                        );
+                nomeInstagram.setTypeface(
+                        Typeface.DEFAULT,
+                        Typeface.BOLD
+                );
+                nomeInstagram.setSingleLine(
+                        true
+                );
+
+                nomeBox.addView(
+                        nomeInstagram,
+                        new LinearLayout.LayoutParams(
+                                -2,
+                                dp(24)
+                        )
+                );
+
+                TextView seloInstagram =
+                        txt(
+                                "✓",
+                                9,
+                                Color.WHITE
+                        );
+                seloInstagram.setGravity(
+                        Gravity.CENTER
+                );
+                seloInstagram.setTypeface(
+                        Typeface.DEFAULT,
+                        Typeface.BOLD
+                );
+
+                GradientDrawable fundoSelo =
+                        new GradientDrawable();
+                fundoSelo.setShape(
+                        GradientDrawable.OVAL
+                );
+                fundoSelo.setColor(
+                        Color.rgb(35, 135, 255)
+                );
+                fundoSelo.setStroke(
+                        dp(1),
+                        Color.rgb(105, 190, 255)
+                );
+
+                seloInstagram.setBackground(
+                        fundoSelo
+                );
+
+                LinearLayout.LayoutParams seloParams =
+                        new LinearLayout.LayoutParams(
+                                dp(16),
+                                dp(16)
+                        );
+                seloParams.setMargins(
+                        dp(6),
+                        0,
+                        0,
+                        0
+                );
+
+                nomeBox.addView(
+                        seloInstagram,
+                        seloParams
+                );
+
+                perfilBox.addView(
+                        nomeBox,
+                        new LinearLayout.LayoutParams(
+                                -2,
+                                dp(38)
+                        )
+                );
+
+                // =========================================================
+                // GLOW PREMIUM DO BOTÃO — ACENDE E APAGA LENTAMENTE
+                // =========================================================
+                android.animation.ValueAnimator glow =
+                        android.animation.ValueAnimator.ofFloat(
+                                0.55f,
+                                1.0f
+                        );
+
+                glow.setDuration(1500);
+
+                glow.setRepeatMode(
+                        android.animation.ValueAnimator.REVERSE
+                );
+
+                glow.setRepeatCount(
+                        android.animation.ValueAnimator.INFINITE
+                );
+
+                glow.addUpdateListener(animation -> {
+                    float intensidade =
+                            (float) animation.getAnimatedValue();
+
+                    nomeBox.setAlpha(intensidade);
+
+                    nomeBox.setElevation(
+                            dp((int)(8 + (intensidade * 14)))
+                    );
+                });
+
+                glow.start();
+
+                // Abre o perfil do Instagram
+                perfilBox.setOnClickListener(v -> {
+                    try {
+                        startActivity(
+                                new Intent(
+                                        Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(
+                                                linkFinalInstagram
+                                        )
+                                )
+                        );
+                    } catch (Exception e) {
+                        Toast.makeText(
+                                this,
+                                "Não foi possível abrir o Instagram.",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                });
+
+                instagramLinha.addView(
+                        perfilBox,
+                        new LinearLayout.LayoutParams(
+                                -2,
+                                -1
+                        )
+                );
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        instagramScroll.addView(
+                instagramLinha,
+                new HorizontalScrollView.LayoutParams(
+                        -2,
+                        -1
+                )
+        );
+
+        painelInstagramEquipe.addView(
+                instagramScroll,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(108)
+                )
+        );
+
+        LinearLayout.LayoutParams painelInstagramParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(122)
+                );
+        painelInstagramParams.setMargins(
+                dp(4),
+                0,
+                dp(4),
+                dp(10)
+        );
+
+        conteudo.addView(
+                painelInstagramEquipe,
+                painelInstagramParams
+        );
+
         // =========================
         // CAPA IA
         // =========================
@@ -1231,7 +1632,229 @@ public class MainActivity extends Activity {
                 new FrameLayout.LayoutParams(-1, -1);
         telaParams.topMargin =
                 temEquipe ? dp(260) : dp(5);
+        telaParams.bottomMargin = dp(76);
         raiz.addView(tela, telaParams);
+
+        // =========================================================
+        // BARRA DE NAVEGAÇÃO FIXA — HOME / CONEXÕES / PERFIL
+        // =========================================================
+        LinearLayout barraNavegacao =
+                new LinearLayout(this);
+        barraNavegacao.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+        barraNavegacao.setGravity(
+                Gravity.CENTER
+        );
+        barraNavegacao.setPadding(
+                dp(10),
+                dp(5),
+                dp(10),
+                dp(5)
+        );
+
+        GradientDrawable fundoBarra =
+                new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[] {
+                                Color.rgb(7, 7, 18),
+                                Color.rgb(13, 8, 28),
+                                Color.rgb(7, 12, 24)
+                        }
+                );
+        fundoBarra.setCornerRadius(dp(22));
+        fundoBarra.setStroke(
+                dp(1),
+                Color.rgb(55, 100, 180)
+        );
+        barraNavegacao.setBackground(fundoBarra);
+        barraNavegacao.setElevation(dp(22));
+
+        TextView botaoHome =
+                txt("🏠\nHome", 12, Color.WHITE);
+        botaoHome.setGravity(Gravity.CENTER);
+        botaoHome.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        TextView botaoConexoes =
+                txt("👥\nConexões", 12, Color.WHITE);
+        botaoConexoes.setGravity(Gravity.CENTER);
+        botaoConexoes.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        TextView botaoPerfil =
+                txt("👤\nPerfil", 12, Color.WHITE);
+
+        TextView botaoMais =
+                txt("⋯\nMais", 12, Color.WHITE);
+        botaoMais.setGravity(Gravity.CENTER);
+        botaoMais.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+        botaoPerfil.setGravity(Gravity.CENTER);
+        botaoPerfil.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        TextView[] botoesNav = {
+                botaoHome,
+                botaoConexoes,
+                botaoPerfil,
+                botaoMais
+        };
+
+        for (TextView botao : botoesNav) {
+            botao.setPadding(
+                    dp(8),
+                    dp(3),
+                    dp(8),
+                    dp(3)
+            );
+
+            LinearLayout.LayoutParams bp =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(62),
+                            1
+                    );
+            bp.setMargins(
+                    dp(3),
+                    0,
+                    dp(3),
+                    0
+            );
+
+            barraNavegacao.addView(
+                    botao,
+                    bp
+            );
+        }
+
+        // Home fica destacada porque é a tela inicial
+        GradientDrawable fundoHome =
+                new GradientDrawable();
+        fundoHome.setColor(
+                Color.rgb(20, 35, 70)
+        );
+        fundoHome.setCornerRadius(dp(18));
+        fundoHome.setStroke(
+                dp(1),
+                Color.rgb(70, 145, 255)
+        );
+        botaoHome.setBackground(fundoHome);
+        botaoHome.setElevation(dp(10));
+
+        GradientDrawable fundoConexoes = new GradientDrawable();
+        fundoConexoes.setColor(Color.rgb(20, 35, 70));
+        fundoConexoes.setCornerRadius(dp(18));
+        fundoConexoes.setStroke(dp(1), Color.rgb(70, 145, 255));
+        botaoConexoes.setBackground(fundoConexoes);
+        botaoConexoes.setElevation(dp(10));
+
+        GradientDrawable fundoPerfil = new GradientDrawable();
+        fundoPerfil.setColor(Color.rgb(20, 35, 70));
+        fundoPerfil.setCornerRadius(dp(18));
+        fundoPerfil.setStroke(dp(1), Color.rgb(70, 145, 255));
+        botaoPerfil.setBackground(fundoPerfil);
+        botaoPerfil.setElevation(dp(10));
+
+        botaoHome.setOnClickListener(v -> {
+            scroll.smoothScrollTo(0, 0);
+        });
+
+        botaoConexoes.setOnClickListener(v -> {
+            FrameLayout telaPessoas = new FrameLayout(this);
+            telaPessoas.setBackgroundColor(Color.BLACK);
+            telaPessoas.setElevation(dp(100));
+
+            TextView tituloPessoas =
+                    txt("PESSOAS", 26, Color.WHITE);
+            tituloPessoas.setGravity(Gravity.CENTER);
+            tituloPessoas.setTypeface(
+                    Typeface.DEFAULT,
+                    Typeface.BOLD
+            );
+
+            telaPessoas.addView(
+                    tituloPessoas,
+                    new FrameLayout.LayoutParams(
+                            -1,
+                            dp(80),
+                            Gravity.TOP
+                    )
+            );
+
+            TextView fecharPessoas =
+                    txt("✕", 28, Color.WHITE);
+            fecharPessoas.setGravity(Gravity.CENTER);
+
+            FrameLayout.LayoutParams fecharPessoasParams =
+                    new FrameLayout.LayoutParams(
+                            dp(55),
+                            dp(55),
+                            Gravity.TOP | Gravity.END
+                    );
+            fecharPessoasParams.setMargins(
+                    0, dp(12), dp(12), 0
+            );
+
+            telaPessoas.addView(
+                    fecharPessoas,
+                    fecharPessoasParams
+            );
+
+            fecharPessoas.setOnClickListener(x ->
+                    telaPessoas.setVisibility(View.GONE)
+            );
+
+            raiz.addView(
+                    telaPessoas,
+                    new FrameLayout.LayoutParams(-1, -1)
+            );
+
+            telaPessoas.bringToFront();
+        });
+
+        botaoPerfil.setOnClickListener(v -> {
+            startActivity(
+                    new Intent(
+                            MainActivity.this,
+                            PerfilActivity.class
+                    )
+            );
+        });
+
+        botaoMais.setOnClickListener(v -> {
+            Toast.makeText(
+                    this,
+                    "Mais opções em breve.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        FrameLayout.LayoutParams navParams =
+                new FrameLayout.LayoutParams(
+                        -1,
+                        dp(76),
+                        Gravity.BOTTOM
+                );
+        navParams.setMargins(
+                dp(8),
+                0,
+                dp(8),
+                dp(8)
+        );
+
+        raiz.addView(
+                barraNavegacao,
+                navParams
+        );
 
         setContentView(raiz);
         carregarIndicadoresManutencao(
@@ -1628,160 +2251,7 @@ public class MainActivity extends Activity {
                 )
         );
 
-        // Instagram publicado pelo ADM
-                if (instagramUsuario != null &&
-                        !instagramUsuario.trim().isEmpty()) {
-
-                    LinearLayout instagramBox =
-                            new LinearLayout(this);
-
-                    instagramBox.setOrientation(
-                            LinearLayout.HORIZONTAL
-                    );
-
-                    instagramBox.setGravity(
-                            Gravity.CENTER
-                    );
-
-                    GradientDrawable fundoInstagram =
-                            new GradientDrawable();
-
-                    fundoInstagram.setShape(
-                            GradientDrawable.RECTANGLE
-                    );
-
-                    fundoInstagram.setColor(
-                            Color.rgb(12, 8, 28)
-                    );
-
-                    fundoInstagram.setCornerRadius(
-                            dp(22)
-                    );
-
-                    fundoInstagram.setStroke(
-                            dp(1),
-                            Color.rgb(70, 120, 255)
-                    );
-
-                    instagramBox.setBackground(
-                            fundoInstagram
-                    );
-
-                    instagramBox.setPadding(
-                            dp(9),
-                            dp(5),
-                            dp(9),
-                            dp(5)
-                    );
-
-                    instagramBox.setElevation(dp(8));
-
-                    TextView instagramNome = txt(
-                            "@ " + instagramUsuario,
-                            11,
-                            Color.WHITE
-                    );
-
-                    instagramNome.setTypeface(
-                            Typeface.DEFAULT,
-                            Typeface.BOLD
-                    );
-
-                    instagramNome.setSingleLine(true);
-
-                    instagramBox.addView(
-                            instagramNome,
-                            new LinearLayout.LayoutParams(
-                                    -2,
-                                    -1
-                            )
-                    );
-
-                    TextView verificado = txt(
-                            "✓",
-                            10,
-                            Color.WHITE
-                    );
-
-                    verificado.setGravity(
-                            Gravity.CENTER
-                    );
-
-                    GradientDrawable seloAzul =
-                            new GradientDrawable();
-
-                    seloAzul.setShape(
-                            GradientDrawable.OVAL
-                    );
-
-                    seloAzul.setColor(
-                            Color.rgb(45, 120, 255)
-                    );
-
-                    verificado.setBackground(
-                            seloAzul
-                    );
-
-                    LinearLayout.LayoutParams seloParams =
-                            new LinearLayout.LayoutParams(
-                                    dp(17),
-                                    dp(17)
-                            );
-
-                    seloParams.setMargins(
-                            dp(5),
-                            0,
-                            0,
-                            0
-                    );
-
-                    instagramBox.addView(
-                            verificado,
-                            seloParams
-                    );
-
-                    instagramBox.setOnClickListener(v -> {
-                        try {
-                            String link = instagramLink;
-
-                            if (link == null ||
-                                    link.trim().isEmpty()) {
-                                link =
-                                        "https://instagram.com/" +
-                                        instagramUsuario;
-                            }
-
-                            if (!link.startsWith("http://") &&
-                                    !link.startsWith("https://")) {
-                                link = "https://" + link;
-                            }
-
-                            startActivity(
-                                    new Intent(
-                                            Intent.ACTION_VIEW,
-                                            android.net.Uri.parse(link)
-                                    )
-                            );
-
-                        } catch (Exception e) {
-                            Toast.makeText(
-                                    this,
-                                    "Não foi possível abrir o Instagram.",
-                                    Toast.LENGTH_SHORT
-                            ).show();
-                        }
-                    });
-
-                    membro.addView(
-                            instagramBox,
-                            new LinearLayout.LayoutParams(
-                                    dp(120),
-                                    dp(38)
-                            )
-                    );
-                }
-
-                equipeLinha.addView(
+        equipeLinha.addView(
                 membro,
                 new LinearLayout.LayoutParams(
                         -2,
@@ -2283,9 +2753,10 @@ public class MainActivity extends Activity {
                 new FrameLayout.LayoutParams(-1, -1)
         );
 
-        TextView tituloMenu = txt("☰  MENU", 24, Color.WHITE);
-        tituloMenu.setGravity(Gravity.CENTER_VERTICAL);
+        TextView tituloMenu = txt("✦  APPS", 30, Color.WHITE);
+        tituloMenu.setGravity(Gravity.CENTER);
         tituloMenu.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        tituloMenu.setShadowLayer(dp(14), 0, 0, Color.rgb(70, 160, 255));
 
         FrameLayout.LayoutParams tituloParams =
                 new FrameLayout.LayoutParams(
@@ -2322,7 +2793,20 @@ public class MainActivity extends Activity {
 
         LinearLayout listaMenu = new LinearLayout(this);
         listaMenu.setOrientation(LinearLayout.VERTICAL);
-        listaMenu.setPadding(dp(14), dp(85), dp(14), dp(25));
+        listaMenu.setPadding(dp(12), dp(92), dp(12), dp(28));
+
+        GradientDrawable fundoApps = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] {
+                        Color.argb(238, 5, 8, 24),
+                        Color.argb(235, 12, 8, 35),
+                        Color.argb(238, 5, 18, 38)
+                }
+        );
+        fundoApps.setCornerRadius(dp(30));
+        fundoApps.setStroke(dp(2), Color.rgb(45, 125, 245));
+        listaMenu.setBackground(fundoApps);
+        listaMenu.setElevation(dp(18));
 
         scrollMenu.addView(
                 listaMenu,
@@ -2548,65 +3032,74 @@ public class MainActivity extends Activity {
             String descricao,
             Runnable acao
     ) {
-
         LinearLayout item = new LinearLayout(this);
         item.setOrientation(LinearLayout.HORIZONTAL);
         item.setGravity(Gravity.CENTER_VERTICAL);
-        item.setPadding(dp(16), dp(10), dp(14), dp(10));
+        item.setPadding(dp(14), dp(8), dp(10), dp(8));
 
         GradientDrawable fundo = new GradientDrawable(
                 GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[] {
-                        Color.rgb(18, 8, 42),
-                        Color.rgb(7, 30, 65)
+                        Color.rgb(10, 12, 32),
+                        Color.rgb(13, 25, 58),
+                        Color.rgb(8, 14, 35)
                 }
         );
-
-        fundo.setCornerRadius(dp(22));
-        fundo.setStroke(dp(2), Color.rgb(55, 125, 230));
-
+        fundo.setCornerRadius(dp(24));
+        fundo.setStroke(dp(2), Color.rgb(45, 125, 245));
         item.setBackground(fundo);
-        item.setElevation(dp(8));
+        item.setElevation(dp(12));
 
-        TextView iconeView = txt(icone, 27, Color.WHITE);
+        TextView iconeView = txt(icone, 29, Color.WHITE);
         iconeView.setGravity(Gravity.CENTER);
 
-        LinearLayout.LayoutParams iconeParams =
-                new LinearLayout.LayoutParams(dp(48), dp(55));
+        GradientDrawable fundoIcone = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] {
+                        Color.rgb(24, 12, 58),
+                        Color.rgb(8, 45, 85)
+                }
+        );
+        fundoIcone.setShape(GradientDrawable.RECTANGLE);
+        fundoIcone.setCornerRadius(dp(18));
+        fundoIcone.setStroke(dp(1), Color.rgb(70, 155, 255));
+        iconeView.setBackground(fundoIcone);
+        iconeView.setElevation(dp(8));
 
+        LinearLayout.LayoutParams iconeParams =
+                new LinearLayout.LayoutParams(dp(58), dp(58));
         item.addView(iconeView, iconeParams);
 
         LinearLayout textos = new LinearLayout(this);
         textos.setOrientation(LinearLayout.VERTICAL);
         textos.setGravity(Gravity.CENTER_VERTICAL);
 
-        TextView tituloView = txt(titulo, 17, Color.WHITE);
+        TextView tituloView = txt(titulo, 18, Color.WHITE);
         tituloView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        tituloView.setShadowLayer(dp(8), 0, 0, Color.rgb(50, 140, 255));
 
-        TextView descricaoView = txt(descricao, 12, Color.LTGRAY);
+        TextView descricaoView = txt(descricao, 12, Color.rgb(190, 205, 225));
 
         textos.addView(tituloView);
         textos.addView(descricaoView);
 
         LinearLayout.LayoutParams textoParams =
                 new LinearLayout.LayoutParams(0, -2, 1f);
-
-        textoParams.setMargins(dp(8), 0, dp(8), 0);
-
+        textoParams.setMargins(dp(12), 0, dp(8), 0);
         item.addView(textos, textoParams);
 
-        TextView seta = txt("›", 30, Color.rgb(90, 170, 255));
+        TextView seta = txt("›", 32, Color.rgb(85, 175, 255));
         seta.setGravity(Gravity.CENTER);
+        seta.setShadowLayer(dp(10), 0, 0, Color.rgb(50, 140, 255));
 
         item.addView(
                 seta,
-                new LinearLayout.LayoutParams(dp(35), dp(55))
+                new LinearLayout.LayoutParams(dp(34), dp(58))
         );
 
         LinearLayout.LayoutParams itemParams =
-                new LinearLayout.LayoutParams(-1, dp(78));
-
-        itemParams.setMargins(0, 0, 0, dp(12));
+                new LinearLayout.LayoutParams(-1, dp(88));
+        itemParams.setMargins(0, 0, 0, dp(13));
 
         lista.addView(item, itemParams);
 
@@ -2619,9 +3112,9 @@ public class MainActivity extends Activity {
         item.setOnTouchListener((v, event) -> {
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    v.setAlpha(0.72f);
-                    v.setScaleX(0.98f);
-                    v.setScaleY(0.98f);
+                    v.setAlpha(0.82f);
+                    v.setScaleX(0.985f);
+                    v.setScaleY(0.985f);
                     break;
 
                 case MotionEvent.ACTION_UP:
