@@ -455,7 +455,9 @@ TextView robo = new TextView(this);
 
                             String nomeSalvo = dados.getString("nome", "").trim();
                             boolean onboardingConcluido =
-                                    dados.getBoolean("onboarding_concluido", false);
+                                    dados.getBoolean("onboarding_concluido", false)
+                                    || dados.getBoolean("nome_definido", false)
+                                    || dados.getBoolean("concluido", false);
 
                             Class<?> destino;
 

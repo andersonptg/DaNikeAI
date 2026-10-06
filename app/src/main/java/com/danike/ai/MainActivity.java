@@ -1,5 +1,9 @@
 package com.danike.ai;
 
+import java.util.Random;
+import java.util.ArrayList;
+import android.animation.ValueAnimator;
+import android.view.animation.LinearInterpolator;
 import android.app.Activity;
 import android.os.Bundle;
 import android.content.Intent;
@@ -10,6 +14,357 @@ import android.view.animation.*;
 import android.widget.*;
 
 public class MainActivity extends Activity {
+
+
+    // ============================================================
+    // HALO NEON ATRÁS DAS FOTOS
+    // ============================================================
+    private class NeonFotoDrawable extends Drawable {
+
+        private final Paint linha = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint brilho = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float movimento = 0f;
+
+        NeonFotoDrawable() {
+
+            ValueAnimator anim =
+                    ValueAnimator.ofFloat(0f, 1f);
+
+            anim.setDuration(2600);
+            anim.setRepeatCount(ValueAnimator.INFINITE);
+            anim.setInterpolator(new LinearInterpolator());
+
+            anim.addUpdateListener(v -> {
+                movimento =
+                        (float) v.getAnimatedValue();
+                invalidateSelf();
+            });
+
+            anim.start();
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+
+            Rect b = getBounds();
+
+            if (b.width() <= 0 || b.height() <= 0)
+                return;
+
+            float cx = b.centerX();
+            float cy = b.centerY();
+
+            // ====================================================
+            // BRILHO AZUL CENTRAL
+            // ====================================================
+            brilho.setShader(new RadialGradient(
+                    cx,
+                    cy,
+                    Math.max(b.width(), b.height()) * 0.75f,
+                    new int[] {
+                            Color.argb(120, 0, 210, 255),
+                            Color.argb(70, 0, 120, 255),
+                            Color.TRANSPARENT
+                    },
+                    new float[] {
+                            0f,
+                            0.55f,
+                            1f
+                    },
+                    Shader.TileMode.CLAMP
+            ));
+
+            canvas.drawRect(
+                    b.left,
+                    b.top,
+                    b.right,
+                    b.bottom,
+                    brilho
+            );
+
+            brilho.setShader(null);
+
+            // ====================================================
+            // RAIOS NEON AZUIS SAINDO DA FOTO
+            // ====================================================
+            linha.setStyle(Paint.Style.STROKE);
+            linha.setStrokeCap(Paint.Cap.ROUND);
+
+            int totalRaios = 34;
+
+            for (int i = 0; i < totalRaios; i++) {
+
+                double angulo =
+                        (Math.PI * 2.0 * i / totalRaios)
+                        + (movimento * Math.PI * 2.0);
+
+                float interno =
+                        Math.min(
+                                b.width(),
+                                b.height()
+                        ) * 0.34f;
+
+                float externo =
+                        Math.max(
+                                b.width(),
+                                b.height()
+                        ) * (0.48f + ((i % 4) * 0.08f));
+
+                float x1 =
+                        cx + (float)Math.cos(angulo) * interno;
+
+                float y1 =
+                        cy + (float)Math.sin(angulo) * interno;
+
+                float x2 =
+                        cx + (float)Math.cos(angulo) * externo;
+
+                float y2 =
+                        cy + (float)Math.sin(angulo) * externo;
+
+                linha.setStrokeWidth(
+                        dp(i % 5 == 0 ? 2.2f : 1.2f)
+                );
+
+                linha.setColor(
+                        Color.argb(
+                                i % 5 == 0 ? 210 : 125,
+                                0,
+                                205,
+                                255
+                        )
+                );
+
+                linha.setShadowLayer(
+                        dp(7),
+                        0,
+                        0,
+                        Color.rgb(0, 190, 255)
+                );
+
+                canvas.drawLine(
+                        x1,
+                        y1,
+                        x2,
+                        y2,
+                        linha
+                );
+            }
+
+            linha.clearShadowLayer();
+
+            // ====================================================
+            // SEGUNDO HALO AZUL ATRÁS DA FOTO
+            // ====================================================
+            Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+            halo.setStyle(Paint.Style.STROKE);
+            halo.setStrokeWidth(dp(3));
+            halo.setColor(Color.rgb(0, 220, 255));
+
+            halo.setShadowLayer(
+                    dp(12),
+                    0,
+                    0,
+                    Color.rgb(0, 200, 255)
+            );
+
+            float raio =
+                    Math.min(
+                            b.width(),
+                            b.height()
+                    ) * 0.35f;
+
+            canvas.drawCircle(
+                    cx,
+                    cy,
+                    raio,
+                    halo
+            );
+
+            halo.clearShadowLayer();
+        }
+
+        @Override
+        public void setAlpha(int alpha) {}
+
+        @Override
+        public void setColorFilter(
+                android.graphics.ColorFilter filter) {}
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
+    }
+
+
+    // ============================================================
+    // NEON INTERNO DOS BALÕES — BRILHO + FRAGMENTOS ANIMADOS
+    // ============================================================
+    private class NeonBalaoDrawable extends Drawable {
+
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint brilho = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Random random = new Random();
+
+        private float movimento = 0f;
+        private final ArrayList<Float> fragmentosX = new ArrayList<>();
+        private final ArrayList<Float> fragmentosY = new ArrayList<>();
+        private final ArrayList<Float> fragmentosTamanho = new ArrayList<>();
+        private final ValueAnimator animator;
+
+        NeonBalaoDrawable() {
+            for (int i = 0; i < 22; i++) {
+                fragmentosX.add(random.nextFloat());
+                fragmentosY.add(random.nextFloat());
+                fragmentosTamanho.add(1.5f + random.nextFloat() * 3.5f);
+            }
+
+            animator = ValueAnimator.ofFloat(0f, 1f);
+            animator.setDuration(3600);
+            animator.setRepeatCount(ValueAnimator.INFINITE);
+            animator.setInterpolator(new LinearInterpolator());
+
+            animator.addUpdateListener(animation -> {
+                movimento = (float) animation.getAnimatedValue();
+                invalidateSelf();
+            });
+
+            animator.start();
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            Rect b = getBounds();
+
+            if (b.width() <= 0 || b.height() <= 0) return;
+
+            LinearGradient fundo = new LinearGradient(
+                    b.left, b.top,
+                    b.right, b.bottom,
+                    new int[] {
+                            Color.rgb(3, 5, 16),
+                            Color.rgb(38, 4, 28),
+                            Color.rgb(8, 12, 42),
+                            Color.rgb(35, 3, 25),
+                            Color.rgb(3, 5, 16)
+                    },
+                    null,
+                    Shader.TileMode.CLAMP
+            );
+
+            paint.setShader(fundo);
+            canvas.drawRoundRect(
+                    b.left, b.top, b.right, b.bottom,
+                    dp(24), dp(24), paint
+            );
+            paint.setShader(null);
+
+            brilho.setShader(new RadialGradient(
+                    b.left + b.width() * (0.18f + movimento * 0.55f),
+                    b.top + b.height() * 0.25f,
+                    Math.max(b.width(), b.height()) * 0.65f,
+                    new int[] {
+                            Color.argb(115, 255, 20, 75),
+                            Color.argb(55, 255, 20, 100),
+                            Color.TRANSPARENT
+                    },
+                    null,
+                    Shader.TileMode.CLAMP
+            ));
+
+            canvas.drawRoundRect(
+                    b.left, b.top, b.right, b.bottom,
+                    dp(24), dp(24), brilho
+            );
+
+            brilho.setShader(null);
+
+            for (int i = 0; i < fragmentosX.size(); i++) {
+
+                float x = b.left + fragmentosX.get(i) * b.width();
+                float yBase = b.top + fragmentosY.get(i) * b.height();
+
+                float deslocamento =
+                        (movimento * (18f + i * 1.7f)) % b.height();
+
+                float y = yBase + deslocamento;
+
+                if (y > b.bottom) y -= b.height();
+
+                float tamanho = fragmentosTamanho.get(i);
+
+                brilho.setColor(
+                        i % 3 == 0
+                                ? Color.argb(210, 255, 30, 90)
+                                : i % 3 == 1
+                                    ? Color.argb(180, 40, 180, 255)
+                                    : Color.argb(160, 190, 40, 255)
+                );
+
+                brilho.setShadowLayer(
+                        dp(7), 0, 0, brilho.getColor()
+                );
+
+                canvas.save();
+                canvas.rotate(
+                        (movimento * 180f + i * 23f) % 360f,
+                        x, y
+                );
+
+                Path fragmento = new Path();
+                fragmento.moveTo(x, y - tamanho * 2.5f);
+                fragmento.lineTo(x + tamanho, y);
+                fragmento.lineTo(x, y + tamanho * 2.5f);
+                fragmento.lineTo(x - tamanho, y);
+                fragmento.close();
+
+                canvas.drawPath(fragmento, brilho);
+                canvas.restore();
+            }
+
+            brilho.clearShadowLayer();
+
+            float faixaX =
+                    b.left - b.height()
+                    + (b.width() + b.height()) * movimento;
+
+            Paint faixa = new Paint(Paint.ANTI_ALIAS_FLAG);
+            faixa.setShader(new LinearGradient(
+                    faixaX - dp(45), b.top,
+                    faixaX + dp(45), b.bottom,
+                    Color.TRANSPARENT,
+                    Color.argb(95, 255, 45, 100),
+                    Shader.TileMode.CLAMP
+            ));
+
+            canvas.save();
+            canvas.clipRect(b.left, b.top, b.right, b.bottom);
+            canvas.drawRect(
+                    b.left, b.top, b.right, b.bottom, faixa
+            );
+            canvas.restore();
+        }
+
+        @Override
+        public void setAlpha(int alpha) {}
+
+        @Override
+        public void setColorFilter(
+                android.graphics.ColorFilter filter) {}
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
+    }
+
+
+
+    private FrameLayout raiz;
+    private FrameLayout telaMenu;
+
     
     // Controle da equipe exibida na Home
     private String equipeJsonExibida = null;
@@ -146,7 +501,38 @@ public class MainActivity extends Activity {
         NeonBackgroundView fundo =
                 new NeonBackgroundView(this);
 
-        FrameLayout raiz = new FrameLayout(this);
+        raiz = new FrameLayout(this);
+
+        TextView botaoMenu = txt("☰  MENU", 14, Color.WHITE);
+        botaoMenu.setGravity(Gravity.CENTER);
+        botaoMenu.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        GradientDrawable fundoMenu = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] {
+                        Color.rgb(25, 10, 55),
+                        Color.rgb(8, 35, 75)
+                }
+        );
+        fundoMenu.setCornerRadius(dp(26));
+        fundoMenu.setStroke(dp(2), Color.rgb(75, 145, 255));
+
+        botaoMenu.setBackground(fundoMenu);
+        botaoMenu.setElevation(dp(10));
+        botaoMenu.setPadding(dp(18), 0, dp(18), 0);
+
+        FrameLayout.LayoutParams menuParams =
+                new FrameLayout.LayoutParams(
+                        dp(130),
+                        dp(48),
+                        Gravity.TOP | Gravity.END
+                );
+
+        menuParams.setMargins(0, dp(350), dp(14), 0);
+
+        raiz.addView(botaoMenu, menuParams);
+
+        botaoMenu.setOnClickListener(v -> abrirMenuPrincipal());
 
         raiz.addView(
                 fundo,
@@ -342,7 +728,7 @@ public class MainActivity extends Activity {
                 equipeLinha,
                 new HorizontalScrollView.LayoutParams(
                         quantidadeEquipe <= 3 ? -1 : -2,
-                        dp(245)
+                        dp(300)
                 )
         );
 
@@ -350,7 +736,7 @@ public class MainActivity extends Activity {
                 equipeScroll,
                 new LinearLayout.LayoutParams(
                         -1,
-                        dp(245)
+                        dp(300)
                 )
         );
 
@@ -377,9 +763,10 @@ public class MainActivity extends Activity {
         painelEquipe.setCornerRadius(dp(32));
 
         painelEquipe.setStroke(
-                dp(2),
-                Color.rgb(0, 220, 255)
+                dp(3),
+                Color.rgb(255, 25, 70)
         );
+        equipeTopo.setBackground(painelEquipe);
 
         // Fundo neon removido: classe EquipeNeonDrawable nao existe
 
@@ -393,7 +780,7 @@ public class MainActivity extends Activity {
         FrameLayout.LayoutParams equipeParams =
                 new FrameLayout.LayoutParams(
                         -1,
-                        dp(285)
+                        dp(340)
                 );
 
         equipeParams.setMargins(
@@ -445,20 +832,6 @@ public class MainActivity extends Activity {
         String nomeUsuario = prefs.getString("nome", "Usuário").trim();
         if (nomeUsuario.isEmpty()) nomeUsuario = "Usuário";
 
-        TextView saudacao = txt(
-                "Olá, " + nomeUsuario + " 👋",
-                19,
-                Color.rgb(190, 225, 245)
-        );
-
-        conteudo.addView(
-                saudacao,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(42)
-                )
-        );
-
         TextView descricao = txt(
                 "Escolha uma área para continuar",
                 14,
@@ -472,6 +845,143 @@ public class MainActivity extends Activity {
                         dp(34)
                 )
         );
+
+        // =========================
+        // NOSSA PÁGINA — VISUAL
+        // =========================
+
+        LinearLayout paginaOficial = new LinearLayout(this);
+        paginaOficial.setOrientation(LinearLayout.HORIZONTAL);
+        paginaOficial.setGravity(Gravity.CENTER_VERTICAL);
+        paginaOficial.setPadding(dp(14), dp(10), dp(14), dp(10));
+
+        GradientDrawable fundoPagina = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] {
+                        Color.rgb(8, 10, 30),
+                        Color.rgb(24, 8, 45),
+                        Color.rgb(5, 28, 48)
+                }
+        );
+
+        fundoPagina.setCornerRadius(dp(24));
+        fundoPagina.setStroke(dp(3), Color.rgb(255, 25, 70));
+
+        paginaOficial.setBackground(fundoPagina);
+        paginaOficial.setElevation(dp(12));
+
+        // Ícone do Instagram
+        TextView instagramIcone = txt("◎", 48, Color.WHITE);
+        instagramIcone.setGravity(Gravity.CENTER);
+
+        GradientDrawable fundoInstagram = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[] {
+                        Color.rgb(255, 35, 150),
+                        Color.rgb(170, 35, 255),
+                        Color.rgb(35, 150, 255)
+                }
+        );
+
+        fundoInstagram.setCornerRadius(dp(18));
+        fundoInstagram.setStroke(dp(2), Color.WHITE);
+        instagramIcone.setBackground(fundoInstagram);
+
+        LinearLayout.LayoutParams instagramParams =
+                new LinearLayout.LayoutParams(
+                        dp(72),
+                        dp(72)
+                );
+
+        paginaOficial.addView(
+                instagramIcone,
+                instagramParams
+        );
+
+        LinearLayout textosPagina = new LinearLayout(this);
+        textosPagina.setOrientation(LinearLayout.VERTICAL);
+        textosPagina.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView nomePagina = txt(
+                "DaNikeAI  ✓",
+                19,
+                Color.WHITE
+        );
+
+        nomePagina.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        TextView subtituloPagina = txt(
+                "Nossa página oficial",
+                13,
+                Color.rgb(190, 225, 245)
+        );
+
+        TextView acaoPagina = txt(
+                "Em breve • Página oficial",
+                12,
+                Color.rgb(100, 200, 255)
+        );
+
+        textosPagina.addView(nomePagina);
+        textosPagina.addView(subtituloPagina);
+        textosPagina.addView(acaoPagina);
+
+        LinearLayout.LayoutParams textosPaginaParams =
+                new LinearLayout.LayoutParams(
+                        0,
+                        -2,
+                        1f
+                );
+
+        textosPaginaParams.setMargins(
+                dp(14),
+                0,
+                dp(8),
+                0
+        );
+
+        paginaOficial.addView(
+                textosPagina,
+                textosPaginaParams
+        );
+
+        TextView setaPagina = txt(
+                "›",
+                34,
+                Color.rgb(90, 210, 255)
+        );
+
+        setaPagina.setGravity(Gravity.CENTER);
+
+        paginaOficial.addView(
+                setaPagina,
+                new LinearLayout.LayoutParams(
+                        dp(35),
+                        dp(60)
+                )
+        );
+
+        LinearLayout.LayoutParams paginaParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(98)
+                );
+
+        paginaParams.setMargins(
+                dp(4),
+                dp(14),
+                dp(4),
+                dp(18)
+        );
+
+        conteudo.addView(
+                paginaOficial,
+                paginaParams
+        );
+
 
         // =========================
         // CAPA IA
@@ -503,8 +1013,6 @@ public class MainActivity extends Activity {
         pontoIAParams.setMargins(0, dp(2), dp(2), 0);
         containerIA.addView(pontoIA, pontoIAParams);
 
-        conteudo.addView(containerIA, iaParams);
-
         // =========================
         // CAPA FILMES
         // =========================
@@ -534,8 +1042,6 @@ public class MainActivity extends Activity {
                         Gravity.TOP | Gravity.END);
         pontoFilmesParams.setMargins(0, dp(2), dp(2), 0);
         containerFilmes.addView(pontoFilmes, pontoFilmesParams);
-
-        conteudo.addView(containerFilmes, filmesParams);
 
         // =========================
         // CAPA HISTÓRICO
@@ -567,8 +1073,6 @@ public class MainActivity extends Activity {
         pontoHistoricoParams.setMargins(0, dp(2), dp(2), 0);
         containerHistorico.addView(pontoHistorico, pontoHistoricoParams);
 
-        conteudo.addView(containerHistorico, historicoParams);
-
         // =========================
         // CAPA PERFIL
         // =========================
@@ -598,8 +1102,6 @@ public class MainActivity extends Activity {
                         Gravity.TOP | Gravity.END);
         pontoPerfilParams.setMargins(0, dp(2), dp(2), 0);
         containerPerfil.addView(pontoPerfil, pontoPerfilParams);
-
-        conteudo.addView(containerPerfil, perfilParams);
 
         // =========================
         // ADM — SOMENTE DONO
@@ -637,8 +1139,6 @@ public class MainActivity extends Activity {
                     );
 
             admParams.setMargins(0, dp(5), 0, dp(10));
-
-            conteudo.addView(adm, admParams);
         }
 
         // =========================
@@ -671,8 +1171,6 @@ public class MainActivity extends Activity {
         pontoHaveParams.setMargins(0, dp(2), dp(2), 0);
         containerHave.addView(pontoHave, pontoHaveParams);
 
-        conteudo.addView(containerHave, raveParams);
-
         // ==============================
         // COMPARTILHAR APP
         // ==============================
@@ -685,7 +1183,6 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams compartilharParams =
                 new LinearLayout.LayoutParams(-1, dp(135));
         compartilharParams.setMargins(0, 0, 0, dp(20));
-        conteudo.addView(compartilharApp, compartilharParams);
 
         compartilharApp.setOnClickListener(v -> {
             try {
@@ -1007,56 +1504,71 @@ public class MainActivity extends Activity {
                 )
         );
 
+        LinearLayout nomeBox = new LinearLayout(this);
+        nomeBox.setOrientation(LinearLayout.HORIZONTAL);
+        nomeBox.setGravity(Gravity.CENTER);
+
+        GradientDrawable fundoNome = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] {
+                        Color.rgb(2, 5, 12),
+                        Color.rgb(18, 5, 25),
+                        Color.rgb(2, 5, 12)
+                }
+        );
+        fundoNome.setCornerRadius(dp(24));
+        fundoNome.setStroke(dp(2), Color.rgb(0, 225, 255));
+        nomeBox.setBackground(fundoNome);
+        nomeBox.setPadding(dp(8), dp(3), dp(8), dp(3));
+
         TextView nome = txt(
                 nomeTexto,
                 14,
                 Color.WHITE
         );
-
         nome.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
-
         nome.setGravity(Gravity.CENTER);
-        nome.setSingleLine(false);
-        nome.setMaxLines(2);
+        nome.setSingleLine(true);
+        nome.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
-        GradientDrawable fundoNome =
-                new GradientDrawable();
-
-        fundoNome.setShape(
-                GradientDrawable.RECTANGLE
+        nomeBox.addView(
+                nome,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -1,
+                        1f
+                )
         );
 
-        fundoNome.setColor(
-                Color.rgb(2, 5, 12)
+        TextView verificadoNome = txt(
+                "✓",
+                8,
+                Color.WHITE
         );
+        verificadoNome.setGravity(Gravity.CENTER);
 
-        fundoNome.setCornerRadius(
-                dp(24)
-        );
+        GradientDrawable seloNome = new GradientDrawable();
+        seloNome.setShape(GradientDrawable.OVAL);
+        seloNome.setColor(Color.rgb(45, 120, 255));
+        seloNome.setStroke(dp(1), Color.WHITE);
+        verificadoNome.setBackground(seloNome);
 
-        fundoNome.setStroke(
-                dp(2),
-                Color.rgb(0, 225, 255)
-        );
-
-        nome.setBackground(fundoNome);
-
-        nome.setPadding(
-                dp(8),
-                dp(3),
-                dp(8),
-                dp(3)
+        nomeBox.addView(
+                verificadoNome,
+                new LinearLayout.LayoutParams(
+                        dp(15),
+                        dp(15)
+                )
         );
 
         LinearLayout.LayoutParams nomeParams =
                 new LinearLayout.LayoutParams(
-                        dp(112),
-                        dp(38)
+                        dp(140),
+                        dp(42)
                 );
-
         nomeParams.setMargins(
                 0,
                 dp(6),
@@ -1065,7 +1577,7 @@ public class MainActivity extends Activity {
         );
 
         membro.addView(
-                nome,
+                nomeBox,
                 nomeParams
         );
 
@@ -1117,93 +1629,163 @@ public class MainActivity extends Activity {
         );
 
         // Instagram publicado pelo ADM
-        if (instagramUsuario != null &&
-            !instagramUsuario.trim().isEmpty()) {
+                if (instagramUsuario != null &&
+                        !instagramUsuario.trim().isEmpty()) {
 
-            TextView instagram = txt(
-                    "◎  @" + instagramUsuario + "  ✓",
-                    10,
-                    Color.WHITE
-            );
+                    LinearLayout instagramBox =
+                            new LinearLayout(this);
 
-            instagram.setTypeface(
-                    Typeface.DEFAULT,
-                    Typeface.BOLD
-            );
+                    instagramBox.setOrientation(
+                            LinearLayout.HORIZONTAL
+                    );
 
-            instagram.setSingleLine(true);
-            instagram.setGravity(Gravity.CENTER);
+                    instagramBox.setGravity(
+                            Gravity.CENTER
+                    );
 
-            GradientDrawable fundoInstagram =
-                    new GradientDrawable();
+                    GradientDrawable fundoInstagram =
+                            new GradientDrawable();
 
-            fundoInstagram.setShape(
-                    GradientDrawable.RECTANGLE
-            );
+                    fundoInstagram.setShape(
+                            GradientDrawable.RECTANGLE
+                    );
 
-            fundoInstagram.setColor(
-                    Color.rgb(18, 2, 8)
-            );
+                    fundoInstagram.setColor(
+                            Color.rgb(12, 8, 28)
+                    );
 
-            fundoInstagram.setCornerRadius(dp(20));
+                    fundoInstagram.setCornerRadius(
+                            dp(22)
+                    );
 
-            fundoInstagram.setStroke(
-                    dp(2),
-                    Color.rgb(255, 35, 85)
-            );
+                    fundoInstagram.setStroke(
+                            dp(1),
+                            Color.rgb(70, 120, 255)
+                    );
 
-            instagram.setBackground(fundoInstagram);
+                    instagramBox.setBackground(
+                            fundoInstagram
+                    );
 
-            instagram.setPadding(
-                    dp(6),
-                    dp(2),
-                    dp(6),
-                    dp(2)
-            );
+                    instagramBox.setPadding(
+                            dp(9),
+                            dp(5),
+                            dp(9),
+                            dp(5)
+                    );
 
-            instagram.setOnClickListener(v -> {
-                try {
-                    String link = instagramLink;
+                    instagramBox.setElevation(dp(8));
 
-                    if (link == null ||
-                        link.trim().isEmpty()) {
-                        link = "https://instagram.com/"
-                                + instagramUsuario;
-                    }
+                    TextView instagramNome = txt(
+                            "@ " + instagramUsuario,
+                            11,
+                            Color.WHITE
+                    );
 
-                    if (!link.startsWith("http://") &&
-                        !link.startsWith("https://")) {
-                        link = "https://" + link;
-                    }
+                    instagramNome.setTypeface(
+                            Typeface.DEFAULT,
+                            Typeface.BOLD
+                    );
 
-                    startActivity(new Intent(
-                            Intent.ACTION_VIEW,
-                            android.net.Uri.parse(link)
-                    ));
+                    instagramNome.setSingleLine(true);
 
-                } catch (Exception e) {
-                    Toast.makeText(
-                            this,
-                            "Não foi possível abrir o Instagram.",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                    instagramBox.addView(
+                            instagramNome,
+                            new LinearLayout.LayoutParams(
+                                    -2,
+                                    -1
+                            )
+                    );
+
+                    TextView verificado = txt(
+                            "✓",
+                            10,
+                            Color.WHITE
+                    );
+
+                    verificado.setGravity(
+                            Gravity.CENTER
+                    );
+
+                    GradientDrawable seloAzul =
+                            new GradientDrawable();
+
+                    seloAzul.setShape(
+                            GradientDrawable.OVAL
+                    );
+
+                    seloAzul.setColor(
+                            Color.rgb(45, 120, 255)
+                    );
+
+                    verificado.setBackground(
+                            seloAzul
+                    );
+
+                    LinearLayout.LayoutParams seloParams =
+                            new LinearLayout.LayoutParams(
+                                    dp(17),
+                                    dp(17)
+                            );
+
+                    seloParams.setMargins(
+                            dp(5),
+                            0,
+                            0,
+                            0
+                    );
+
+                    instagramBox.addView(
+                            verificado,
+                            seloParams
+                    );
+
+                    instagramBox.setOnClickListener(v -> {
+                        try {
+                            String link = instagramLink;
+
+                            if (link == null ||
+                                    link.trim().isEmpty()) {
+                                link =
+                                        "https://instagram.com/" +
+                                        instagramUsuario;
+                            }
+
+                            if (!link.startsWith("http://") &&
+                                    !link.startsWith("https://")) {
+                                link = "https://" + link;
+                            }
+
+                            startActivity(
+                                    new Intent(
+                                            Intent.ACTION_VIEW,
+                                            android.net.Uri.parse(link)
+                                    )
+                            );
+
+                        } catch (Exception e) {
+                            Toast.makeText(
+                                    this,
+                                    "Não foi possível abrir o Instagram.",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                    });
+
+                    membro.addView(
+                            instagramBox,
+                            new LinearLayout.LayoutParams(
+                                    dp(120),
+                                    dp(38)
+                            )
+                    );
                 }
-            });
 
-            membro.addView(
-                    instagram,
-                    new LinearLayout.LayoutParams(
-                            dp(116),
-                            dp(34)
-                    )
-            );
-        }
-
-        equipeLinha.addView(
+                equipeLinha.addView(
                 membro,
                 new LinearLayout.LayoutParams(
-                        dp(120),
-                        dp(214)
+                        -2,
+                        dp(260)
                 )
         );
     }
@@ -1689,6 +2271,385 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void abrirMenuPrincipal() {
+
+        telaMenu = new FrameLayout(this);
+        telaMenu.setBackgroundColor(Color.rgb(2, 4, 14));
+        telaMenu.setElevation(dp(100));
+
+        NeonBackgroundView fundoMenu = new NeonBackgroundView(this);
+        telaMenu.addView(
+                fundoMenu,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+
+        TextView tituloMenu = txt("☰  MENU", 24, Color.WHITE);
+        tituloMenu.setGravity(Gravity.CENTER_VERTICAL);
+        tituloMenu.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        FrameLayout.LayoutParams tituloParams =
+                new FrameLayout.LayoutParams(
+                        -1,
+                        dp(70),
+                        Gravity.TOP
+                );
+        tituloParams.setMargins(dp(20), dp(5), dp(70), 0);
+
+        telaMenu.addView(tituloMenu, tituloParams);
+
+        TextView fechar = txt("✕", 26, Color.WHITE);
+        fechar.setGravity(Gravity.CENTER);
+        fechar.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        GradientDrawable fundoFechar = new GradientDrawable();
+        fundoFechar.setColor(Color.rgb(25, 10, 55));
+        fundoFechar.setCornerRadius(dp(25));
+        fundoFechar.setStroke(dp(2), Color.rgb(75, 145, 255));
+        fechar.setBackground(fundoFechar);
+
+        FrameLayout.LayoutParams fecharParams =
+                new FrameLayout.LayoutParams(
+                        dp(52),
+                        dp(52),
+                        Gravity.TOP | Gravity.END
+                );
+        fecharParams.setMargins(0, dp(10), dp(12), 0);
+
+        telaMenu.addView(fechar, fecharParams);
+
+        ScrollView scrollMenu = new ScrollView(this);
+        scrollMenu.setFillViewport(true);
+
+        LinearLayout listaMenu = new LinearLayout(this);
+        listaMenu.setOrientation(LinearLayout.VERTICAL);
+        listaMenu.setPadding(dp(14), dp(85), dp(14), dp(25));
+
+        scrollMenu.addView(
+                listaMenu,
+                new ScrollView.LayoutParams(-1, -2)
+        );
+
+        FrameLayout.LayoutParams scrollParams =
+                new FrameLayout.LayoutParams(-1, -1);
+        scrollParams.setMargins(0, 0, 0, 0);
+
+        telaMenu.addView(scrollMenu, scrollParams);
+        fechar.bringToFront();
+
+        adicionarItemMenu(
+                listaMenu,
+                "🤖",
+                "IA",
+                "Assistente inteligente",
+                () -> {
+                    abrirAreaComManutencao(
+                            "ia",
+                            "IA",
+                            () -> startActivity(
+                                    new Intent(
+                                            MainActivity.this,
+                                            IAActivity.class
+                                    )
+                            )
+                    );
+                }
+        );
+
+        adicionarItemMenu(
+                listaMenu,
+                "🎬",
+                "FILMES",
+                "Filmes e conteúdo",
+                () -> {
+                    abrirAreaComManutencao(
+                            "filmes",
+                            "FILMES",
+                            () -> startActivity(
+                                    new Intent(
+                                            MainActivity.this,
+                                            com.danike.ai.filmes.FilmesActivity.class
+                                    )
+                            )
+                    );
+                }
+        );
+
+        adicionarItemMenu(
+                listaMenu,
+                "📚",
+                "HISTÓRICO",
+                "Suas conversas e registros",
+                () -> {
+                    abrirAreaComManutencao(
+                            "historico",
+                            "HISTÓRICO",
+                            () -> startActivity(
+                                    new Intent(
+                                            MainActivity.this,
+                                            HistoricoActivity.class
+                                    )
+                            )
+                    );
+                }
+        );
+
+        adicionarItemMenu(
+                listaMenu,
+                "👤",
+                "PERFIL",
+                "Seu perfil no DaNikeAI",
+                () -> {
+                    abrirAreaComManutencao(
+                            "perfil",
+                            "PERFIL",
+                            () -> startActivity(
+                                    new Intent(
+                                            MainActivity.this,
+                                            PerfilActivity.class
+                                    )
+                            )
+                    );
+                }
+        );
+
+        adicionarItemMenu(
+                listaMenu,
+                "🎮",
+                "HAVE",
+                "Entre no seu espaço Have",
+                () -> {
+                    abrirAreaComManutencao(
+                            "have",
+                            "HAVE",
+                            () -> startActivity(
+                                    new Intent(
+                                            MainActivity.this,
+                                            HaveLoginActivity.class
+                                    )
+                            )
+                    );
+                }
+        );
+
+        adicionarItemMenu(
+                listaMenu,
+                "📤",
+                "COMPARTILHAR APP",
+                "Convide alguém para usar o DaNikeAI",
+                () -> {
+                    try {
+                        String versao =
+                                getPackageManager()
+                                        .getPackageInfo(
+                                                getPackageName(),
+                                                0
+                                        ).versionName;
+
+                        String link =
+                                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk";
+
+                        String mensagem =
+                                "🚀 Baixe o DaNikeAI!\n\n"
+                                + "Versão atual: " + versao + "\n\n"
+                                + link;
+
+                        Intent compartilhar =
+                                new Intent(Intent.ACTION_SEND);
+
+                        compartilhar.setType("text/plain");
+                        compartilhar.putExtra(
+                                Intent.EXTRA_TEXT,
+                                mensagem
+                        );
+
+                        startActivity(
+                                Intent.createChooser(
+                                        compartilhar,
+                                        "Compartilhar DaNikeAI"
+                                )
+                        );
+
+                    } catch (Exception e) {
+                        Toast.makeText(
+                                MainActivity.this,
+                                "Não foi possível compartilhar o app.",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                }
+        );
+
+        com.google.firebase.auth.FirebaseUser donoMenu =
+                com.google.firebase.auth.FirebaseAuth
+                        .getInstance()
+                        .getCurrentUser();
+
+        boolean ehDonoMenu =
+                donoMenu != null &&
+                "lipesanderson@gmail.com".equalsIgnoreCase(
+                        String.valueOf(donoMenu.getEmail())
+                );
+
+        if (ehDonoMenu) {
+            adicionarItemMenu(
+                    listaMenu,
+                    "⚡",
+                    "ADM",
+                    "Painel administrativo",
+                    () -> {
+                        com.google.firebase.auth.FirebaseUser dono =
+                                com.google.firebase.auth.FirebaseAuth
+                                        .getInstance()
+                                        .getCurrentUser();
+
+                        if (dono != null &&
+                                "lipesanderson@gmail.com"
+                                        .equalsIgnoreCase(
+                                                String.valueOf(
+                                                        dono.getEmail()
+                                                )
+                                        )) {
+
+                            startActivity(
+                                    new Intent(
+                                            MainActivity.this,
+                                            AdmActivity.class
+                                    )
+                            );
+
+                        } else {
+                            Toast.makeText(
+                                    MainActivity.this,
+                                    "Acesso administrativo não autorizado.",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                    }
+            );
+        }
+
+        fechar.setOnClickListener(v -> {
+            telaMenu.setVisibility(View.GONE);
+        });
+
+        raiz.addView(
+                telaMenu,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+
+        telaMenu.setVisibility(View.VISIBLE);
+        telaMenu.bringToFront();
+    }
+
+    private void adicionarItemMenu(
+            LinearLayout lista,
+            String icone,
+            String titulo,
+            String descricao,
+            Runnable acao
+    ) {
+
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.HORIZONTAL);
+        item.setGravity(Gravity.CENTER_VERTICAL);
+        item.setPadding(dp(16), dp(10), dp(14), dp(10));
+
+        GradientDrawable fundo = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[] {
+                        Color.rgb(18, 8, 42),
+                        Color.rgb(7, 30, 65)
+                }
+        );
+
+        fundo.setCornerRadius(dp(22));
+        fundo.setStroke(dp(2), Color.rgb(55, 125, 230));
+
+        item.setBackground(fundo);
+        item.setElevation(dp(8));
+
+        TextView iconeView = txt(icone, 27, Color.WHITE);
+        iconeView.setGravity(Gravity.CENTER);
+
+        LinearLayout.LayoutParams iconeParams =
+                new LinearLayout.LayoutParams(dp(48), dp(55));
+
+        item.addView(iconeView, iconeParams);
+
+        LinearLayout textos = new LinearLayout(this);
+        textos.setOrientation(LinearLayout.VERTICAL);
+        textos.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView tituloView = txt(titulo, 17, Color.WHITE);
+        tituloView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        TextView descricaoView = txt(descricao, 12, Color.LTGRAY);
+
+        textos.addView(tituloView);
+        textos.addView(descricaoView);
+
+        LinearLayout.LayoutParams textoParams =
+                new LinearLayout.LayoutParams(0, -2, 1f);
+
+        textoParams.setMargins(dp(8), 0, dp(8), 0);
+
+        item.addView(textos, textoParams);
+
+        TextView seta = txt("›", 30, Color.rgb(90, 170, 255));
+        seta.setGravity(Gravity.CENTER);
+
+        item.addView(
+                seta,
+                new LinearLayout.LayoutParams(dp(35), dp(55))
+        );
+
+        LinearLayout.LayoutParams itemParams =
+                new LinearLayout.LayoutParams(-1, dp(78));
+
+        itemParams.setMargins(0, 0, 0, dp(12));
+
+        lista.addView(item, itemParams);
+
+        item.setOnClickListener(v -> {
+            if (acao != null) {
+                acao.run();
+            }
+        });
+
+        item.setOnTouchListener((v, event) -> {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    v.setAlpha(0.72f);
+                    v.setScaleX(0.98f);
+                    v.setScaleY(0.98f);
+                    break;
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    v.setAlpha(1f);
+                    v.setScaleX(1f);
+                    v.setScaleY(1f);
+                    break;
+            }
+            return false;
+        });
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Menu aberto: volta para a Home
+        if (telaMenu != null && telaMenu.getVisibility() == View.VISIBLE) {
+            telaMenu.setVisibility(View.GONE);
+            return;
+        }
+
+        // Home: volta para o Login
+        Intent login = new Intent(MainActivity.this, LoginActivity.class);
+        login.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(login);
+        finish();
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
@@ -1797,6 +2758,40 @@ public class MainActivity extends Activity {
                                                 "coroa",
                                                 coroa
                                         );
+
+                                        String instagramUsuario = doc.getString("instagramUsuario");
+if (instagramUsuario == null) instagramUsuario = "";
+
+String instagramLink = doc.getString("instagramLink");
+if (instagramLink == null) instagramLink = "";
+
+if (instagramUsuario.trim().isEmpty()) {
+    try {
+        org.json.JSONArray localLista = new org.json.JSONArray(
+            getSharedPreferences("DaNikeAI_ADM", MODE_PRIVATE)
+                .getString("equipe_perfis", "[]")
+        );
+
+        for (int i = 0; i < localLista.length(); i++) {
+            org.json.JSONObject localPessoa = localLista.getJSONObject(i);
+
+            if (nome.equalsIgnoreCase(
+                    localPessoa.optString("nome", "").trim())) {
+
+                instagramUsuario =
+                    localPessoa.optString("instagramUsuario", "").trim();
+
+                instagramLink =
+                    localPessoa.optString("instagramLink", "").trim();
+
+                break;
+            }
+        }
+    } catch (Exception ignored) {}
+}
+
+pessoa.put("instagramUsuario", instagramUsuario);
+pessoa.put("instagramLink", instagramLink);
 
                                         listaOnline.put(pessoa);
                                     }

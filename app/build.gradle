@@ -14,11 +14,11 @@ android {
         def youtubeKeyFile = file(System.getProperty("user.home") + "/.config/danikeai_youtube_key")
         def youtubeKey = youtubeKeyFile.exists() ? youtubeKeyFile.text.trim() : ""
         buildConfigField "String", "YOUTUBE_API_KEY", "\"${youtubeKey}\""
-        applicationId 'com.mycompany.cinego'
+        applicationId 'com.danike.ai'
         minSdk 23
         targetSdk 35
-        versionCode 24
-        versionName '1.7.7'
+        versionCode 25
+        versionName '1.7.8'
     }
 }
 
