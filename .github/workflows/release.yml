@@ -30,7 +30,7 @@ jobs:
         run: echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/danikeai-release.keystore" && mkdir -p "$HOME/.config" && printf "storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$RUNNER_TEMP/danikeai-release.keystore" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > "$HOME/.config/danikeai-signing.properties"
 
       - name: Gerar APK Release
-        run: ./gradlew assembleRelease --stacktrace
+        run: export GRADLE_OPTS="-Xmx6g -Dfile.encoding=UTF-8" && ./gradlew assembleRelease --stacktrace
 
       - name: Renomear APK
         run: cp app/build/outputs/apk/release/app-release.apk DaNikeAI.apk
