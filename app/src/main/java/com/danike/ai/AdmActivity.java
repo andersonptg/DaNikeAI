@@ -863,7 +863,24 @@ atualizarListaEquipeAdm();
                 );
 
                                     // Instagram do perfil
-                    Button instagramBtn = pequenoBotao("◎ Instagram", 10);
+                    Button instagramBtn = pequenoBotao("Instagram", 10);
+                    android.graphics.drawable.Drawable logoInstagramAdm =
+                            getResources().getDrawable(
+                                    R.drawable.instagram_oficial
+                            );
+                    logoInstagramAdm.setBounds(
+                            0,
+                            0,
+                            dp(20),
+                            dp(20)
+                    );
+                    instagramBtn.setCompoundDrawables(
+                            logoInstagramAdm,
+                            null,
+                            null,
+                            null
+                    );
+                    instagramBtn.setCompoundDrawablePadding(dp(5));
 
                     instagramBtn.setOnClickListener(v ->
                             abrirEditorInstagram(nome, lista, indice)

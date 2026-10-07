@@ -1410,8 +1410,14 @@ public class IAActivity extends Activity {
         box.setGravity(Gravity.CENTER_VERTICAL);
         box.setPadding(dp(5), 0, dp(5), 0);
 
-        InstagramIcon icon = new InstagramIcon(this);
-        box.addView(icon, new LinearLayout.LayoutParams(dp(30), dp(30)));
+        android.widget.ImageView icon =
+                new android.widget.ImageView(this);
+        icon.setImageResource(R.drawable.instagram_oficial);
+        icon.setScaleType(
+                android.widget.ImageView.ScaleType.CENTER_INSIDE
+        );
+        box.addView(icon,
+                new LinearLayout.LayoutParams(dp(30), dp(30)));
 
         TextView nome = texto("anderson_lopes._ofc", 8.5f,
                 Color.WHITE, true);

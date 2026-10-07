@@ -318,7 +318,7 @@ TextView robo = new TextView(this);
                 new LinearLayout.LayoutParams(-1, dp(35))
         );
 
-        setContentView(tela);
+
 
         new android.os.Handler(
                 android.os.Looper.getMainLooper()

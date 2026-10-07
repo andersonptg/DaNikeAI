@@ -471,7 +471,7 @@ public class MainActivity extends Activity {
 
         montarHome();
 
-        // ATUALIZACAO MANUAL PELO ADM DESATIVADA: AtualizacaoApp.verificar(this);
+        AtualizacaoApp.verificar(this);
     }
 
     void aplicarTemaSistema() {
@@ -889,22 +889,15 @@ public class MainActivity extends Activity {
         paginaOficial.setBackground(fundoPagina);
         paginaOficial.setElevation(dp(12));
 
-        // Ícone do Instagram
-        TextView instagramIcone = txt("◎", 48, Color.WHITE);
-        instagramIcone.setGravity(Gravity.CENTER);
-
-        GradientDrawable fundoInstagram = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[] {
-                        Color.rgb(255, 35, 150),
-                        Color.rgb(170, 35, 255),
-                        Color.rgb(35, 150, 255)
-                }
+        // Logo oficial do Instagram
+        android.widget.ImageView instagramIcone =
+                new android.widget.ImageView(this);
+        instagramIcone.setImageResource(
+                R.drawable.instagram_oficial
         );
-
-        fundoInstagram.setCornerRadius(dp(18));
-        fundoInstagram.setStroke(dp(2), Color.WHITE);
-        instagramIcone.setBackground(fundoInstagram);
+        instagramIcone.setScaleType(
+                android.widget.ImageView.ScaleType.CENTER_INSIDE
+        );
 
         LinearLayout.LayoutParams instagramParams =
                 new LinearLayout.LayoutParams(
@@ -1120,36 +1113,14 @@ public class MainActivity extends Activity {
                         0
                 );
 
-                // Logo do Instagram
-                TextView logoInstagram =
-                        txt("◎", 22, Color.WHITE);
-                logoInstagram.setGravity(
-                        Gravity.CENTER
+                // Logo oficial do Instagram
+                android.widget.ImageView logoInstagram =
+                        new android.widget.ImageView(this);
+                logoInstagram.setImageResource(
+                        R.drawable.instagram_oficial
                 );
-
-                GradientDrawable fundoLogoInstagram =
-                        new GradientDrawable(
-                                GradientDrawable.Orientation.TL_BR,
-                                new int[] {
-                                        Color.rgb(255, 55, 95),
-                                        Color.rgb(255, 35, 145),
-                                        Color.rgb(170, 35, 235),
-                                        Color.rgb(45, 145, 255)
-                                }
-                        );
-                fundoLogoInstagram.setShape(
-                        GradientDrawable.RECTANGLE
-                );
-                fundoLogoInstagram.setCornerRadius(
-                        dp(12)
-                );
-                fundoLogoInstagram.setStroke(
-                        dp(1),
-                        Color.WHITE
-                );
-
-                logoInstagram.setBackground(
-                        fundoLogoInstagram
+                logoInstagram.setScaleType(
+                        android.widget.ImageView.ScaleType.CENTER_INSIDE
                 );
 
                 LinearLayout.LayoutParams logoParams =
