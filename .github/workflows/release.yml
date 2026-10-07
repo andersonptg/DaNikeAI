@@ -1,0 +1,51 @@
+name: DaNikeAI Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Configurar Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Instalar ferramentas Android
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Preparar assinatura
+        env:
+          KEYSTORE_BASE64: ${{ secrets.DANIKEAI_KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.DANIKEAI_STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.DANIKEAI_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.DANIKEAI_KEY_ALIAS }}
+        run: echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/danikeai-release.keystore" && mkdir -p "$HOME/.config" && printf "storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$RUNNER_TEMP/danikeai-release.keystore" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > "$HOME/.config/danikeai-signing.properties"
+
+      - name: Gerar APK Release
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Renomear APK
+        run: cp app/build/outputs/apk/release/app-release.apk DaNikeAI.apk
+
+      - name: Criar GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: DaNikeAI v${{ github.run_number }}
+          generate_release_notes: true
+          files: DaNikeAI.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
