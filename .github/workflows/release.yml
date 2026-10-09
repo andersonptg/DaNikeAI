@@ -4,6 +4,14 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
   workflow_dispatch:
 
 permissions:

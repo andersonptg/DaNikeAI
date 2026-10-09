@@ -2,12 +2,45 @@ import os
 import json
 import urllib.request
 import urllib.error
-from cloudinary_auth import usuario_e_proprietario
+from cloudinary_auth import usuario_e_proprietario, verificar_token_firebase
 from cloudinary_delete import excluir_foto_cloudinary
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 ENV = os.path.expanduser("~/.config/danikeai.env")
+
+def carregar_env_local_cloudinary():
+    """Carrega variáveis locais sem substituir as já configuradas."""
+    try:
+        with open(ENV, "r", encoding="utf-8") as arquivo_env:
+            for linha in arquivo_env:
+                linha = linha.strip()
+
+                if not linha or linha.startswith("#") or "=" not in linha:
+                    continue
+
+                chave, valor = linha.split("=", 1)
+                chave = chave.strip()
+                valor = valor.strip()
+
+                if not chave or not all(
+                    c.isalnum() or c == "_" for c in chave
+                ):
+                    continue
+
+                if len(valor) >= 2 and valor[0] == valor[-1] and valor[0] in ("'", '"'):
+                    valor = valor[1:-1]
+
+                if not os.environ.get(chave, "").strip():
+                    os.environ[chave] = valor
+    except FileNotFoundError:
+        pass
+    except OSError as erro:
+        print("[ENV] Não foi possível ler o arquivo local:", type(erro).__name__)
+
+
+carregar_env_local_cloudinary()
+
 
 HOST = "0.0.0.0"
 PORT = int(os.getenv("PORT", "8766"))
@@ -301,7 +334,143 @@ class Handler(BaseHTTPRequestHandler):
             print("[EQUIPE] Solicitação inválida:", type(erro).__name__)
             self.enviar_json(400, {"erro": "Solicitação inválida."})
 
+
+    def do_upload_profile_photo(self):
+        """Recebe uma foto autenticada e a envia ao Cloudinary."""
+        import hashlib
+        import hmac
+        import mimetypes
+        import secrets
+        import time
+        import uuid
+        from urllib.parse import urlencode
+
+        limite = 8 * 1024 * 1024
+        token_header = self.headers.get("Authorization", "")
+        if not token_header.startswith("Bearer "):
+            self.enviar_json(401, {"erro": "Autenticação necessária."})
+            return
+
+        try:
+            usuario = verificar_token_firebase(token_header[7:].strip())
+            if not isinstance(usuario, dict):
+                self.enviar_json(401, {"erro": "Token inválido ou expirado."})
+                return
+            uid = usuario.get("uid") or usuario.get("user_id") or usuario.get("sub")
+            if not isinstance(uid, str) or not uid or "/" in uid or "\\" in uid:
+                self.enviar_json(401, {"erro": "Não foi possível validar a conta."})
+                return
+        except Exception:
+            self.enviar_json(401, {"erro": "Token inválido ou expirado."})
+            return
+
+        try:
+            tamanho = int(self.headers.get("Content-Length", "0"))
+        except (TypeError, ValueError):
+            tamanho = 0
+
+        if tamanho < 1 or tamanho > limite:
+            self.enviar_json(413, {"erro": "A foto deve ter até 8 MB."})
+            return
+
+        tipo = (self.headers.get("Content-Type", "") or "").split(";")[0].strip().lower()
+        tipos_permitidos = {"image/jpeg", "image/png", "image/webp"}
+        if tipo not in tipos_permitidos:
+            self.enviar_json(415, {"erro": "Formato inválido. Use JPG, PNG ou WebP."})
+            return
+
+        cloud = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+        api_key = os.getenv("CLOUDINARY_API_KEY", "").strip()
+        api_secret = os.getenv("CLOUDINARY_API_SECRET", "").strip()
+        if not cloud or not api_key or not api_secret:
+            self.enviar_json(503, {"erro": "O serviço de fotos ainda não está configurado no servidor."})
+            return
+
+        try:
+            imagem = self.rfile.read(tamanho)
+            if len(imagem) != tamanho:
+                self.enviar_json(400, {"erro": "Upload incompleto."})
+                return
+
+            # Confere assinatura básica do arquivo, não apenas o MIME enviado.
+            assinatura_ok = (
+                (tipo == "image/jpeg" and imagem.startswith(b"\xff\xd8\xff"))
+                or (tipo == "image/png" and imagem.startswith(b"\x89PNG\r\n\x1a\n"))
+                or (tipo == "image/webp" and len(imagem) >= 12
+                    and imagem[:4] == b"RIFF" and imagem[8:12] == b"WEBP")
+            )
+            if not assinatura_ok:
+                self.enviar_json(415, {"erro": "O conteúdo do arquivo não corresponde ao formato informado."})
+                return
+
+            timestamp = str(int(time.time()))
+            pasta = "perfis/" + uid
+            public_id = uuid.uuid4().hex
+            parametros = {
+                "folder": pasta,
+                "public_id": public_id,
+                "timestamp": timestamp,
+            }
+            texto_assinatura = "&".join(
+                f"{chave}={parametros[chave]}" for chave in sorted(parametros)
+            ) + api_secret
+            assinatura = hashlib.sha1(texto_assinatura.encode("utf-8")).hexdigest()
+
+            boundary = "----DaNikeAI" + secrets.token_hex(16)
+            partes = []
+
+            def campo(nome, valor):
+                partes.append(
+                    f"--{boundary}\r\n"
+                    f'Content-Disposition: form-data; name="{nome}"\r\n\r\n'
+                    f"{valor}\r\n".encode("utf-8")
+                )
+
+            campo("api_key", api_key)
+            campo("timestamp", timestamp)
+            campo("folder", pasta)
+            campo("public_id", public_id)
+            campo("signature", assinatura)
+
+            extensao = {"image/jpeg": "jpg", "image/png": "png", "image/webp": "webp"}[tipo]
+            partes.append(
+                f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="file"; filename="foto.{extensao}"\r\n'
+                f"Content-Type: {tipo}\r\n\r\n".encode("utf-8")
+                + imagem + b"\r\n"
+            )
+            partes.append(f"--{boundary}--\r\n".encode("utf-8"))
+            corpo = b"".join(partes)
+
+            requisicao = urllib.request.Request(
+                f"https://api.cloudinary.com/v1_1/{cloud}/image/upload",
+                data=corpo,
+                headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+                method="POST",
+            )
+            with urllib.request.urlopen(requisicao, timeout=45) as resposta:
+                resultado = json.loads(resposta.read().decode("utf-8"))
+
+            foto_url = resultado.get("secure_url")
+            foto_id = resultado.get("public_id")
+            if not isinstance(foto_url, str) or not foto_url.startswith("https://"):
+                raise ValueError("Resposta de imagem inválida.")
+
+            self.enviar_json(200, {
+                "ok": True,
+                "secure_url": foto_url,
+                "public_id": foto_id,
+            })
+
+        except urllib.error.HTTPError:
+            self.enviar_json(502, {"erro": "O serviço de fotos recusou o envio."})
+        except Exception:
+            self.enviar_json(502, {"erro": "Não foi possível enviar a foto. Tente novamente."})
+
     def do_POST(self):
+        if self.path == "/profile/upload-photo":
+            self.do_upload_profile_photo()
+            return
         if self.path == "/equipe/delete-photo":
             self.do_delete_team_photo()
             return
