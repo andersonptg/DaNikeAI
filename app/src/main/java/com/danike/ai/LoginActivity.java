@@ -810,8 +810,7 @@ TextView robo = new TextView(this);
                                         }
 
                                         boolean permitirVazio =
-                                                "lipesanderson@gmail.com"
-                                                .equalsIgnoreCase(emailFinalVerificacao);
+                                                ("lipesanderson@gmail.com".equalsIgnoreCase(emailFinalVerificacao) || "andersonlopesdossantos14@gmail.com".equalsIgnoreCase(emailFinalVerificacao));
 
                                         AtualizacaoTelefoneDialog.mostrar(
                                                 LoginActivity.this,
