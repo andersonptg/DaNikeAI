@@ -28,6 +28,8 @@ public final class AtualizacaoTelefoneDialog {
     private AtualizacaoTelefoneDialog() {}
 
     public static void mostrar(Context context, boolean permitirVazio, Callback callback) {
+        callback.concluido();
+        if (true) return;
 
         LinearLayout layout = new LinearLayout(context);
         layout.setOrientation(LinearLayout.VERTICAL);
