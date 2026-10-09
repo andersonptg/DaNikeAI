@@ -1,4 +1,15 @@
-plugins {
+# muda para:
+# versionCode 32
+# versionName "1.8.4"
+
+# confere
+grep -n "versionCode\|versionName" app/build.gradle
+
+git add app/build.gradle
+git commit -m "bump v1.8.4 code 32"
+git push origin main
+
+gh workflow run "DaNikeAI Release"plugins {
     id 'com.android.application'
     id 'com.google.gms.google-services'
 }
@@ -34,8 +45,8 @@ android {
         applicationId 'com.danike.ai'
         minSdk 23
         targetSdk 35
-        versionCode 31
-        versionName '1.8.3'
+        versionCode 32
+        versionName '1.8.4'
     }
 
     buildTypes {
