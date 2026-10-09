@@ -17,6 +17,8 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 public class LoginActivity extends Activity {
 
@@ -64,6 +66,307 @@ public class LoginActivity extends Activity {
         return campo;
     }
 
+
+    private String somenteNumerosLogin(String texto) {
+        return texto == null ? "" : texto.replaceAll("\\D", "");
+    }
+
+    private void autenticarEmailLogin(
+            String email,
+            String senhaDigitada,
+            TextView mensagem,
+            Button entrar
+    ) {
+
+        if (email == null || email.trim().isEmpty()) {
+
+            entrar.setEnabled(true);
+
+            mensagem.setTextColor(
+                    Color.rgb(255, 80, 80)
+            );
+
+            mensagem.setText(
+                    "Conta sem e-mail cadastrado."
+            );
+
+            return;
+        }
+
+        auth.signInWithEmailAndPassword(
+                email.trim(),
+                senhaDigitada
+        ).addOnCompleteListener(task -> {
+
+            if (task.isSuccessful()) {
+
+                UsuariosTracker.registrarEntrada("");
+
+                mensagem.setTextColor(
+                        Color.rgb(80, 255, 150)
+                );
+
+                mensagem.setText(
+                        "Login realizado com sucesso ✔️"
+                );
+
+                new android.os.Handler().postDelayed(
+                        () -> {
+
+                            String emailAtual = "";
+
+                            if (
+                                    FirebaseAuth
+                                            .getInstance()
+                                            .getCurrentUser() != null
+                                    &&
+                                    FirebaseAuth
+                                            .getInstance()
+                                            .getCurrentUser()
+                                            .getEmail() != null
+                            ) {
+
+                                emailAtual =
+                                        FirebaseAuth
+                                                .getInstance()
+                                                .getCurrentUser()
+                                                .getEmail();
+                            }
+
+                            boolean proprietario =
+                                    "lipesanderson@gmail.com"
+                                            .equalsIgnoreCase(
+                                                    emailAtual
+                                            );
+
+                            SharedPreferences dados =
+                                    getSharedPreferences(
+                                            "DaNikeAI_Dados",
+                                            MODE_PRIVATE
+                                    );
+
+                            String nomeSalvo =
+                                    dados.getString(
+                                            "nome",
+                                            ""
+                                    ).trim();
+
+                            boolean onboardingConcluido =
+                                    dados.getBoolean(
+                                            "onboarding_concluido",
+                                            false
+                                    )
+                                    ||
+                                    dados.getBoolean(
+                                            "nome_definido",
+                                            false
+                                    )
+                                    ||
+                                    dados.getBoolean(
+                                            "concluido",
+                                            false
+                                    );
+
+                            Class<?> destino;
+
+                            if (
+                                    proprietario
+                                    ||
+                                    onboardingConcluido
+                                    ||
+                                    !nomeSalvo.isEmpty()
+                            ) {
+
+                                destino = MainActivity.class;
+
+                            } else {
+
+                                destino = OnboardingActivity.class;
+                            }
+
+                            startActivity(
+                                    new Intent(
+                                            LoginActivity.this,
+                                            destino
+                                    )
+                            );
+
+                            finish();
+
+                        },
+                        700
+                );
+
+            } else {
+
+                entrar.setEnabled(true);
+
+                mensagem.setTextColor(
+                        Color.rgb(255, 80, 80)
+                );
+
+                mensagem.setText(
+                        "E-mail, usuário, celular ou senha incorretos."
+                );
+            }
+        });
+    }
+
+    private void localizarEmailLogin(
+            String entrada,
+            String senhaDigitada,
+            TextView mensagem,
+            Button entrar
+    ) {
+
+        FirebaseFirestore db =
+                FirebaseFirestore.getInstance();
+
+        String telefone =
+                somenteNumerosLogin(entrada);
+
+        if (
+                telefone.length() == 10
+                ||
+                telefone.length() == 11
+        ) {
+
+            db.collection("usuarios")
+                    .whereEqualTo(
+                            "telefoneNormalizado",
+                            telefone
+                    )
+                    .limit(1)
+                    .get()
+                    .addOnSuccessListener(resultado -> {
+
+                        if (!resultado.isEmpty()) {
+
+                            String email =
+                                    resultado
+                                            .getDocuments()
+                                            .get(0)
+                                            .getString("email");
+
+                            autenticarEmailLogin(
+                                    email,
+                                    senhaDigitada,
+                                    mensagem,
+                                    entrar
+                            );
+
+                        } else {
+
+                            localizarNomeLogin(
+                                    entrada,
+                                    senhaDigitada,
+                                    mensagem,
+                                    entrar
+                            );
+                        }
+
+                    })
+                    .addOnFailureListener(e -> {
+
+                        entrar.setEnabled(true);
+
+                        mensagem.setTextColor(
+                                Color.rgb(255, 80, 80)
+                        );
+
+                        mensagem.setText(
+                                "Não foi possível localizar sua conta."
+                        );
+                    });
+
+            return;
+        }
+
+        localizarNomeLogin(
+                entrada,
+                senhaDigitada,
+                mensagem,
+                entrar
+        );
+    }
+
+    private void localizarNomeLogin(
+            String nome,
+            String senhaDigitada,
+            TextView mensagem,
+            Button entrar
+    ) {
+
+        FirebaseFirestore.getInstance()
+                .collection("usuarios")
+                .whereEqualTo(
+                        "nome",
+                        nome
+                )
+                .limit(2)
+                .get()
+                .addOnSuccessListener(resultado -> {
+
+                    if (resultado.isEmpty()) {
+
+                        entrar.setEnabled(true);
+
+                        mensagem.setTextColor(
+                                Color.rgb(255, 80, 80)
+                        );
+
+                        mensagem.setText(
+                                "Nome, e-mail ou celular não encontrado."
+                        );
+
+                        return;
+                    }
+
+                    if (resultado.size() > 1) {
+
+                        entrar.setEnabled(true);
+
+                        mensagem.setTextColor(
+                                Color.rgb(255, 190, 70)
+                        );
+
+                        mensagem.setText(
+                                "Há mais de uma conta com esse nome.\n"
+                                +
+                                "Use seu e-mail ou celular."
+                        );
+
+                        return;
+                    }
+
+                    String email =
+                            resultado
+                                    .getDocuments()
+                                    .get(0)
+                                    .getString("email");
+
+                    autenticarEmailLogin(
+                            email,
+                            senhaDigitada,
+                            mensagem,
+                            entrar
+                    );
+
+                })
+                .addOnFailureListener(e -> {
+
+                    entrar.setEnabled(true);
+
+                    mensagem.setTextColor(
+                            Color.rgb(255, 80, 80)
+                    );
+
+                    mensagem.setText(
+                            "Não foi possível localizar sua conta."
+                    );
+                });
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,15 +377,16 @@ public class LoginActivity extends Activity {
         getWindow().setNavigationBarColor(Color.BLACK);
 
         LinearLayout tela = new LinearLayout(this);
+
         tela.setOrientation(LinearLayout.VERTICAL);
-        tela.setGravity(Gravity.CENTER_HORIZONTAL);
+        tela.setGravity(Gravity.CENTER);
         tela.setPadding(
                 dp(28),
                 dp(25),
                 dp(28),
                 dp(25)
         );
-        tela.setBackground(new LoginBackgroundDrawable(android.graphics.BitmapFactory.decodeResource(getResources(), com.danike.ai.R.drawable.ferrari_login)));
+        tela.setBackground(new LoginBackgroundDrawable(android.graphics.BitmapFactory.decodeResource(getResources(), com.danike.ai.R.drawable.login_background)));
 
         
         // ===== CABEÇALHO FIXO DO LOGIN =====
@@ -140,12 +444,12 @@ public class LoginActivity extends Activity {
         tela.addView(topoLogin, 0, topoParams);
 
 TextView robo = new TextView(this);
-        robo.setText(""); robo.setBackgroundResource(com.danike.ai.R.drawable.danike_logo);
+        robo.setText(""); robo.setBackgroundResource(com.danike.ai.R.drawable.danike_splash_logo);
         robo.setTextSize(1);
         robo.setGravity(Gravity.CENTER);
 
         LinearLayout.LayoutParams logoParams =
-                new LinearLayout.LayoutParams(dp(105), dp(78));
+                new LinearLayout.LayoutParams(dp(72), dp(54));
         logoParams.gravity = Gravity.CENTER;
         tela.addView(robo, logoParams);
 
@@ -460,21 +764,77 @@ TextView robo = new TextView(this);
                                     || dados.getBoolean("concluido", false);
 
                             Class<?> destino;
-
                             if (proprietario || onboardingConcluido || !nomeSalvo.isEmpty()) {
                                 destino = MainActivity.class;
                             } else {
                                 destino = OnboardingActivity.class;
                             }
 
-                            Intent intent = new Intent(
-                                    LoginActivity.this,
-                                    destino
-                            );
+                            final Class<?> destinoFinal = destino;
+                            final String emailFinalVerificacao = emailAtual;
 
-                            startActivity(intent);
-// ATUALIZACAO MANUAL PELO ADM DESATIVADA: AtualizacaoApp.verificar(LoginActivity.this);
-                            finish();
+                            FirebaseUser usuarioLogado =
+                                    FirebaseAuth.getInstance().getCurrentUser();
+
+                            if (usuarioLogado == null) {
+                                Intent intent = new Intent(
+                                        LoginActivity.this,
+                                        destinoFinal
+                                );
+                                startActivity(intent);
+                                finish();
+                                return;
+                            }
+
+                            FirebaseFirestore.getInstance()
+                                    .collection("usuarios")
+                                    .document(usuarioLogado.getUid())
+                                    .get()
+                                    .addOnSuccessListener(perfil -> {
+
+                                        String telefonePerfil =
+                                                perfil.getString("telefone");
+
+                                        boolean possuiTelefone =
+                                                telefonePerfil != null
+                                                && !telefonePerfil.trim().isEmpty();
+
+                                        if (possuiTelefone) {
+                                            Intent intent = new Intent(
+                                                    LoginActivity.this,
+                                                    destinoFinal
+                                            );
+                                            startActivity(intent);
+                                            finish();
+                                            return;
+                                        }
+
+                                        boolean permitirVazio =
+                                                "lipesanderson@gmail.com"
+                                                .equalsIgnoreCase(emailFinalVerificacao);
+
+                                        AtualizacaoTelefoneDialog.mostrar(
+                                                LoginActivity.this,
+                                                permitirVazio,
+                                                () -> {
+                                                    Intent intent = new Intent(
+                                                            LoginActivity.this,
+                                                            destinoFinal
+                                                    );
+                                                    startActivity(intent);
+                                                    finish();
+                                                }
+                                        );
+                                    })
+                                    .addOnFailureListener(e -> {
+
+                                        Intent intent = new Intent(
+                                                LoginActivity.this,
+                                                destinoFinal
+                                        );
+                                        startActivity(intent);
+                                        finish();
+                                    });
                         }
                     });
                 }, 700);

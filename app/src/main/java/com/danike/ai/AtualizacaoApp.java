@@ -30,6 +30,12 @@ public final class AtualizacaoApp {
             return;
         }
 
+        Toast.makeText(
+                activity,
+                "🔎 Verificando atualização...",
+                Toast.LENGTH_LONG
+        ).show();
+
         FirebaseFirestore.getInstance()
                 .collection("config")
                 .document("update")
@@ -55,15 +61,26 @@ public final class AtualizacaoApp {
 
                     Object versionCodeObj = dados.get("versionCode");
 
-                    if (!(versionCodeObj instanceof Long)) {
+                    long versaoRemota;
+
+                    if (versionCodeObj instanceof Number) {
+                        versaoRemota = ((Number) versionCodeObj).longValue();
+                    } else {
+                        android.util.Log.e(
+                                "AtualizacaoApp",
+                                "versionCode inválido no Firebase: " + versionCodeObj
+                        );
                         return;
                     }
 
-                    long versaoRemota =
-                            (Long) versionCodeObj;
-
                     long versaoAtual =
                             BuildConfig.VERSION_CODE;
+
+                    android.util.Log.d(
+                            "AtualizacaoApp",
+                            "Versão instalada: " + versaoAtual
+                                    + " | Versão Firebase: " + versaoRemota
+                    );
 
                     if (versaoRemota <= versaoAtual) {
                         return;

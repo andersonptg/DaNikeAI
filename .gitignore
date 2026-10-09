@@ -46,3 +46,13 @@ local.properties
 *.bak
 *.bak-*
 *ANTES*
+__pycache__/
+*.backup_*
+*.bak_*
+*.backup
+backup/
+functions/
+*.pyc
+convites.txt
+file_*.png
+SplashActivity.java.trabalho

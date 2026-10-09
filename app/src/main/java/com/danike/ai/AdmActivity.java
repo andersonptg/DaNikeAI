@@ -1123,70 +1123,252 @@ equipeListaAdm.addView(
     }
 
 private void excluirPerfilEquipeLocal(int indice) {
-        try {
-            SharedPreferences prefs =
-                    getSharedPreferences(
-                            "DaNikeAI_ADM",
-                            MODE_PRIVATE
-                    );
+    try {
+        SharedPreferences prefs = getSharedPreferences(
+                "DaNikeAI_ADM", MODE_PRIVATE
+        );
 
-            JSONArray lista =
-                    new JSONArray(
-                            prefs.getString(
-                                    "equipe_perfis",
-                                    "[]"
-                            )
-                    );
+        JSONArray lista = new JSONArray(
+                prefs.getString("equipe_perfis", "[]")
+        );
 
-            if (indice < 0 || indice >= lista.length()) {
-                return;
-            }
-
-            JSONObject pessoa =
-                    lista.getJSONObject(indice);
-
-            String fotoUri =
-                    pessoa.optString(
-                            "fotoUri",
-                            ""
-                    );
-
-            if (!fotoUri.isEmpty()
-                    && !fotoUri.startsWith("content://")) {
-
-                try {
-                    new java.io.File(
-                            fotoUri
-                    ).delete();
-                } catch (Exception ignored) {
-                }
-            }
-
-            lista.remove(indice);
-
-            prefs.edit()
-                    .putString(
-                            "equipe_perfis",
-                            lista.toString()
-                    )
-                    .apply();
-
-            atualizarListaEquipeAdm();
-
-            Toast.makeText(
-                    this,
-                    "🗑 Perfil excluído.",
-                    Toast.LENGTH_SHORT
-            ).show();
-
-        } catch (Exception e) {
-            Toast.makeText(
-                    this,
-                    "Erro ao excluir perfil.",
-                    Toast.LENGTH_SHORT
-            ).show();
+        if (indice < 0 || indice >= lista.length()) {
+            return;
         }
+
+        JSONObject pessoa = lista.getJSONObject(indice);
+        final String nome = pessoa.optString("nome", "").trim();
+
+        if (nome.isEmpty()) {
+            Toast.makeText(this,
+                    "Não foi possível identificar o perfil.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        final String idEquipe = idEquipeCloud(nome);
+        FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
+
+        if (usuario == null
+                || usuario.getEmail() == null
+                || !OWNER_EMAIL.equalsIgnoreCase(usuario.getEmail())) {
+            Toast.makeText(this,
+                    "Apenas o proprietário pode excluir fotos.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        Toast.makeText(this,
+                "Verificando a foto na nuvem...",
+                Toast.LENGTH_SHORT).show();
+
+        db.collection("equipe")
+                .document(idEquipe)
+                .get()
+                .addOnSuccessListener(documento -> {
+                    if (!documento.exists()) {
+                        Toast.makeText(this,
+                                "O perfil não foi encontrado na nuvem.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    String publicId = documento.getString("publicId");
+                    if (publicId == null || publicId.trim().isEmpty()) {
+                        Toast.makeText(this,
+                                "Este perfil não possui publicId. Nada foi excluído.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    usuario.getIdToken(true)
+                            .addOnSuccessListener(tokenResult -> {
+                                final String token = tokenResult.getToken();
+
+                                if (token == null || token.isEmpty()) {
+                                    Toast.makeText(this,
+                                            "Não foi possível autenticar a exclusão.",
+                                            Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+
+                                new Thread(() -> {
+                                    boolean fotoExcluida = false;
+                                    String mensagemErro = "";
+
+                                    java.net.HttpURLConnection conexao = null;
+
+                                    try {
+                                        java.net.URL url = new java.net.URL(
+                                                "https://danikeai.onrender.com/equipe/delete-photo"
+                                        );
+
+                                        conexao = (java.net.HttpURLConnection)
+                                                url.openConnection();
+                                        conexao.setRequestMethod("POST");
+                                        conexao.setConnectTimeout(20000);
+                                        conexao.setReadTimeout(30000);
+                                        conexao.setDoOutput(true);
+                                        conexao.setRequestProperty(
+                                                "Authorization", "Bearer " + token
+                                        );
+                                        conexao.setRequestProperty(
+                                                "Content-Type", "application/json; charset=UTF-8"
+                                        );
+                                        conexao.setRequestProperty(
+                                                "Accept", "application/json"
+                                        );
+
+                                        JSONObject corpo = new JSONObject();
+                                        corpo.put("publicId", publicId);
+
+                                        byte[] dados = corpo.toString()
+                                                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+                                        try (java.io.OutputStream saida =
+                                                     conexao.getOutputStream()) {
+                                            saida.write(dados);
+                                        }
+
+                                        int codigo = conexao.getResponseCode();
+                                        java.io.InputStream fluxo =
+                                                codigo >= 200 && codigo < 400
+                                                        ? conexao.getInputStream()
+                                                        : conexao.getErrorStream();
+
+                                        StringBuilder texto = new StringBuilder();
+
+                                        if (fluxo != null) {
+                                            try (java.io.InputStream entrada = fluxo;
+                                                 java.io.ByteArrayOutputStream buffer =
+                                                         new java.io.ByteArrayOutputStream()) {
+                                                byte[] bloco = new byte[2048];
+                                                int quantidade;
+                                                while ((quantidade = entrada.read(bloco)) != -1) {
+                                                    buffer.write(bloco, 0, quantidade);
+                                                }
+                                                texto.append(buffer.toString("UTF-8"));
+                                            }
+                                        }
+
+                                        JSONObject resposta = new JSONObject(texto.toString());
+
+                                        fotoExcluida = codigo == 200
+                                                && resposta.optBoolean("ok", false);
+
+                                        if (!fotoExcluida) {
+                                            mensagemErro = "O servidor não confirmou a exclusão da foto (HTTP "
+                                                    + codigo + ").";
+                                        }
+
+                                    } catch (Exception e) {
+                                        mensagemErro =
+                                                "Falha ao solicitar a exclusão da foto. Tente novamente.";
+                                        android.util.Log.e(
+                                                "DaNikeEquipe",
+                                                "Falha na exclusão Cloudinary",
+                                                e
+                                        );
+                                    } finally {
+                                        if (conexao != null) {
+                                            conexao.disconnect();
+                                        }
+                                    }
+
+                                    final boolean confirmado = fotoExcluida;
+                                    final String erroFinal = mensagemErro;
+
+                                    runOnUiThread(() -> {
+                                        if (!confirmado) {
+                                            Toast.makeText(this,
+                                                    erroFinal,
+                                                    Toast.LENGTH_LONG).show();
+                                            return;
+                                        }
+
+                                        // Só apaga o documento depois da confirmação
+                                        // do servidor de que o Cloudinary aceitou a exclusão.
+                                        db.collection("equipe")
+                                                .document(idEquipe)
+                                                .delete()
+                                                .addOnSuccessListener(v -> {
+                                                    try {
+                                                        JSONArray atual = new JSONArray(
+                                                                prefs.getString(
+                                                                        "equipe_perfis", "[]"
+                                                                )
+                                                        );
+
+                                                        for (int i = atual.length() - 1;
+                                                             i >= 0; i--) {
+                                                            JSONObject item =
+                                                                    atual.getJSONObject(i);
+
+                                                            if (nome.equalsIgnoreCase(
+                                                                    item.optString("nome", "")
+                                                                            .trim())) {
+                                                                atual.remove(i);
+                                                            }
+                                                        }
+
+                                                        prefs.edit()
+                                                                .putString(
+                                                                        "equipe_perfis",
+                                                                        atual.toString()
+                                                                )
+                                                                .apply();
+
+                                                    } catch (Exception e) {
+                                                        android.util.Log.e(
+                                                                "DaNikeEquipe",
+                                                                "Erro ao atualizar lista local",
+                                                                e
+                                                        );
+                                                    }
+
+                                                    atualizarListaEquipeAdm();
+
+                                                    Toast.makeText(this,
+                                                            "Foto e perfil excluídos da nuvem.",
+                                                            Toast.LENGTH_LONG).show();
+                                                })
+                                                .addOnFailureListener(e -> {
+                                                    android.util.Log.e(
+                                                            "DaNikeEquipe",
+                                                            "Foto removida, mas falhou a exclusão do Firestore",
+                                                            e
+                                                    );
+
+                                                    Toast.makeText(this,
+                                                            "A foto foi removida, mas o perfil permaneceu no Firestore. Verifique a conexão e tente novamente.",
+                                                            Toast.LENGTH_LONG).show();
+                                                });
+                                    });
+                                }).start();
+                            })
+                            .addOnFailureListener(e ->
+                                    Toast.makeText(this,
+                                            "Falha ao obter autorização do Firebase.",
+                                            Toast.LENGTH_LONG).show()
+                            );
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(this,
+                                "Não foi possível consultar o perfil na nuvem.",
+                                Toast.LENGTH_LONG).show()
+                );
+
+    } catch (Exception e) {
+        Toast.makeText(this,
+                "Erro ao iniciar a exclusão do perfil.",
+                Toast.LENGTH_LONG).show();
+        android.util.Log.e(
+                "DaNikeEquipe",
+                "Erro geral ao excluir perfil",
+                e
+        );
     }
+}
 
 private String idEquipeCloud(String nome) {
     try {
@@ -3146,9 +3328,18 @@ private boolean salvarPerfilEquipeLocal(
                     String secureUrl =
                             json.optString("secure_url", "").trim();
 
+                    String publicId =
+                            json.optString("public_id", "").trim();
+
                     if (secureUrl.isEmpty()) {
                         throw new Exception(
                                 "Cloudinary não retornou a URL da foto."
+                        );
+                    }
+
+                    if (publicId.isEmpty()) {
+                        throw new Exception(
+                                "Cloudinary não retornou o public_id da foto."
                         );
                     }
 
@@ -3162,6 +3353,7 @@ private boolean salvarPerfilEquipeLocal(
                     perfilCloud.put("cargo", cargo);
                     perfilCloud.put("fotoUrl", secureUrl);
                     perfilCloud.put("fotoUri", secureUrl);
+                    perfilCloud.put("publicId", publicId);
                     perfilCloud.put("coroa", "");
                     perfilCloud.put("atualizadoEm",
                             com.google.firebase.firestore.FieldValue.serverTimestamp());

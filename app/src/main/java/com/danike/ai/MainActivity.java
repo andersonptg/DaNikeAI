@@ -1661,12 +1661,48 @@ public class MainActivity extends Activity {
                 txt("👤\nPerfil", 12, Color.WHITE);
 
         TextView botaoMais =
-                txt("⋯\nMais", 12, Color.WHITE);
+                txt("✦\nAPPS", 12, Color.WHITE);
         botaoMais.setGravity(Gravity.CENTER);
         botaoMais.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
+
+        GradientDrawable fundoAppsNeon =
+                new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{
+                                Color.rgb(25, 8, 65),
+                                Color.rgb(8, 35, 78),
+                                Color.rgb(20, 8, 55)
+                        }
+                );
+
+        fundoAppsNeon.setCornerRadius(dp(18));
+        fundoAppsNeon.setStroke(
+                dp(2),
+                Color.rgb(75, 170, 255)
+        );
+
+        botaoMais.setBackground(fundoAppsNeon);
+        botaoMais.setElevation(dp(18));
+
+        android.animation.ObjectAnimator pulsoApps =
+                android.animation.ObjectAnimator.ofFloat(
+                        botaoMais,
+                        "alpha",
+                        0.72f,
+                        1.0f
+                );
+
+        pulsoApps.setDuration(1100);
+        pulsoApps.setRepeatMode(
+                android.animation.ValueAnimator.REVERSE
+        );
+        pulsoApps.setRepeatCount(
+                android.animation.ValueAnimator.INFINITE
+        );
+        pulsoApps.start();
         botaoPerfil.setGravity(Gravity.CENTER);
         botaoPerfil.setTypeface(
                 Typeface.DEFAULT,
@@ -1740,56 +1776,12 @@ public class MainActivity extends Activity {
         });
 
         botaoConexoes.setOnClickListener(v -> {
-            FrameLayout telaPessoas = new FrameLayout(this);
-            telaPessoas.setBackgroundColor(Color.BLACK);
-            telaPessoas.setElevation(dp(100));
-
-            TextView tituloPessoas =
-                    txt("PESSOAS", 26, Color.WHITE);
-            tituloPessoas.setGravity(Gravity.CENTER);
-            tituloPessoas.setTypeface(
-                    Typeface.DEFAULT,
-                    Typeface.BOLD
-            );
-
-            telaPessoas.addView(
-                    tituloPessoas,
-                    new FrameLayout.LayoutParams(
-                            -1,
-                            dp(80),
-                            Gravity.TOP
+            startActivity(
+                    new Intent(
+                            MainActivity.this,
+                            SocialActivity.class
                     )
             );
-
-            TextView fecharPessoas =
-                    txt("✕", 28, Color.WHITE);
-            fecharPessoas.setGravity(Gravity.CENTER);
-
-            FrameLayout.LayoutParams fecharPessoasParams =
-                    new FrameLayout.LayoutParams(
-                            dp(55),
-                            dp(55),
-                            Gravity.TOP | Gravity.END
-                    );
-            fecharPessoasParams.setMargins(
-                    0, dp(12), dp(12), 0
-            );
-
-            telaPessoas.addView(
-                    fecharPessoas,
-                    fecharPessoasParams
-            );
-
-            fecharPessoas.setOnClickListener(x ->
-                    telaPessoas.setVisibility(View.GONE)
-            );
-
-            raiz.addView(
-                    telaPessoas,
-                    new FrameLayout.LayoutParams(-1, -1)
-            );
-
-            telaPessoas.bringToFront();
         });
 
         botaoPerfil.setOnClickListener(v -> {
@@ -1801,13 +1793,7 @@ public class MainActivity extends Activity {
             );
         });
 
-        botaoMais.setOnClickListener(v -> {
-            Toast.makeText(
-                    this,
-                    "Mais opções em breve.",
-                    Toast.LENGTH_SHORT
-            ).show();
-        });
+        botaoMais.setOnClickListener(v -> abrirMenuPrincipal());
 
         FrameLayout.LayoutParams navParams =
                 new FrameLayout.LayoutParams(
@@ -2850,25 +2836,6 @@ public class MainActivity extends Activity {
 
         adicionarItemMenu(
                 listaMenu,
-                "👤",
-                "PERFIL",
-                "Seu perfil no DaNikeAI",
-                () -> {
-                    abrirAreaComManutencao(
-                            "perfil",
-                            "PERFIL",
-                            () -> startActivity(
-                                    new Intent(
-                                            MainActivity.this,
-                                            PerfilActivity.class
-                                    )
-                            )
-                    );
-                }
-        );
-
-        adicionarItemMenu(
-                listaMenu,
                 "🎮",
                 "HAVE",
                 "Entre no seu espaço Have",
@@ -3118,6 +3085,8 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
 
+        UsuariosTracker.entrouEmCena();
+
         if (pontoIA != null) {
             carregarIndicadoresManutencao(
                     pontoIA,
@@ -3302,6 +3271,7 @@ pessoa.put("instagramLink", instagramLink);
 
     @Override
     protected void onDestroy() {
+        UsuariosTracker.saiuDeCena();
         try {
             if (equipeListenerCloud != null) {
                 equipeListenerCloud.remove();

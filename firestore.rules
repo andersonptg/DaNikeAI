@@ -15,30 +15,159 @@ service cloud.firestore {
         && request.auth.uid == "nd9zWE3GF2hOJDg4BfgTtaSy3H33";
     }
 
+    /*
+     * DADOS PRIVADOS DA CONTA
+     *
+     * O usuário pode ler/escrever somente o próprio documento.
+     * O proprietário continua podendo consultar os usuários no ADM.
+     */
     match /usuarios/{uid} {
       allow create, update: if request.auth != null
         && request.auth.uid == uid;
 
       allow read: if request.auth != null
-        && request.auth.uid == "nd9zWE3GF2hOJDg4BfgTtaSy3H33";
+        && (
+          request.auth.uid == uid
+          || request.auth.uid == "nd9zWE3GF2hOJDg4BfgTtaSy3H33"
+        );
 
       allow delete: if request.auth != null
         && request.auth.uid == "nd9zWE3GF2hOJDg4BfgTtaSy3H33";
     }
 
+    /*
+     * PERFIS PÚBLICOS
+     *
+     * Não contém UID, e-mail ou dados internos como campos públicos.
+     * O UID usado no caminho do documento é interno e não é exibido
+     * pela interface.
+     *
+     * Leitura pública somente para usuários autenticados.
+     */
+    match /perfis_publicos/{uid} {
+      allow read: if request.auth != null;
+
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid;
+
+      allow delete: if request.auth != null
+        && request.auth.uid == uid;
+    }
+
+    /*
+     * CONVITES
+     *
+     * Cada usuário pode criar/alterar seus próprios convites enviados
+     * e o destinatário pode ler os recebidos.
+     */
+    match /convites/{destinatarioUid}/recebidos/{remetenteUid} {
+      allow create: if request.auth != null
+        && request.auth.uid == remetenteUid;
+
+      allow read: if request.auth != null
+        && (
+          request.auth.uid == destinatarioUid
+          || request.auth.uid == remetenteUid
+        );
+
+      allow update, delete: if request.auth != null
+        && (
+          request.auth.uid == destinatarioUid
+          || request.auth.uid == remetenteUid
+        );
+    }
+
+    /*
+     * CONEXÕES
+     * Cada usuário acessa somente sua própria lista.
+     * Os UIDs permanecem internos no Firestore.
+     */
+    match /conexoes/{uid}/usuarios/{outroUid} {
+      allow read: if request.auth != null
+        && request.auth.uid == uid;
+
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid;
+
+      allow delete: if request.auth != null
+        && request.auth.uid == uid;
+    }
 
     match /have_usuarios/{uid} {
-      allow read: if request.auth != null && request.auth.uid == uid;
-      allow create, update: if request.auth != null && request.auth.uid == uid;
-      allow delete: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null
+        && request.auth.uid == uid;
+
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid;
+
+      allow delete: if request.auth != null
+        && request.auth.uid == uid;
     }
 
-    // Perfil público HAVE: nunca deve conter e-mail ou outros dados privados.
     match /have_perfis_publicos/{uid} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null && request.auth.uid == uid;
-      allow delete: if request.auth != null && request.auth.uid == uid;
+
+      allow create, update: if request.auth != null
+        && request.auth.uid == uid;
+
+      allow delete: if request.auth != null
+        && request.auth.uid == uid;
     }
+
+
+    // =========================
+    // GRUPOS
+    // =========================
+    match /grupos/{grupoId} {
+
+      // Apenas participantes podem visualizar o grupo.
+      allow read: if request.auth != null
+        && request.auth.uid in resource.data.participantes;
+
+      // Apenas usuário autenticado pode criar um grupo,
+      // sendo obrigatoriamente o administrador inicial.
+      allow create: if request.auth != null
+        && request.resource.data.administradorUid == request.auth.uid
+        && request.auth.uid in request.resource.data.participantes;
+
+      // Apenas participantes podem atualizar o grupo.
+      // Alterações administrativas ficam restritas ao administrador.
+      allow update: if request.auth != null
+        && request.auth.uid == resource.data.administradorUid;
+
+      // Somente o administrador pode excluir o grupo.
+      allow delete: if request.auth != null
+        && request.auth.uid == resource.data.administradorUid;
+
+
+      // =========================
+      // MENSAGENS DO GRUPO
+      // =========================
+      match /mensagens/{mensagemId} {
+
+        // Apenas participantes do grupo podem ler mensagens.
+        allow read: if request.auth != null
+          && request.auth.uid in get(
+            /databases/$(database)/documents/grupos/$(grupoId)
+          ).data.participantes;
+
+        // Somente participante pode enviar mensagem
+        // e o remetente precisa ser o próprio usuário autenticado.
+        allow create: if request.auth != null
+          && request.auth.uid in get(
+            /databases/$(database)/documents/grupos/$(grupoId)
+          ).data.participantes
+          && request.resource.data.remetenteUid == request.auth.uid;
+
+        // Mensagens não poderão ser alteradas por enquanto.
+        allow update: if false;
+
+        // Somente o próprio remetente poderá excluir sua mensagem.
+        allow delete: if request.auth != null
+          && request.auth.uid == resource.data.remetenteUid;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
