@@ -2,6 +2,8 @@ import os
 import json
 import urllib.request
 import urllib.error
+from cloudinary_auth import usuario_e_proprietario
+from cloudinary_delete import excluir_foto_cloudinary
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -257,7 +259,52 @@ class Handler(BaseHTTPRequestHandler):
             {"erro": "Endpoint não encontrado"}
         )
 
+
+    def do_delete_team_photo(self):
+        try:
+            tamanho = int(self.headers.get("Content-Length", "0"))
+            if tamanho <= 0 or tamanho > 16384:
+                self.enviar_json(400, {"erro": "Solicitação inválida."})
+                return
+
+            autorizacao = self.headers.get("Authorization", "")
+            if not autorizacao.startswith("Bearer "):
+                self.enviar_json(401, {"erro": "Autenticação necessária."})
+                return
+
+            token = autorizacao[7:].strip()
+            try:
+                proprietario = usuario_e_proprietario(token)
+            except Exception:
+                proprietario = False
+
+            if not proprietario:
+                self.enviar_json(403, {"erro": "Acesso não autorizado."})
+                return
+
+            dados = json.loads(self.rfile.read(tamanho).decode("utf-8"))
+            public_id = str(dados.get("publicId", "")).strip()
+
+            try:
+                resultado = excluir_foto_cloudinary(public_id)
+            except ValueError:
+                self.enviar_json(400, {"erro": "Identificador de foto inválido."})
+                return
+            except Exception as erro:
+                print("[EQUIPE] Exclusão Cloudinary falhou:", type(erro).__name__)
+                self.enviar_json(502, {"erro": "Não foi possível confirmar a exclusão no Cloudinary."})
+                return
+
+            self.enviar_json(200, {"ok": True, "result": resultado})
+
+        except Exception as erro:
+            print("[EQUIPE] Solicitação inválida:", type(erro).__name__)
+            self.enviar_json(400, {"erro": "Solicitação inválida."})
+
     def do_POST(self):
+        if self.path == "/equipe/delete-photo":
+            self.do_delete_team_photo()
+            return
         if self.path != "/ask":
             self.enviar_json(
                 404,
