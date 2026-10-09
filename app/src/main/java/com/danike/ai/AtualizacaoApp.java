@@ -2,302 +2,216 @@ package com.danike.ai;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
-import android.os.Build;
-import android.provider.Settings;
-import android.widget.Toast;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
 import android.view.Gravity;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Button;
+import android.widget.Toast;
+import android.widget.ScrollView;
 
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.Map;
 
 public final class AtualizacaoApp {
-
     private AtualizacaoApp() {}
 
     public static void verificar(Activity activity) {
-
-        if (activity == null || activity.isFinishing()) {
-            return;
-        }
-
-        Toast.makeText(
-                activity,
-                "🔎 Verificando atualização...",
-                Toast.LENGTH_LONG
-        ).show();
+        if (activity == null || activity.isFinishing()) return;
 
         FirebaseFirestore.getInstance()
                 .collection("config")
                 .document("update")
                 .get()
-                .addOnSuccessListener(documento -> {
-
-                    if (!documento.exists()) {
-                        return;
-                    }
-
-                    Map<String, Object> dados = documento.getData();
-
-                    if (dados == null) {
-                        return;
-                    }
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) return;
+                    Map<String, Object> dados = doc.getData();
+                    if (dados == null) return;
 
                     Object enabledObj = dados.get("enabled");
-
-                    if (!(enabledObj instanceof Boolean)
-                            || !((Boolean) enabledObj)) {
-                        return;
-                    }
+                    if (!(enabledObj instanceof Boolean) || !((Boolean) enabledObj)) return;
 
                     Object versionCodeObj = dados.get("versionCode");
-
                     long versaoRemota;
-
                     if (versionCodeObj instanceof Number) {
                         versaoRemota = ((Number) versionCodeObj).longValue();
-                    } else {
-                        android.util.Log.e(
-                                "AtualizacaoApp",
-                                "versionCode inválido no Firebase: " + versionCodeObj
-                        );
-                        return;
-                    }
+                    } else return;
 
-                    long versaoAtual =
-                            BuildConfig.VERSION_CODE;
+                    long versaoAtual = BuildConfig.VERSION_CODE;
+                    if (versaoRemota <= versaoAtual) return;
 
-                    android.util.Log.d(
-                            "AtualizacaoApp",
-                            "Versão instalada: " + versaoAtual
-                                    + " | Versão Firebase: " + versaoRemota
-                    );
-
-                    if (versaoRemota <= versaoAtual) {
-                        return;
-                    }
-
-                    String versionName =
-                            String.valueOf(
-                                    dados.getOrDefault(
-                                            "versionName",
-                                            "nova versão"
-                                    )
-                            );
-
-                    String titulo =
-                            String.valueOf(
-                                    dados.getOrDefault(
-                                            "title",
-                                            "Nova atualização"
-                                    )
-                            );
-
-                    String mensagem =
-                            String.valueOf(
-                                    dados.getOrDefault(
-                                            "message",
-                                            "Uma nova versão do DaNikeAI está disponível."
-                                    )
-                            );
-
-                    String apkUrl =
-                            String.valueOf(
-                                    dados.getOrDefault(
-                                            "apkUrl",
-                                            ""
-                                    )
-                            );
-
+                    String versionName = String.valueOf(dados.getOrDefault("versionName", "nova versão"));
+                    String titulo = String.valueOf(dados.getOrDefault("title", "Nova atualização disponível"));
+                    String mensagem = String.valueOf(dados.getOrDefault("message", "Uma nova versão do DaNikeAI está disponível com melhorias incríveis."));
+                    String apkUrl = String.valueOf(dados.getOrDefault("apkUrl", ""));
                     boolean obrigatoria = false;
+                    Object mandatoryObj = dados.get("mandatory");
+                    if (mandatoryObj instanceof Boolean) obrigatoria = (Boolean) mandatoryObj;
 
-                    Object mandatoryObj =
-                            dados.get("mandatory");
-
-                    if (mandatoryObj instanceof Boolean) {
-                        obrigatoria =
-                                (Boolean) mandatoryObj;
-                    }
-
-                    mostrarDialogo(
-                            activity,
-                            titulo,
-                            versionName,
-                            mensagem,
-                            apkUrl,
-                            obrigatoria
-                    );
-
-                })
-                .addOnFailureListener(e ->
-                        android.util.Log.e(
-                                "AtualizacaoApp",
-                                "Erro ao verificar atualização",
-                                e
-                        )
-                );
+                    mostrarDialogoPremium(activity, titulo, versionName, mensagem, apkUrl, obrigatoria);
+                });
     }
 
-    private static void mostrarDialogo(
-            Activity activity,
-            String titulo,
-            String versionName,
-            String mensagem,
-            String apkUrl,
-            boolean obrigatoria
-    ) {
-        if (activity == null
-                || activity.isFinishing()
-                || activity.isDestroyed()) {
-            return;
-        }
+    private static void mostrarDialogoPremium(Activity activity, String titulo, String versionName, String mensagem, String apkUrl, boolean obrigatoria) {
+        if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
 
-        final AlertDialog dialog = new AlertDialog.Builder(activity).create();
+        final AlertDialog dialog = new AlertDialog.Builder(activity, android.R.style.Theme_Translucent_NoTitleBar).create();
+        
+        // Fundo blur escuro por fora
+        LinearLayout root = new LinearLayout(activity);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setGravity(Gravity.CENTER);
+        root.setPadding(32, 32, 32, 32);
+        root.setBackgroundColor(Color.parseColor("#CC080A12"));
 
-        LinearLayout principal = new LinearLayout(activity);
-        principal.setOrientation(LinearLayout.VERTICAL);
-        principal.setPadding(34, 28, 34, 24);
-        principal.setGravity(Gravity.CENTER_HORIZONTAL);
+        // Card principal
+        LinearLayout card = new LinearLayout(activity);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(28, 28, 28, 24);
+        GradientDrawable fundoCard = new GradientDrawable();
+        fundoCard.setColors(new int[]{Color.parseColor("#141A2E"), Color.parseColor("#0B1120")});
+        fundoCard.setOrientation(GradientDrawable.Orientation.TL_BR);
+        fundoCard.setCornerRadius(32f);
+        fundoCard.setStroke(2, Color.parseColor("#00D9FF"));
+        card.setBackground(fundoCard);
+        card.setElevation(20f);
 
-        GradientDrawable fundo = new GradientDrawable();
-        fundo.setColor(Color.rgb(8, 10, 18));
-        fundo.setCornerRadius(28);
-        fundo.setStroke(2, Color.rgb(0, 220, 255));
-        principal.setBackground(fundo);
-
+        // LOGO TOPO
         TextView logo = new TextView(activity);
         logo.setText("⚡ DaNikeAI");
-        logo.setTextColor(Color.rgb(0, 235, 255));
-        logo.setTextSize(25);
+        logo.setTextColor(Color.parseColor("#00E5FF"));
+        logo.setTextSize(22);
         logo.setGravity(Gravity.CENTER);
         logo.setTypeface(null, android.graphics.Typeface.BOLD);
+        logo.setLetterSpacing(0.05f);
 
+        // TITULO
         TextView tituloView = new TextView(activity);
-        tituloView.setText("ATUALIZAÇÃO DISPONÍVEL");
+        tituloView.setText(titulo.toUpperCase());
         tituloView.setTextColor(Color.WHITE);
-        tituloView.setTextSize(20);
+        tituloView.setTextSize(19);
         tituloView.setGravity(Gravity.CENTER);
         tituloView.setTypeface(null, android.graphics.Typeface.BOLD);
-        tituloView.setPadding(0, 16, 0, 4);
+        tituloView.setPadding(0, 20, 0, 6);
+        tituloView.setLetterSpacing(0.03f);
 
-        TextView versaoView = new TextView(activity);
-        versaoView.setText("DaNikeAI " + versionName);
-        versaoView.setTextColor(Color.rgb(170, 80, 255));
-        versaoView.setTextSize(17);
-        versaoView.setGravity(Gravity.CENTER);
-        versaoView.setTypeface(null, android.graphics.Typeface.BOLD);
+        // BADGE VERSAO
+        TextView badge = new TextView(activity);
+        badge.setText("v" + versionName + " • NOVO");
+        badge.setTextColor(Color.parseColor("#00E5FF"));
+        badge.setTextSize(12);
+        badge.setGravity(Gravity.CENTER);
+        badge.setTypeface(null, android.graphics.Typeface.BOLD);
+        badge.setPadding(22, 8, 22, 8);
+        GradientDrawable bgBadge = new GradientDrawable();
+        bgBadge.setColor(Color.parseColor("#102A4A"));
+        bgBadge.setCornerRadius(50f);
+        bgBadge.setStroke(1, Color.parseColor("#00BFFF"));
+        badge.setBackground(bgBadge);
+        LinearLayout.LayoutParams pBadge = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        pBadge.gravity = Gravity.CENTER;
+        pBadge.setMargins(0, 4, 0, 18);
 
-        TextView mensagemView = new TextView(activity);
-        mensagemView.setText(
-                mensagem == null || mensagem.trim().isEmpty()
-                        ? "Uma nova versão está disponível para você."
-                        : mensagem
-        );
-        mensagemView.setTextColor(Color.LTGRAY);
-        mensagemView.setTextSize(15);
-        mensagemView.setGravity(Gravity.CENTER);
-        mensagemView.setPadding(10, 18, 10, 22);
+        // SCROLL DO CHANGELOG
+        ScrollView scroll = new ScrollView(activity);
+        LinearLayout lista = new LinearLayout(activity);
+        lista.setOrientation(LinearLayout.VERTICAL);
 
-        Button atualizar = new Button(activity);
-        atualizar.setText("ATUALIZAR");
-        atualizar.setTextColor(Color.WHITE);
-        atualizar.setTextSize(15);
-        atualizar.setAllCaps(false);
-        atualizar.setTypeface(null, android.graphics.Typeface.BOLD);
+        // Quebra mensagem em itens
+        String[] linhas = mensagem.split("\\n");
+        for (String linha : linhas) {
+            if (linha.trim().isEmpty()) continue;
+            LinearLayout item = new LinearLayout(activity);
+            item.setOrientation(LinearLayout.HORIZONTAL);
+            item.setPadding(0, 7, 0, 7);
+            item.setGravity(Gravity.CENTER_VERTICAL);
 
-        GradientDrawable fundoAtualizar = new GradientDrawable();
-        fundoAtualizar.setColor(Color.rgb(25, 80, 105));
-        fundoAtualizar.setCornerRadius(18);
-        fundoAtualizar.setStroke(2, Color.rgb(0, 235, 255));
-        atualizar.setBackground(fundoAtualizar);
+            TextView dot = new TextView(activity);
+            dot.setText("•");
+            dot.setTextColor(Color.parseColor("#00E5FF"));
+            dot.setTextSize(18);
+            dot.setPadding(0, 0, 12, 0);
 
-        LinearLayout.LayoutParams pBotao =
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        58
-                );
-        pBotao.setMargins(0, 4, 0, 10);
-        principal.addView(logo);
-        principal.addView(tituloView);
-        principal.addView(versaoView);
-        principal.addView(mensagemView);
-        principal.addView(atualizar, pBotao);
-
-        if (!obrigatoria) {
-            Button depois = new Button(activity);
-            depois.setText("LEMBRAR MAIS TARDE");
-            depois.setTextColor(Color.LTGRAY);
-            depois.setTextSize(14);
-            depois.setAllCaps(false);
-
-            GradientDrawable fundoDepois = new GradientDrawable();
-            fundoDepois.setColor(Color.TRANSPARENT);
-            fundoDepois.setCornerRadius(18);
-            fundoDepois.setStroke(1, Color.rgb(90, 90, 110));
-            depois.setBackground(fundoDepois);
-
-            principal.addView(depois, new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, 52));
-
-            depois.setOnClickListener(v -> dialog.dismiss());
+            TextView txt = new TextView(activity);
+            String clean = linha.replace("-", "").replace("•", "").trim();
+            txt.setText(clean);
+            txt.setTextColor(Color.parseColor("#D0D8E8"));
+            txt.setTextSize(14);
+            
+            item.addView(dot);
+            item.addView(txt);
+            lista.addView(item);
         }
 
-        atualizar.setOnClickListener(v -> {
+        scroll.addView(lista);
+        LinearLayout.LayoutParams pScroll = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        pScroll.setMargins(0, 0, 0, 22);
+        pScroll.height = 300; // limite
+
+        // BOTAO ATUALIZAR
+        Button btnAtualizar = new Button(activity);
+        btnAtualizar.setText("ATUALIZAR AGORA  →");
+        btnAtualizar.setTextColor(Color.WHITE);
+        btnAtualizar.setTextSize(15);
+        btnAtualizar.setAllCaps(false);
+        btnAtualizar.setTypeface(null, android.graphics.Typeface.BOLD);
+        btnAtualizar.setLetterSpacing(0.02f);
+        GradientDrawable bgBtn = new GradientDrawable();
+        bgBtn.setColors(new int[]{Color.parseColor("#00BFFF"), Color.parseColor("#0066FF")});
+        bgBtn.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
+        bgBtn.setCornerRadius(16f);
+        btnAtualizar.setBackground(bgBtn);
+        btnAtualizar.setElevation(8f);
+        LinearLayout.LayoutParams pBtn = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 132);
+        pBtn.setMargins(0, 8, 0, 10);
+
+        card.addView(logo);
+        card.addView(tituloView);
+        card.addView(badge, pBadge);
+        card.addView(scroll, pScroll);
+        card.addView(btnAtualizar, pBtn);
+
+        if (!obrigatoria) {
+            Button btnDepois = new Button(activity);
+            btnDepois.setText("Lembrar depois");
+            btnDepois.setTextColor(Color.parseColor("#8A93A8"));
+            btnDepois.setTextSize(13);
+            btnDepois.setAllCaps(false);
+            GradientDrawable bgDepois = new GradientDrawable();
+            bgDepois.setColor(Color.TRANSPARENT);
+            bgDepois.setCornerRadius(16f);
+            bgDepois.setStroke(1, Color.parseColor("#2A344A"));
+            btnDepois.setBackground(bgDepois);
+            card.addView(btnDepois, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 110));
+            btnDepois.setOnClickListener(v -> dialog.dismiss());
+        }
+
+        root.addView(card, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.setOnClickListener(v -> { if (!obrigatoria) dialog.dismiss(); });
+
+        btnAtualizar.setOnClickListener(v -> {
             if (apkUrl == null || apkUrl.trim().isEmpty()) {
-                Toast.makeText(
-                        activity,
-                        "Link da atualização não configurado.",
-                        Toast.LENGTH_LONG
-                ).show();
+                Toast.makeText(activity, "Link não configurado.", Toast.LENGTH_LONG).show();
                 return;
             }
-
-            atualizar.setText("BAIXANDO...");
-            atualizar.setEnabled(false);
-
+            btnAtualizar.setText("BAIXANDO...");
+            btnAtualizar.setEnabled(false);
             AppDistribuicao.baixarApk(activity, apkUrl);
         });
 
-        dialog.setView(principal);
+        dialog.setView(root);
         dialog.setCanceledOnTouchOutside(!obrigatoria);
-        if (obrigatoria) {
-            dialog.setCancelable(false);
-        }
-
+        if (obrigatoria) dialog.setCancelable(false);
         dialog.show();
-    }
-
-    private static void baixarAtualizacao(
-            Activity activity,
-            String apkUrl
-    ) {
-
-        try {
-
-            Intent intent =
-                    new Intent(
-                            Intent.ACTION_VIEW,
-                            Uri.parse(apkUrl)
-                    );
-
-            activity.startActivity(intent);
-
-        } catch (Exception e) {
-
-            Toast.makeText(
-                    activity,
-                    "Não foi possível abrir a atualização.",
-                    Toast.LENGTH_LONG
-            ).show();
+        
+        // Deixa o dialog ocupar largura total
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
         }
     }
 }
