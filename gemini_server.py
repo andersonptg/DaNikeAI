@@ -59,6 +59,46 @@ INSTRUCAO = (
 )
 
 
+
+def chamar_openrouter(pergunta, chave):
+    payload = json.dumps({
+        "model": "openrouter/free",
+        "messages": [
+            {"role": "system", "content": INSTRUCAO},
+            {"role": "user", "content": pergunta}
+        ],
+        "max_tokens": 500
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://openrouter.ai/api/v1/chat/completions",
+        data=payload,
+        headers={
+            "Authorization": "Bearer " + chave,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-Title": "DaNikeAI"
+        },
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resposta:
+            return resposta.status, json.loads(
+                resposta.read().decode("utf-8")
+            )
+    except urllib.error.HTTPError as e:
+        try:
+            dados = json.loads(
+                e.read().decode("utf-8", errors="replace")
+            )
+        except Exception:
+            dados = {"erro": "Resposta inválida do OpenRouter"}
+        return e.code, dados
+    except Exception as e:
+        return 0, {"erro": type(e).__name__}
+
+
 def data_hora_atual():
     return datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
@@ -575,6 +615,47 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 return
 
+            chave_or = os.getenv("OPENROUTER_API_KEY", "").strip()
+            if chave_or:
+                codigo_or, dados_or = chamar_openrouter(
+                    pergunta, chave_or
+                )
+                texto_or = ""
+
+                if codigo_or == 200 and isinstance(dados_or, dict):
+                    escolhas = dados_or.get("choices", [])
+                    if escolhas and isinstance(escolhas[0], dict):
+                        mensagem = escolhas[0].get("message", {})
+                        if isinstance(mensagem, dict):
+                            conteudo = mensagem.get("content", "")
+                            if isinstance(conteudo, str):
+                                texto_or = conteudo.strip()
+                            elif isinstance(conteudo, list):
+                                partes = []
+                                for item in conteudo:
+                                    if isinstance(item, dict):
+                                        trecho = item.get("text", "")
+                                        if isinstance(trecho, str):
+                                            partes.append(trecho)
+                                texto_or = "\n".join(partes).strip()
+
+                if texto_or:
+                    self.enviar_json(
+                        200,
+                        {
+                            "text": texto_or,
+                            "model": dados_or.get(
+                                "model", "openrouter/free"
+                            )
+                        }
+                    )
+                    return
+
+                print(
+                    "OpenRouter falhou ou retornou resposta vazia. HTTP:",
+                    codigo_or
+                )
+
             self.enviar_json(
                 429,
                 {
@@ -623,3 +704,5 @@ if __name__ == "__main__":
 
     finally:
         servidor.server_close()
+
+# Marcador de redeploy do endpoint de fotos
