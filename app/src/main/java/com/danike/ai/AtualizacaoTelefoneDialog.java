@@ -1,239 +1,38 @@
 package com.danike.ai;
-
-import android.app.AlertDialog;
-import android.content.Context;
-import android.graphics.Color;
-import android.graphics.drawable.GradientDrawable;
-import android.view.Gravity;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.SetOptions;
-
-import java.util.HashMap;
-import java.util.Map;
-
-public final class AtualizacaoTelefoneDialog {
-
-    public interface Callback {
-        void concluido();
-    }
-
-    private AtualizacaoTelefoneDialog() {}
-
-    public static void mostrar(Context context, boolean permitirVazio, Callback callback) {
-        callback.concluido();
-        if (true) return;
-
-        LinearLayout layout = new LinearLayout(context);
-        layout.setOrientation(LinearLayout.VERTICAL);
-        layout.setPadding(dp(context, 24), dp(context, 20), dp(context, 24), dp(context, 20));
-        layout.setGravity(Gravity.CENTER_HORIZONTAL);
-
-        GradientDrawable fundo = new GradientDrawable();
-        fundo.setColor(Color.rgb(10, 14, 24));
-        fundo.setCornerRadius(dp(context, 22));
-        fundo.setStroke(dp(context, 1), Color.rgb(40, 150, 210));
-        layout.setBackground(fundo);
-
-        ImageView logo = new ImageView(context);
-        logo.setImageResource(com.danike.ai.R.drawable.danike_splash_logo);
-        logo.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-
-        LinearLayout.LayoutParams logoParams =
-                new LinearLayout.LayoutParams(dp(context, 58), dp(context, 58));
-        logoParams.gravity = Gravity.CENTER;
-        logoParams.bottomMargin = dp(context, 6);
-        layout.addView(logo, logoParams);
-
-        TextView titulo = new TextView(context);
-        titulo.setText("Atualização do seu perfil");
-        titulo.setTextColor(Color.WHITE);
-        titulo.setTextSize(19);
-        titulo.setGravity(Gravity.CENTER);
-        titulo.setTypeface(null, android.graphics.Typeface.BOLD);
-
-        LinearLayout.LayoutParams tituloParams =
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                );
-        tituloParams.bottomMargin = dp(context, 10);
-        layout.addView(titulo, tituloParams);
-
-        TextView texto = new TextView(context);
-        texto.setText(
-                "Para melhorar sua experiência e manter seu perfil completo, "
-                + "precisamos adicionar seu número de celular à sua conta."
-        );
-        texto.setTextColor(Color.rgb(190, 200, 215));
-        texto.setTextSize(14);
-        texto.setGravity(Gravity.CENTER);
-        texto.setLineSpacing(0, 1.15f);
-
-        LinearLayout.LayoutParams textoParams =
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                );
-        textoParams.bottomMargin = dp(context, 18);
-        layout.addView(texto, textoParams);
-
-        EditText telefone = new EditText(context);
-        telefone.setHint("📱  SEU CELULAR");
-        telefone.setHintTextColor(Color.rgb(120, 135, 155));
-        telefone.setTextColor(Color.WHITE);
-        telefone.setTextSize(15);
-        telefone.setSingleLine(true);
-        telefone.setInputType(
-                android.text.InputType.TYPE_CLASS_PHONE
-        );
-        telefone.setPadding(
-                dp(context, 15),
-                0,
-                dp(context, 15),
-                0
-        );
-
-        GradientDrawable campoFundo = new GradientDrawable();
-        campoFundo.setColor(Color.rgb(18, 24, 36));
-        campoFundo.setCornerRadius(dp(context, 12));
-        campoFundo.setStroke(dp(context, 1), Color.rgb(45, 90, 120));
-        telefone.setBackground(campoFundo);
-
-        LinearLayout.LayoutParams telefoneParams =
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        dp(context, 52)
-                );
-        telefoneParams.bottomMargin = dp(context, 16);
-        layout.addView(telefone, telefoneParams);
-
-        Button continuar = new Button(context);
-        continuar.setText("CONTINUAR");
-        continuar.setTextColor(Color.WHITE);
-        continuar.setTextSize(14);
-        continuar.setTypeface(null, android.graphics.Typeface.BOLD);
-
-        GradientDrawable botaoFundo = new GradientDrawable();
-        botaoFundo.setColor(Color.rgb(15, 115, 170));
-        botaoFundo.setCornerRadius(dp(context, 13));
-        continuar.setBackground(botaoFundo);
-
-        layout.addView(
-                continuar,
-                new LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        dp(context, 50)
-                )
-        );
-
-        AlertDialog dialog = new AlertDialog.Builder(context)
-                .setView(layout)
-                .setCancelable(false)
-                .create();
-
-        continuar.setOnClickListener(v -> {
-
-            String telefoneDigitado =
-                    telefone.getText().toString().trim();
-
-            String normalizado =
-                    telefoneDigitado.replaceAll("\\D", "");
-
-            if (normalizado.isEmpty()) {
-                if (permitirVazio) {
-                    dialog.dismiss();
-                    callback.concluido();
-                    return;
-                }
-
-                telefone.setError("Informe seu número de celular.");
-                telefone.requestFocus();
-                return;
-            }
-
-            if (normalizado.length() < 10 || normalizado.length() > 11) {
-                telefone.setError("Digite um celular válido.");
-                telefone.requestFocus();
-                return;
-            }
-
-            continuar.setEnabled(false);
-            continuar.setText("SALVANDO...");
-
-            FirebaseAuth auth = FirebaseAuth.getInstance();
-
-            if (auth.getCurrentUser() == null) {
-                continuar.setEnabled(true);
-                continuar.setText("CONTINUAR");
-                return;
-            }
-
-            String uid = auth.getCurrentUser().getUid();
-
-            Map<String, Object> dados = new HashMap<>();
-            dados.put("telefone", telefoneDigitado);
-            dados.put("telefoneNormalizado", normalizado);
-            dados.put(
-                    "atualizadoEm",
-                    com.google.firebase.firestore.FieldValue.serverTimestamp()
-            );
-
-            FirebaseFirestore.getInstance()
-                    .collection("usuarios")
-                    .document(uid)
-                    .set(dados, SetOptions.merge())
-                    .addOnSuccessListener(x -> {
-                        dialog.dismiss();
-                        callback.concluido();
-                    })
-                    .addOnFailureListener(e -> {
-                        continuar.setEnabled(true);
-                        continuar.setText("CONTINUAR");
-                        telefone.setError("Não foi possível salvar. Tente novamente.");
-                    });
-        });
-
-        dialog.setOnShowListener(x -> {
-            if (dialog.getWindow() != null) {
-                dialog.getWindow().setBackgroundDrawableResource(
-                        android.R.color.transparent
-                );
-
-                int largura = (int) (context.getResources()
-                        .getDisplayMetrics().widthPixels * 0.90f);
-
-                dialog.getWindow().setLayout(
-                        largura,
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                );
-            }
-        });
-
-        dialog.show();
-
-        if (dialog.getWindow() != null) {
-            int largura = (int) (context.getResources()
-                    .getDisplayMetrics().widthPixels * 0.90f);
-
-            dialog.getWindow().setLayout(
-                    largura,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-        }
-    }
-
-    private static int dp(Context context, float valor) {
-        return (int) (
-                valor * context.getResources()
-                        .getDisplayMetrics().density + 0.5f
-        );
-    }
+import android.app.Dialog; import android.content.Context; import android.content.Intent; import android.graphics.Color; import android.graphics.drawable.ColorDrawable; import android.net.Uri; import android.os.Handler; import android.os.Looper; import android.view.*; import android.widget.*; import androidx.core.content.FileProvider;
+import java.io.*; import java.net.*; import java.util.concurrent.Executors;
+public class AtualizacaoTelefoneDialog {
+ public static void show(Context ctx, String versao, String apkUrl, String changelog) {
+  Dialog d = new Dialog(ctx, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
+  View v = LayoutInflater.from(ctx).inflate(R.layout.dialog_atualizacao_premium, null);
+  d.setContentView(v);
+  d.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+  d.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+  d.setCancelable(false);
+  TextView tvV = v.findViewById(R.id.txtVersao); TextView tvC = v.findViewById(R.id.txtChangelog);
+  Button btnA = v.findViewById(R.id.btnAtualizar); Button btnD = v.findViewById(R.id.btnDepois);
+  ProgressBar pb = v.findViewById(R.id.progressBar); ProgressBar pc = v.findViewById(R.id.progressCirculo); TextView ti = v.findViewById(R.id.txtProgressInfo);
+  tvV.setText("v" + versao + " • NOVO");
+  if (changelog!= null &&!changelog.trim().isEmpty()) tvC.setText(changelog);
+  btnD.setOnClickListener(x -> d.dismiss());
+  btnA.setOnClickListener(x -> {
+   btnA.setEnabled(false); btnD.setVisibility(View.GONE);
+   pb.setVisibility(View.VISIBLE); pc.setVisibility(View.VISIBLE); ti.setVisibility(View.VISIBLE);
+   Executors.newSingleThreadExecutor().execute(() -> {
+    try {
+     File apk = new File(ctx.getExternalFilesDir(null), "DaNikeAI-" + versao + ".apk");
+     HttpURLConnection c = (HttpURLConnection) new URL(apkUrl).openConnection(); c.connect();
+     int total = c.getContentLength(); InputStream in = c.getInputStream(); FileOutputStream out = new FileOutputStream(apk);
+     byte[] b = new byte[8192]; int len; long dw = 0; Handler m = new Handler(Looper.getMainLooper()); long start = System.currentTimeMillis();
+     while ((len = in.read(b))!= -1) { out.write(b,0,len); dw+=len; int p = total>0?(int)(dw*100/total):0;
+      long el = (System.currentTimeMillis()-start)/1000; long rem = p>0?(el*100/p)-el:0;
+      m.post(() -> { pb.setProgress(p); pc.setProgress(p); btnA.setText(p+"%"); ti.setText("Baixando atualização... "+p+"% • ~"+rem+"s restantes"); });
+     }
+     out.close(); in.close();
+     m.post(() -> { d.dismiss(); Intent i = new Intent(Intent.ACTION_VIEW); Uri u = FileProvider.getUriForFile(ctx, ctx.getPackageName()+".provider", apk); i.setDataAndType(u, "application/vnd.android.package-archive"); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_ACTIVITY_NEW_TASK); ctx.startActivity(i); });
+    } catch (Exception e){ new Handler(Looper.getMainLooper()).post(() -> { Toast.makeText(ctx,"Erro: "+e.getMessage(),Toast.LENGTH_LONG).show(); btnA.setEnabled(true); btnA.setText("Tentar novamente"); pb.setVisibility(View.GONE); pc.setVisibility(View.GONE); ti.setVisibility(View.GONE); btnD.setVisibility(View.VISIBLE); }); }
+   });
+  });
+  d.show();
+ }
 }

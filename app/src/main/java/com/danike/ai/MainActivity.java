@@ -6,6 +6,7 @@ import android.animation.ValueAnimator;
 import android.view.animation.LinearInterpolator;
 import android.app.Activity;
 import android.os.Bundle;
+
 import android.content.Intent;
 import android.graphics.*;
 import android.graphics.drawable.*;
@@ -1813,7 +1814,29 @@ public class MainActivity extends Activity {
                 navParams
         );
 
+
+
         setContentView(raiz);
+
+        // Sincronizado com PUBLICAR v1.8.6
+        try {
+            String _u = "https://raw.githubusercontent.com/andersonptg/DaNikeAI/main/versao.json";
+            new java.lang.Thread(() -> {
+                try {
+                    java.net.HttpURLConnection _c = (java.net.HttpURLConnection) new java.net.URL(_u).openConnection();
+                    _c.connect();
+                    String _j = new java.io.BufferedReader(new java.io.InputStreamReader(_c.getInputStream())).lines().collect(java.util.stream.Collectors.joining());
+                    org.json.JSONObject _o = new org.json.JSONObject(_j);
+                    String _vn = _o.getString("versao");
+                    String _apk = _o.getString("apkUrl");
+                    String _ch = _o.getString("changelog");
+                    if (!BuildConfig.VERSION_NAME.equals(_vn)) {
+                        runOnUiThread(() -> AtualizacaoTelefoneDialog.show(this, _vn, _apk, _ch));
+                    }
+                } catch (Exception ignored) {}
+            }).start();
+        } catch (Exception ignored) {}
+
         carregarIndicadoresManutencao(
                 pontoIA,
                 pontoFilmes,
@@ -2670,7 +2693,9 @@ public class MainActivity extends Activity {
 
         ferramentas.startAnimation(giro);
 
-        dialog.setContentView(fundo);
+        dialog.
+
+        setContentView(fundo);
 
         android.view.Window janela = dialog.getWindow();
 

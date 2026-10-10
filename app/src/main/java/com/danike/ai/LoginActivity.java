@@ -185,10 +185,7 @@ public class LoginActivity extends Activity {
                             }
 
                             startActivity(
-                                    new Intent(
-                                            LoginActivity.this,
-                                            destino
-                                    )
+                                    new Intent(LoginActivity.this, destino)
                             );
 
                             finish();
@@ -724,10 +721,7 @@ TextView robo = new TextView(this);
         && "lipesanderson@gmail.com".equalsIgnoreCase(
                 FirebaseAuth.getInstance().getCurrentUser().getEmail()))) {
 
-                                Intent intent = new Intent(
-                                        LoginActivity.this,
-                                        ManutencaoActivity.class
-                                );
+                                Intent intent = new Intent(LoginActivity.this, ManutencaoActivity.class);
 
                                 intent.putExtra(
                                         "MENSAGEM",
@@ -777,10 +771,7 @@ TextView robo = new TextView(this);
                                     FirebaseAuth.getInstance().getCurrentUser();
 
                             if (usuarioLogado == null) {
-                                Intent intent = new Intent(
-                                        LoginActivity.this,
-                                        destinoFinal
-                                );
+                                Intent intent = new Intent(LoginActivity.this, destinoFinal);
                                 startActivity(intent);
                                 finish();
                                 return;
@@ -800,43 +791,19 @@ TextView robo = new TextView(this);
                                                 && !telefonePerfil.trim().isEmpty();
 
                                         if (possuiTelefone) {
-                                            Intent intent = new Intent(
-                                                    LoginActivity.this,
-                                                    destinoFinal
-                                            );
+                                            Intent intent = new Intent(LoginActivity.this, destinoFinal);
                                             startActivity(intent);
                                             finish();
                                             return;
                                         }
 
-                                        boolean permitirVazio =
-                                                ("lipesanderson@gmail.com".equalsIgnoreCase(emailFinalVerificacao) || "andersonlopesdossantos14@gmail.com".equalsIgnoreCase(emailFinalVerificacao));
-
-                                        AtualizacaoTelefoneDialog.mostrar(
-                                                LoginActivity.this,
-                                                permitirVazio,
-                                                () -> {
-                                                    Intent intent = new Intent(
-                                                            LoginActivity.this,
-                                                            destinoFinal
-                                                    );
-                                                    startActivity(intent);
-                                                    finish();
-                                                }
-                                        );
-                                    })
-                                    .addOnFailureListener(e -> {
-
-                                        Intent intent = new Intent(
-                                                LoginActivity.this,
-                                                destinoFinal
-                                        );
+                                        Intent intent = new Intent(LoginActivity.this, destinoFinal);
                                         startActivity(intent);
                                         finish();
                                     });
-                        }
-                    });
-                }, 700);
+                                    }
+                                });
+                                }, 700);
 
             } else {
 
@@ -953,10 +920,7 @@ TextView robo = new TextView(this);
 
         cadastroBotao.setOnClickListener(v -> {
 
-            Intent intent = new Intent(
-                    LoginActivity.this,
-                    RegisterActivity.class
-            );
+            Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
 
             startActivity(intent);
         });

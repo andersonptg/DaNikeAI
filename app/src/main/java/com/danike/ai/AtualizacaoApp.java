@@ -2,216 +2,546 @@ package com.danike.ai;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.Gravity;
+import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.ScrollView;
 
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.Locale;
 import java.util.Map;
 
 public final class AtualizacaoApp {
+
+    private static final int BRANCO = Color.rgb(248, 250, 255);
+    private static final int CINZA = Color.rgb(174, 187, 207);
+    private static final int AZUL = Color.rgb(0, 204, 255);
+    private static final int FUNDO = Color.rgb(10, 15, 27);
+
     private AtualizacaoApp() {}
 
+    private static int dp(Activity activity, float valor) {
+        return Math.round(
+                valor * activity.getResources()
+                        .getDisplayMetrics().density
+        );
+    }
+
     public static void verificar(Activity activity) {
-        if (activity == null || activity.isFinishing()) return;
+        if (activity == null
+                || activity.isFinishing()
+                || activity.isDestroyed()) {
+            return;
+        }
 
         FirebaseFirestore.getInstance()
                 .collection("config")
                 .document("update")
                 .get()
                 .addOnSuccessListener(doc -> {
-                    if (!doc.exists()) return;
+                    if (activity.isFinishing()
+                            || activity.isDestroyed()
+                            || !doc.exists()) {
+                        return;
+                    }
+
                     Map<String, Object> dados = doc.getData();
+
                     if (dados == null) return;
 
                     Object enabledObj = dados.get("enabled");
-                    if (!(enabledObj instanceof Boolean) || !((Boolean) enabledObj)) return;
 
-                    Object versionCodeObj = dados.get("versionCode");
-                    long versaoRemota;
-                    if (versionCodeObj instanceof Number) {
-                        versaoRemota = ((Number) versionCodeObj).longValue();
-                    } else return;
+                    if (!(enabledObj instanceof Boolean)
+                            || !((Boolean) enabledObj)) {
+                        return;
+                    }
 
-                    long versaoAtual = BuildConfig.VERSION_CODE;
-                    if (versaoRemota <= versaoAtual) return;
+                    Object codigoObj = dados.get("versionCode");
 
-                    String versionName = String.valueOf(dados.getOrDefault("versionName", "nova versão"));
-                    String titulo = String.valueOf(dados.getOrDefault("title", "Nova atualização disponível"));
-                    String mensagem = String.valueOf(dados.getOrDefault("message", "Uma nova versão do DaNikeAI está disponível com melhorias incríveis."));
-                    String apkUrl = String.valueOf(dados.getOrDefault("apkUrl", ""));
-                    boolean obrigatoria = false;
+                    if (!(codigoObj instanceof Number)) return;
+
+                    long versaoRemota =
+                            ((Number) codigoObj).longValue();
+
+                    if (versaoRemota <= BuildConfig.VERSION_CODE) {
+                        return;
+                    }
+
+                    String versionName = obterTexto(
+                            dados,
+                            "versionName",
+                            "nova versão"
+                    );
+
+                    String titulo = obterTexto(
+                            dados,
+                            "title",
+                            "Uma nova versão chegou!"
+                    );
+
+                    String mensagem = obterTexto(
+                            dados,
+                            "message",
+                            "Confira as melhorias da nova versão."
+                    );
+
+                    String apkUrl = obterTexto(
+                            dados,
+                            "apkUrl",
+                            ""
+                    );
+
                     Object mandatoryObj = dados.get("mandatory");
-                    if (mandatoryObj instanceof Boolean) obrigatoria = (Boolean) mandatoryObj;
 
-                    mostrarDialogoPremium(activity, titulo, versionName, mensagem, apkUrl, obrigatoria);
+                    boolean obrigatoria =
+                            mandatoryObj instanceof Boolean
+                                    && (Boolean) mandatoryObj;
+
+                    mostrarDialogoPremium(
+                            activity,
+                            titulo,
+                            versionName,
+                            mensagem,
+                            apkUrl,
+                            obrigatoria
+                    );
                 });
     }
 
-    private static void mostrarDialogoPremium(Activity activity, String titulo, String versionName, String mensagem, String apkUrl, boolean obrigatoria) {
-        if (activity == null || activity.isFinishing() || activity.isDestroyed()) return;
+    private static String obterTexto(
+            Map<String, Object> dados,
+            String chave,
+            String padrao
+    ) {
+        Object valor = dados.get(chave);
 
-        final AlertDialog dialog = new AlertDialog.Builder(activity, android.R.style.Theme_Translucent_NoTitleBar).create();
-        
-        // Fundo blur escuro por fora
+        if (valor == null) return padrao;
+
+        String texto = String.valueOf(valor).trim();
+
+        return texto.isEmpty() ? padrao : texto;
+    }
+
+    private static GradientDrawable arredondado(
+            int cor,
+            float raio
+    ) {
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setColor(cor);
+        fundo.setCornerRadius(raio);
+        return fundo;
+    }
+
+    private static TextView texto(
+            Activity activity,
+            String conteudo,
+            float tamanho,
+            int cor,
+            boolean negrito
+    ) {
+        TextView view = new TextView(activity);
+        view.setText(conteudo);
+        view.setTextSize(tamanho);
+        view.setTextColor(cor);
+        view.setGravity(Gravity.CENTER);
+
+        if (negrito) {
+            view.setTypeface(
+                    Typeface.DEFAULT,
+                    Typeface.BOLD
+            );
+        }
+
+        return view;
+    }
+
+    private static void mostrarDialogoPremium(
+            Activity activity,
+            String titulo,
+            String versionName,
+            String mensagem,
+            String apkUrl,
+            boolean obrigatoria
+    ) {
+        if (activity == null
+                || activity.isFinishing()
+                || activity.isDestroyed()) {
+            return;
+        }
+
+        final AlertDialog dialog =
+                new AlertDialog.Builder(
+                        activity,
+                        android.R.style.Theme_Translucent_NoTitleBar
+                ).create();
+
+        // Camada escura atrás da janela.
         LinearLayout root = new LinearLayout(activity);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER);
-        root.setPadding(32, 32, 32, 32);
-        root.setBackgroundColor(Color.parseColor("#CC080A12"));
+        root.setPadding(
+                dp(activity, 22),
+                dp(activity, 20),
+                dp(activity, 22),
+                dp(activity, 20)
+        );
+        root.setBackgroundColor(Color.argb(220, 3, 6, 14));
 
-        // Card principal
+        // Cartão Premium.
         LinearLayout card = new LinearLayout(activity);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(28, 28, 28, 24);
+        card.setGravity(Gravity.CENTER_HORIZONTAL);
+        card.setPadding(
+                dp(activity, 23),
+                dp(activity, 25),
+                dp(activity, 23),
+                dp(activity, 19)
+        );
+
         GradientDrawable fundoCard = new GradientDrawable();
-        fundoCard.setColors(new int[]{Color.parseColor("#141A2E"), Color.parseColor("#0B1120")});
-        fundoCard.setOrientation(GradientDrawable.Orientation.TL_BR);
-        fundoCard.setCornerRadius(32f);
-        fundoCard.setStroke(2, Color.parseColor("#00D9FF"));
+        fundoCard.setColors(new int[]{
+                Color.rgb(20, 29, 48),
+                Color.rgb(9, 14, 26)
+        });
+        fundoCard.setOrientation(
+                GradientDrawable.Orientation.TL_BR
+        );
+        fundoCard.setCornerRadius(dp(activity, 25));
+        fundoCard.setStroke(
+                dp(activity, 1),
+                Color.rgb(0, 153, 204)
+        );
+
         card.setBackground(fundoCard);
-        card.setElevation(20f);
+        card.setElevation(dp(activity, 12));
 
-        // LOGO TOPO
-        TextView logo = new TextView(activity);
-        logo.setText("⚡ DaNikeAI");
-        logo.setTextColor(Color.parseColor("#00E5FF"));
-        logo.setTextSize(22);
-        logo.setGravity(Gravity.CENTER);
-        logo.setTypeface(null, android.graphics.Typeface.BOLD);
-        logo.setLetterSpacing(0.05f);
+        // Identidade visual.
+        TextView logo = texto(
+                activity,
+                "⚡ DaNikeAI",
+                23,
+                AZUL,
+                true
+        );
+        logo.setLetterSpacing(0.025f);
 
-        // TITULO
-        TextView tituloView = new TextView(activity);
-        tituloView.setText(titulo.toUpperCase());
-        tituloView.setTextColor(Color.WHITE);
-        tituloView.setTextSize(19);
+        TextView subtitulo = texto(
+                activity,
+                "ATUALIZAÇÃO OFICIAL",
+                10,
+                CINZA,
+                true
+        );
+        subtitulo.setLetterSpacing(0.16f);
+
+        LinearLayout.LayoutParams pSubtitulo =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        pSubtitulo.topMargin = dp(activity, 7);
+        pSubtitulo.bottomMargin = dp(activity, 18);
+
+        // Título informado pelo ADM.
+        TextView tituloView = texto(
+                activity,
+                titulo,
+                20,
+                BRANCO,
+                true
+        );
         tituloView.setGravity(Gravity.CENTER);
-        tituloView.setTypeface(null, android.graphics.Typeface.BOLD);
-        tituloView.setPadding(0, 20, 0, 6);
-        tituloView.setLetterSpacing(0.03f);
+        tituloView.setLineSpacing(dp(activity, 2), 1.0f);
 
-        // BADGE VERSAO
-        TextView badge = new TextView(activity);
-        badge.setText("v" + versionName + " • NOVO");
-        badge.setTextColor(Color.parseColor("#00E5FF"));
-        badge.setTextSize(12);
-        badge.setGravity(Gravity.CENTER);
-        badge.setTypeface(null, android.graphics.Typeface.BOLD);
-        badge.setPadding(22, 8, 22, 8);
-        GradientDrawable bgBadge = new GradientDrawable();
-        bgBadge.setColor(Color.parseColor("#102A4A"));
-        bgBadge.setCornerRadius(50f);
-        bgBadge.setStroke(1, Color.parseColor("#00BFFF"));
-        badge.setBackground(bgBadge);
-        LinearLayout.LayoutParams pBadge = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        pBadge.gravity = Gravity.CENTER;
-        pBadge.setMargins(0, 4, 0, 18);
+        LinearLayout.LayoutParams pTitulo =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        pTitulo.bottomMargin = dp(activity, 15);
 
-        // SCROLL DO CHANGELOG
-        ScrollView scroll = new ScrollView(activity);
+        // Identificação da versão.
+        TextView badge = texto(
+                activity,
+                "VERSÃO " + versionName + "  •  NOVA",
+                11,
+                AZUL,
+                true
+        );
+        badge.setPadding(
+                dp(activity, 14),
+                dp(activity, 8),
+                dp(activity, 14),
+                dp(activity, 8)
+        );
+        badge.setBackground(arredondado(
+                Color.rgb(16, 39, 60),
+                dp(activity, 30)
+        ));
+
+        LinearLayout.LayoutParams pBadge =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        pBadge.bottomMargin = dp(activity, 19);
+
+        // Área rolável para as melhorias.
+        TextView cabecalho = texto(
+                activity,
+                "O QUE TEM DE NOVO",
+                11,
+                AZUL,
+                true
+        );
+        cabecalho.setGravity(Gravity.START);
+        cabecalho.setLetterSpacing(0.08f);
+
+        LinearLayout.LayoutParams pCabecalho =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        pCabecalho.bottomMargin = dp(activity, 8);
+
         LinearLayout lista = new LinearLayout(activity);
         lista.setOrientation(LinearLayout.VERTICAL);
+        lista.setPadding(
+                dp(activity, 13),
+                dp(activity, 8),
+                dp(activity, 13),
+                dp(activity, 8)
+        );
+        lista.setBackground(arredondado(
+                Color.rgb(12, 20, 35),
+                dp(activity, 13)
+        ));
 
-        // Quebra mensagem em itens
         String[] linhas = mensagem.split("\\n");
+
         for (String linha : linhas) {
-            if (linha.trim().isEmpty()) continue;
+            String limpa = linha.trim();
+
+            if (limpa.isEmpty()) continue;
+
+            if (limpa.startsWith("-")
+                    || limpa.startsWith("•")
+                    || limpa.startsWith("–")) {
+                limpa = limpa.substring(1).trim();
+            }
+
+            if (limpa.isEmpty()) continue;
+
             LinearLayout item = new LinearLayout(activity);
             item.setOrientation(LinearLayout.HORIZONTAL);
-            item.setPadding(0, 7, 0, 7);
-            item.setGravity(Gravity.CENTER_VERTICAL);
+            item.setGravity(Gravity.TOP);
+            item.setPadding(
+                    0,
+                    dp(activity, 5),
+                    0,
+                    dp(activity, 5)
+            );
 
-            TextView dot = new TextView(activity);
-            dot.setText("•");
-            dot.setTextColor(Color.parseColor("#00E5FF"));
-            dot.setTextSize(18);
-            dot.setPadding(0, 0, 12, 0);
+            TextView ponto = texto(
+                    activity,
+                    "•",
+                    17,
+                    AZUL,
+                    true
+            );
+            ponto.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+            ponto.setMinWidth(dp(activity, 23));
 
-            TextView txt = new TextView(activity);
-            String clean = linha.replace("-", "").replace("•", "").trim();
-            txt.setText(clean);
-            txt.setTextColor(Color.parseColor("#D0D8E8"));
-            txt.setTextSize(14);
-            
-            item.addView(dot);
-            item.addView(txt);
+            TextView descricao = new TextView(activity);
+            descricao.setText(limpa);
+            descricao.setTextSize(13);
+            descricao.setTextColor(CINZA);
+            descricao.setGravity(Gravity.START);
+            descricao.setLineSpacing(dp(activity, 3), 1.0f);
+
+            item.addView(ponto);
+
+            item.addView(
+                    descricao,
+                    new LinearLayout.LayoutParams(
+                            0,
+                            ViewGroup.LayoutParams.WRAP_CONTENT,
+                            1f
+                    )
+            );
+
             lista.addView(item);
         }
 
+        ScrollView scroll = new ScrollView(activity);
+        scroll.setFillViewport(false);
+        scroll.setVerticalScrollBarEnabled(true);
+        scroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
         scroll.addView(lista);
-        LinearLayout.LayoutParams pScroll = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        pScroll.setMargins(0, 0, 0, 22);
-        pScroll.height = 300; // limite
 
-        // BOTAO ATUALIZAR
-        Button btnAtualizar = new Button(activity);
-        btnAtualizar.setText("ATUALIZAR AGORA  →");
-        btnAtualizar.setTextColor(Color.WHITE);
-        btnAtualizar.setTextSize(15);
-        btnAtualizar.setAllCaps(false);
-        btnAtualizar.setTypeface(null, android.graphics.Typeface.BOLD);
-        btnAtualizar.setLetterSpacing(0.02f);
-        GradientDrawable bgBtn = new GradientDrawable();
-        bgBtn.setColors(new int[]{Color.parseColor("#00BFFF"), Color.parseColor("#0066FF")});
-        bgBtn.setOrientation(GradientDrawable.Orientation.LEFT_RIGHT);
-        bgBtn.setCornerRadius(16f);
-        btnAtualizar.setBackground(bgBtn);
-        btnAtualizar.setElevation(8f);
-        LinearLayout.LayoutParams pBtn = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 132);
-        pBtn.setMargins(0, 8, 0, 10);
+        LinearLayout.LayoutParams pScroll =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        dp(activity, 185)
+                );
+        pScroll.bottomMargin = dp(activity, 19);
+
+        // Botão principal.
+        TextView btnAtualizar = texto(
+                activity,
+                "ATUALIZAR AGORA   →",
+                14,
+                Color.WHITE,
+                true
+        );
+        btnAtualizar.setMinHeight(dp(activity, 52));
+        btnAtualizar.setPadding(
+                dp(activity, 12),
+                dp(activity, 13),
+                dp(activity, 12),
+                dp(activity, 13)
+        );
+
+        GradientDrawable fundoBotao = new GradientDrawable();
+        fundoBotao.setColors(new int[]{
+                Color.rgb(0, 176, 230),
+                Color.rgb(0, 93, 220)
+        });
+        fundoBotao.setOrientation(
+                GradientDrawable.Orientation.LEFT_RIGHT
+        );
+        fundoBotao.setCornerRadius(dp(activity, 13));
+        btnAtualizar.setBackground(fundoBotao);
+        btnAtualizar.setElevation(dp(activity, 3));
+        btnAtualizar.setClickable(true);
+        btnAtualizar.setFocusable(true);
+
+        LinearLayout.LayoutParams pBotao =
+                new LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                );
+        pBotao.bottomMargin = dp(activity, 8);
 
         card.addView(logo);
-        card.addView(tituloView);
+        card.addView(subtitulo, pSubtitulo);
+        card.addView(tituloView, pTitulo);
         card.addView(badge, pBadge);
+        card.addView(cabecalho, pCabecalho);
         card.addView(scroll, pScroll);
-        card.addView(btnAtualizar, pBtn);
+        card.addView(btnAtualizar, pBotao);
 
+        // Opção de adiar somente se a atualização for opcional.
         if (!obrigatoria) {
-            Button btnDepois = new Button(activity);
-            btnDepois.setText("Lembrar depois");
-            btnDepois.setTextColor(Color.parseColor("#8A93A8"));
-            btnDepois.setTextSize(13);
-            btnDepois.setAllCaps(false);
-            GradientDrawable bgDepois = new GradientDrawable();
-            bgDepois.setColor(Color.TRANSPARENT);
-            bgDepois.setCornerRadius(16f);
-            bgDepois.setStroke(1, Color.parseColor("#2A344A"));
-            btnDepois.setBackground(bgDepois);
-            card.addView(btnDepois, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 110));
+            TextView btnDepois = texto(
+                    activity,
+                    "Lembrar depois",
+                    13,
+                    CINZA,
+                    false
+            );
+            btnDepois.setPadding(
+                    dp(activity, 12),
+                    dp(activity, 11),
+                    dp(activity, 12),
+                    dp(activity, 11)
+            );
+            btnDepois.setBackground(arredondado(
+                    Color.TRANSPARENT,
+                    dp(activity, 12)
+            ));
+            btnDepois.setClickable(true);
+            btnDepois.setFocusable(true);
+
+            card.addView(
+                    btnDepois,
+                    new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
+            );
+
             btnDepois.setOnClickListener(v -> dialog.dismiss());
         }
 
-        root.addView(card, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        root.setOnClickListener(v -> { if (!obrigatoria) dialog.dismiss(); });
+        int larguraTela = activity.getResources()
+                .getDisplayMetrics().widthPixels;
 
+        int larguraMaxima = dp(activity, 440);
+        int larguraDisponivel = larguraTela - dp(activity, 44);
+        int larguraCard = Math.min(
+                larguraMaxima,
+                larguraDisponivel
+        );
+
+        root.addView(
+                card,
+                new LinearLayout.LayoutParams(
+                        Math.max(dp(activity, 250), larguraCard),
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                )
+        );
+
+        root.setOnClickListener(v -> {
+            if (!obrigatoria) dialog.dismiss();
+        });
+
+        // O mecanismo de download existente é preservado.
         btnAtualizar.setOnClickListener(v -> {
             if (apkUrl == null || apkUrl.trim().isEmpty()) {
-                Toast.makeText(activity, "Link não configurado.", Toast.LENGTH_LONG).show();
+                Toast.makeText(
+                        activity,
+                        "Link da atualização não configurado no ADM.",
+                        Toast.LENGTH_LONG
+                ).show();
                 return;
             }
-            btnAtualizar.setText("BAIXANDO...");
+
+            btnAtualizar.setText("INICIANDO DOWNLOAD...");
             btnAtualizar.setEnabled(false);
+
             AppDistribuicao.baixarApk(activity, apkUrl);
+
+            // Evita deixar o botão travado caso o download falhe.
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (dialog.isShowing()
+                        && btnAtualizar.getParent() != null) {
+                    btnAtualizar.setText("TENTAR ATUALIZAR NOVAMENTE  →");
+                    btnAtualizar.setEnabled(true);
+                }
+            }, 4000);
         });
 
         dialog.setView(root);
         dialog.setCanceledOnTouchOutside(!obrigatoria);
-        if (obrigatoria) dialog.setCancelable(false);
+
+        if (obrigatoria) {
+            dialog.setCancelable(false);
+        }
+
         dialog.show();
-        
-        // Deixa o dialog ocupar largura total
+
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            dialog.getWindow().setBackgroundDrawable(
+                    new ColorDrawable(Color.TRANSPARENT)
+            );
+
+            dialog.getWindow().setDimAmount(0.75f);
+
+            dialog.getWindow().setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+            );
         }
     }
 }
