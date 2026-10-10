@@ -44,7 +44,7 @@ public class AdmActivity extends Activity {
     private static final String OWNER_EMAIL = "lipesanderson@gmail.com";
     private static final int FOTO_PERFIL = 9001;
     private static final String CLOUDINARY_CLOUD_NAME = "pmxz8swv";
-    private static final String CLOUDINARY_UPLOAD_PRESET = "danike_equipe";
+    private static final String CLOUDINARY_UPLOAD_PRESET = "danike_equpe";
 
     private final int FUNDO = Color.rgb(2, 6, 16);
     private final int AZUL = Color.rgb(0, 210, 255);
