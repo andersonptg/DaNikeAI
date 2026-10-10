@@ -7,7 +7,7 @@ import urllib.error
 import json
 
 
-def excluir_foto_cloudinary(public_id):
+def _excluir_foto_cloudinary_com_prefixo(public_id, prefixo_permitido):
     cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
     api_key = os.getenv("CLOUDINARY_API_KEY", "").strip()
     api_secret = os.getenv("CLOUDINARY_API_SECRET", "").strip()
@@ -18,7 +18,7 @@ def excluir_foto_cloudinary(public_id):
     public_id = str(public_id or "").strip()
     partes = public_id.split("/")
     if (
-        not public_id.startswith("equipe/")
+        not public_id.startswith(prefixo_permitido)
         or len(public_id) > 500
         or not all(partes)
         or any(parte in (".", "..") for parte in partes)
@@ -75,3 +75,24 @@ def excluir_foto_cloudinary(public_id):
         raise RuntimeError("Cloudinary não confirmou a exclusão.")
 
     return status
+
+
+def excluir_foto_cloudinary(public_id):
+    """Exclusão restrita à pasta da equipe, preservando o comportamento atual."""
+    return _excluir_foto_cloudinary_com_prefixo(public_id, "equipe/")
+
+
+def excluir_foto_perfil_cloudinary(public_id, uid):
+    """Exclui somente uma foto dentro da pasta do próprio usuário."""
+    import re
+
+    uid = str(uid or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", uid):
+        raise ValueError("Identificador de usuário inválido.")
+
+    prefixo = "perfis/" + uid + "/"
+    public_id = str(public_id or "").strip()
+    if not public_id.startswith(prefixo):
+        raise ValueError("A foto não pertence a este usuário.")
+
+    return _excluir_foto_cloudinary_com_prefixo(public_id, prefixo)

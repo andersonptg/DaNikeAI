@@ -3,7 +3,7 @@ import json
 import urllib.request
 import urllib.error
 from cloudinary_auth import usuario_e_proprietario, verificar_token_firebase
-from cloudinary_delete import excluir_foto_cloudinary
+from cloudinary_delete import excluir_foto_cloudinary, excluir_foto_perfil_cloudinary
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -375,6 +375,71 @@ class Handler(BaseHTTPRequestHandler):
             self.enviar_json(400, {"erro": "Solicitação inválida."})
 
 
+    def do_delete_profile_photo(self):
+        """Exclui a foto Cloudinary somente da pasta do usuário autenticado."""
+        try:
+            tamanho = int(self.headers.get("Content-Length", "0"))
+            if tamanho <= 0 or tamanho > 16384:
+                self.enviar_json(400, {"erro": "Solicitação inválida."})
+                return
+
+            autorizacao = self.headers.get("Authorization", "")
+            if not autorizacao.startswith("Bearer "):
+                self.enviar_json(401, {"erro": "Autenticação necessária."})
+                return
+
+            try:
+                usuario = verificar_token_firebase(
+                    autorizacao[7:].strip()
+                )
+            except Exception:
+                self.enviar_json(401, {"erro": "Token inválido ou expirado."})
+                return
+
+            uid = (
+                usuario.get("uid")
+                or usuario.get("user_id")
+                or usuario.get("sub")
+            )
+            if not isinstance(uid, str) or not uid or "/" in uid or "\\\\" in uid:
+                self.enviar_json(401, {"erro": "Usuário inválido."})
+                return
+
+            try:
+                dados = json.loads(
+                    self.rfile.read(tamanho).decode("utf-8")
+                )
+            except Exception:
+                self.enviar_json(400, {"erro": "JSON inválido."})
+                return
+
+            public_id = str(dados.get("publicId", "")).strip()
+            if not public_id.startswith("perfis/" + uid + "/"):
+                self.enviar_json(
+                    403,
+                    {"erro": "A foto não pertence a este usuário."}
+                )
+                return
+
+            try:
+                resultado = excluir_foto_perfil_cloudinary(public_id, uid)
+            except ValueError:
+                self.enviar_json(403, {"erro": "Identificador de foto inválido."})
+                return
+            except Exception:
+                self.enviar_json(
+                    502,
+                    {"erro": "Não foi possível excluir a foto no Cloudinary."}
+                )
+                return
+
+            self.enviar_json(200, {
+                "ok": True,
+                "resultado": resultado
+            })
+        except Exception:
+            self.enviar_json(500, {"erro": "Erro interno ao excluir a foto."})
+
     def do_upload_profile_photo(self):
         """Recebe uma foto autenticada e a envia ao Cloudinary."""
         import hashlib
@@ -508,6 +573,9 @@ class Handler(BaseHTTPRequestHandler):
             self.enviar_json(502, {"erro": "Não foi possível enviar a foto. Tente novamente."})
 
     def do_POST(self):
+        if self.path == "/profile/delete-photo":
+            self.do_delete_profile_photo()
+            return
         if self.path == "/profile/upload-photo":
             self.do_upload_profile_photo()
             return
