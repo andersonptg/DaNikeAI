@@ -10,6 +10,7 @@ import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import jwt
+from cryptography import x509
 
 FIREBASE_PROJECT_ID = os.getenv(
     "FIREBASE_PROJECT_ID", "da-nike-films"
@@ -54,6 +55,15 @@ def assinatura_cloudinary(parametros, segredo):
     ).hexdigest()
 
 
+def _chave_publica_firebase(certificado_pem):
+    """Obtém a chave pública do certificado X.509 do Firebase."""
+    if isinstance(certificado_pem, bytes):
+        certificado_pem = certificado_pem.decode("utf-8")
+    return x509.load_pem_x509_certificate(
+        certificado_pem.encode("utf-8")
+    ).public_key()
+
+
 def verificar_token_firebase(token):
     if not token or len(token) > 10000:
         raise ValueError("Token inválido")
@@ -75,7 +85,7 @@ def verificar_token_firebase(token):
 
     usuario = jwt.decode(
         token,
-        certificado,
+        _chave_publica_firebase(certificado),
         algorithms=["RS256"],
         audience=FIREBASE_PROJECT_ID,
         issuer="https://securetoken.google.com/" + FIREBASE_PROJECT_ID,
