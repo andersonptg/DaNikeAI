@@ -108,6 +108,8 @@ public final class PerfilFirebase {
                 .get()
                 .addOnSuccessListener(doc -> {
                     String nomeSalvoNuvem = doc.getString("nome");
+                    Boolean privacidadeSalva = doc.getBoolean("perfilPublico");
+                    final boolean perfilPublicoFinal = privacidadeSalva == null || privacidadeSalva;
                     final String nomePerfil;
 
                     if (nomeSalvoNuvem != null
@@ -203,6 +205,7 @@ public final class PerfilFirebase {
 
                     Map<String, Object> publico =
                             new HashMap<>();
+                    publico.put("perfilPublico", perfilPublicoFinal);
 
                     publico.put(
                             "nome",
@@ -568,7 +571,7 @@ public static void atualizarNome(
                         }
 
                         java.net.URL endereco = new java.net.URL(
-                            "https://danikeai.onrender.com/profile/upload-photo");
+                            "https://danikeai-perfil.onrender.com/profile/upload-photo");
                         conexao = (HttpURLConnection) endereco.openConnection();
                         conexao.setRequestMethod("POST");
                         conexao.setConnectTimeout(20000);
@@ -743,7 +746,7 @@ public static void atualizarNome(
 
                 try {
                     java.net.URL url = new java.net.URL(
-                        "https://danikeai.onrender.com/profile/delete-photo");
+                        "https://danikeai-perfil.onrender.com/profile/delete-photo");
                     conexao = (java.net.HttpURLConnection) url.openConnection();
                     conexao.setRequestMethod("POST");
                     conexao.setConnectTimeout(15000);

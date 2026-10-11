@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+ content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#030711">
+<meta name="description"
+ content="DaNikeAI — Assistente virtual inteligente, conectando pessoas ao futuro.">
+<title>DaNikeAI | Assistente Robótica</title>
+
+<style>
+:root {
+  color-scheme: dark;
+  --blue: #087bff;
+  --cyan: #00eaff;
+  --red: #ff183b;
+  --white: #f7fdff;
+  --bg: #030711;
+  --metal: #182334;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  overflow-x: hidden;
+  background:
+    radial-gradient(ellipse at 50% 42%, #0b2443 0%, #061020 34%,
+      #030711 72%);
+  color: #eaf8ff;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  isolation: isolate;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -2;
+  opacity: .27;
+  background-image:
+    linear-gradient(#143c6122 1px, transparent 1px),
+    linear-gradient(90deg, #143c6122 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse, black, transparent 78%);
+}
+
+.ambient {
+  position: fixed;
+  width: 80vw;
+  height: 80vw;
+  max-width: 700px;
+  max-height: 700px;
+  left: 50%;
+  top: 39%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #006eff0b;
+  box-shadow: 0 0 130px #006eff12;
+  pointer-events: none;
+  z-index: -1;
+  animation: ambientPulse 5s ease-in-out infinite;
+}
+
+header {
+  width: 100%;
+  padding: max(22px, env(safe-area-inset-top)) 20px 8px;
+  text-align: center;
+}
+
+.brand {
+  margin: 0;
+  font-size: clamp(23px, 5.5vw, 33px);
+  font-weight: 900;
+  letter-spacing: .20em;
+  background: linear-gradient(90deg, #ffffff, #42cfff 52%, #087bff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 12px #0088ff40);
+}
+
+.subtitle {
+  margin: 7px 0 0;
+  color: #86c8e9;
+  font-size: 10px;
+  letter-spacing: .25em;
+  text-transform: uppercase;
+}
+
+.stage {
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 0 9px;
+  position: relative;
+}
+
+.status {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  justify-content: center;
+  color: #9abed5;
+  font-size: 11px;
+  letter-spacing: .17em;
+  text-transform: uppercase;
+  margin: 7px 0 0;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--red);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--red);
+  transition: .25s;
+}
+
+body.speaking .status-dot {
+  background: white;
+  box-shadow: 0 0 15px white, 0 0 35px var(--cyan);
+}
+
+.robot {
+  --size: min(94vw, 530px);
+  width: var(--size);
+  height: var(--size);
+  position: relative;
+  flex: 0 0 auto;
+  perspective: 950px;
+  animation: hover 4.4s ease-in-out infinite;
+  filter: drop-shadow(0 30px 40px #0009);
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.robot::after {
+  content: "";
+  position: absolute;
+  width: 64%;
+  height: 12%;
+  left: 18%;
+  bottom: 4%;
+  border-radius: 50%;
+  background: #0088ff28;
+  filter: blur(19px);
+  z-index: -1;
+  animation: platformGlow 3s ease-in-out infinite;
+}
+
+.core {
+  position: absolute;
+  width: 58%;
+  height: 58%;
+  left: 21%;
+  top: 19%;
+  border-radius: 50%;
+  z-index: 4;
+  background:
+    radial-gradient(circle at 35% 25%, #7ba7ca 0%, transparent 7%),
+    radial-gradient(circle at 38% 29%, #314966 0%, #101b2a 26%,
+      #02050b 57%, #17263a 69%, #030711 78%);
+  border: 2px solid #476d95;
+  box-shadow:
+    inset 0 0 0 5px #080e18,
+    inset 0 0 0 8px #244a6d,
+    inset -15px -20px 30px #000,
+    inset 9px 8px 20px #84d9ff35,
+    0 0 0 3px #07182b,
+    0 0 18px #087bff9c,
+    0 0 45px #087bff3d;
+  transform-style: preserve-3d;
+}
+
+.core::before {
+  content: "";
+  position: absolute;
+  inset: 6%;
+  border-radius: 50%;
+  border: 1px solid #4dbdff5c;
+  box-shadow: inset 0 0 20px #007bff24;
+}
+
+.core::after {
+  content: "";
+  position: absolute;
+  width: 24%;
+  height: 8%;
+  top: 14%;
+  left: 17%;
+  transform: rotate(-37deg);
+  border-radius: 50%;
+  background: #d8f8ff8c;
+  filter: blur(7px);
+}
+
+.inner-orb {
+  position: absolute;
+  width: 46%;
+  height: 46%;
+  left: 27%;
+  top: 27%;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #147aff;
+  background:
+    radial-gradient(circle at 35% 25%, #2baaff 0%, transparent 4%),
+    radial-gradient(circle at 50% 50%, #0d407c, #020b19 75%);
+  box-shadow: inset 0 0 24px #008bff73, 0 0 16px #008bffad;
+}
+
+.inner-orb::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  border: 1px solid #00dfff9c;
+  border-radius: 50%;
+  transform: rotateX(64deg);
+}
+
+.inner-orb::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  border: 1px solid #248bffad;
+  border-radius: 50%;
+  transform: rotateY(65deg);
+}
+
+.globe-grid {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(30deg, transparent 48%, #00eaff72 49%,
+      transparent 50%),
+    linear-gradient(150deg, transparent 48%, #00aaff70 49%,
+      transparent 50%),
+    linear-gradient(90deg, transparent 49%, #0b8dff80 50%,
+      transparent 51%);
+  animation: globeRotate 12s linear infinite;
+}
+
+.globe-dot {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #c7ffff;
+  box-shadow: 0 0 9px #00cfff, 0 0 17px #007bff;
+}
+
+.dot-a { left: 22%; top: 35%; }
+.dot-b { left: 69%; top: 27%; }
+.dot-c { left: 73%; top: 65%; }
+.dot-d { left: 35%; top: 76%; }
+.dot-e { left: 15%; top: 60%; }
+
+.seam {
+  position: absolute;
+  width: 76%;
+  height: 25%;
+  left: 12%;
+  top: 37%;
+  z-index: 10;
+  border: 4px solid var(--red);
+  border-left-color: #ff6478;
+  border-right-color: #ff102f;
+  border-radius: 50%;
+  transform: rotate(-7deg) rotateX(19deg);
+  box-shadow:
+    0 0 7px var(--red),
+    0 0 18px #ff123e9c,
+    inset 0 0 8px #ff174d47;
+  transition: border-color .3s, box-shadow .3s;
+  pointer-events: none;
+}
+
+.seam::after {
+  content: "";
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 43%;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--red);
+  box-shadow: 0 0 8px var(--red);
+  transition: .3s;
+}
+
+body.speaking .seam {
+  border-color: #fff;
+  box-shadow:
+    0 0 8px #fff,
+    0 0 22px #e8ffff,
+    0 0 48px #00dfff,
+    inset 0 0 12px #fff;
+}
+
+body.speaking .seam::after {
+  background: white;
+  box-shadow: 0 0 15px white, 0 0 25px #00eaff;
+}
+
+.orbit {
+  position: absolute;
+  width: 94%;
+  height: 35%;
+  left: 3%;
+  top: 42%;
+  border: 2px solid #087bffad;
+  border-radius: 50%;
+  transform: rotate(-17deg) rotateX(17deg);
+  z-index: 7;
+  box-shadow: 0 0 11px #087bff5c;
+  pointer-events: none;
+}
+
+.orbit::after {
+  content: "";
+  position: absolute;
+  width: 14%;
+  height: 5px;
+  right: 16%;
+  top: 8%;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+}
+
+.orbit.inner {
+  width: 72%;
+  height: 81%;
+  left: 14%;
+  top: 9%;
+  border-color: #168eff70;
+  transform: rotate(30deg);
+  z-index: 2;
+}
+
+.orbit.inner::after {
+  width: 7px;
+  height: 7px;
+  right: 12%;
+  top: 20%;
+}
+
+.wing {
+  position: absolute;
+  top: 20%;
+  width: 28%;
+  height: 51%;
+  z-index: 5;
+  transform-style: preserve-3d;
+  filter: drop-shadow(0 0 9px #007bff54);
+}
+
+.wing.left {
+  left: 0;
+  transform-origin: 91% 35%;
+  transform: rotate(-17deg);
+  animation: wingLeft 5s ease-in-out infinite;
+}
+
+.wing.right {
+  right: 0;
+  transform-origin: 9% 35%;
+  transform: rotate(17deg) scaleX(-1);
+  animation: wingRight 5s ease-in-out infinite;
+}
+
+.wing-piece {
+  position: absolute;
+  left: 22%;
+  width: 72%;
+  height: 80%;
+  top: 0;
+  clip-path: polygon(64% 0,100% 10%,73% 39%,100% 81%,
+    64% 100%,20% 68%,0 40%,24% 13%);
+  background:
+    linear-gradient(118deg, #b7eaff 0%, #344e6a 9%,
+      #07101e 26%, #263c54 39%, #050a12 58%,
+      #10243b 73%, #02050a 91%);
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 2px #193d60;
+}
+
+.wing-piece::before {
+  content: "";
+  position: absolute;
+  inset: 3%;
+  clip-path: inherit;
+  background:
+    linear-gradient(135deg, #1fbcff 0%, transparent 15%,
+      transparent 77%, #087bff 90%, #00eaff 100%);
+  opacity: .95;
+}
+
+.wing-piece::after {
+  content: "";
+  position: absolute;
+  width: 4px;
+  height: 55%;
+  left: 37%;
+  top: 22%;
+  background: linear-gradient(transparent, #00eaff, #087bff, transparent);
+  box-shadow: 0 0 10px #00bfff;
+  transform: rotate(23deg);
+}
+
+.wing-piece.two {
+  left: 4%;
+  top: 22%;
+  width: 76%;
+  height: 70%;
+  transform: rotate(9deg);
+  background: linear-gradient(130deg, #617b94, #07111e 30%,
+    #1b3047 62%, #02050a);
+}
+
+.joint {
+  position: absolute;
+  width: 25%;
+  aspect-ratio: 1;
+  top: 35%;
+  left: 45%;
+  border-radius: 50%;
+  z-index: 3;
+  background: radial-gradient(circle, #1deaff 0%, #066bff 25%,
+    #101b2a 36%, #8599ac 42%, #0b1421 60%, #030711 75%);
+  border: 2px solid #3387d1;
+  box-shadow: 0 0 14px #008dff, inset 0 0 8px #000;
+}
+
+.wing-label {
+  position: absolute;
+  bottom: 3%;
+  width: 100%;
+  text-align: center;
+  font-size: 8px;
+  letter-spacing: .15em;
+  color: #6bcfff;
+  text-shadow: 0 0 8px #007bff;
+}
+
+.antenna {
+  position: absolute;
+  z-index: 8;
+  width: 3px;
+  height: 13%;
+  left: calc(50% - 1px);
+  top: 5%;
+  background: linear-gradient(#00eaff, #203b5b, #a5caff);
+  box-shadow: 0 0 9px #00dfff;
+}
+
+.antenna::before {
+  content: "";
+  position: absolute;
+  width: 23px;
+  height: 8px;
+  border: 2px solid #00eaff;
+  border-radius: 50%;
+  left: -12px;
+  top: 1%;
+  box-shadow: 0 0 13px #008bff;
+}
+
+.antenna::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  left: -3px;
+  top: -7px;
+  background: white;
+  box-shadow: 0 0 12px #00eaff, 0 0 24px #008bff;
+}
+
+.lower-shell {
+  position: absolute;
+  width: 40%;
+  height: 19%;
+  left: 30%;
+  top: 67%;
+  z-index: 3;
+  clip-path: polygon(13% 0,87% 0,100% 44%,77% 100%,
+    23% 100%,0 44%);
+  background: linear-gradient(100deg, #030710, #203b59 25%,
+    #050b14 50%, #315574 72%, #030710);
+  border: 1px solid #168cff;
+  filter: drop-shadow(0 0 8px #008bff);
+}
+
+.lower-light {
+  position: absolute;
+  top: 76%;
+  left: 43%;
+  width: 14%;
+  height: 2%;
+  z-index: 8;
+  background: repeating-linear-gradient(
+    to bottom, #00eaff 0 3px, transparent 3px 7px);
+  filter: drop-shadow(0 0 5px #00bfff);
+}
+
+.platform {
+  position: absolute;
+  width: 75%;
+  height: 14%;
+  left: 12.5%;
+  bottom: 3%;
+  border-radius: 50%;
+  border: 2px solid #087bff;
+  transform: rotateX(62deg);
+  box-shadow: 0 0 12px #007bff, inset 0 0 12px #007bff;
+  z-index: 1;
+}
+
+.platform::before, .platform::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid #00eaff;
+  inset: 15%;
+  box-shadow: 0 0 10px #00eaff;
+}
+
+.platform::after {
+  inset: 30%;
+  border-color: #2768ff;
+}
+
+.hud {
+  width: min(90%, 400px);
+  text-align: center;
+  margin: -5px 0 16px;
+  color: #6d9bb9;
+  font-size: 10px;
+  letter-spacing: .14em;
+  line-height: 1.8;
+}
+
+.hud strong {
+  color: #b8eaff;
+  font-weight: 600;
+}
+
+.controls {
+  width: min(90%, 390px);
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 10px;
+  padding: 0 0 12px;
+}
+
+button {
+  min-height: 47px;
+  border-radius: 12px;
+  border: 1px solid #235071;
+  color: #b8d8ee;
+  background: linear-gradient(135deg, #0d1b2b, #07101d);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  cursor: pointer;
+  transition: transform .15s, border-color .2s, box-shadow .2s;
+}
+
+button:active {
+  transform: scale(.97);
+}
+
+button.primary {
+  color: white;
+  border-color: #087bff;
+  background: linear-gradient(110deg, #073c82, #075db8, #073b76);
+  box-shadow: 0 0 16px #007bff27, inset 0 0 10px #008bff15;
+}
+
+button.primary:focus-visible, button:focus-visible {
+  outline: 2px solid #00eaff;
+  outline-offset: 3px;
+}
+
+footer {
+  width: 100%;
+  padding: 8px 10px max(17px, env(safe-area-inset-bottom));
+  text-align: center;
+  color: #46647b;
+  font-size: 9px;
+  letter-spacing: .23em;
+}
+
+footer span {
+  color: #087bff;
+}
+
+@keyframes hover {
+  0%,100% { transform: translateY(0) rotateX(0); }
+  50% { transform: translateY(-9px) rotateX(1deg); }
+}
+
+@keyframes wingLeft {
+  0%,100% { margin-top: 0; }
+  50% { margin-top: -4px; }
+}
+
+@keyframes wingRight {
+  0%,100% { margin-top: 0; }
+  50% { margin-top: -4px; }
+}
+
+@keyframes globeRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ambientPulse {
+  0%,100% { opacity: .5; }
+  50% { opacity: 1; }
+}
+
+@keyframes platformGlow {
+  0%,100% { opacity: .4; }
+  50% { opacity: 1; }
+}
+
+body.speaking .core {
+  box-shadow:
+    inset 0 0 0 5px #080e18,
+    inset 0 0 0 8px #244a6d,
+    inset -15px -20px 30px #000,
+    inset 9px 8px 20px #84d9ff35,
+    0 0 0 3px #07182b,
+    0 0 25px #00cfff,
+    0 0 65px #087bff70;
+}
+
+body.speaking .inner-orb {
+  box-shadow: inset 0 0 30px #00bfff, 0 0 28px #00dfff;
+}
+
+body.speaking .wing-piece::before {
+  opacity: 1;
+  filter: brightness(1.6);
+}
+
+@media (min-width: 700px) {
+  .stage { padding-top: 8px; }
+  .robot { --size: min(68vw, 570px); }
+  .hud { font-size: 11px; }
+}
+
+@media (max-height: 700px) {
+  header { padding-top: max(10px, env(safe-area-inset-top)); }
+  .robot { --size: min(78vw, 370px); }
+  .subtitle { margin-top: 3px; }
+  .hud { margin-bottom: 8px; }
+  footer { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+</style>
+
+<style id="danike-android-mode">
+html, body {
+  width:100% !important; height:100% !important;
+  min-height:100% !important; margin:0 !important;
+  padding:0 !important; overflow:hidden !important;
+  background:#02060f !important;
+}
+body { display:block !important; }
+.ambient, .brand, .subtitle, .status, .hud, .controls {
+  display:none !important;
+}
+.stage {
+  position:absolute !important; inset:0 !important;
+  width:100vw !important; height:100vh !important;
+  min-height:100vh !important; max-width:none !important;
+  margin:0 !important; padding:0 !important;
+  display:flex !important; align-items:center !important;
+  justify-content:center !important; overflow:hidden !important;
+}
+.robot {
+  position:relative !important; left:auto !important; top:auto !important;
+  margin:0 auto !important; transform:scale(.84) !important;
+  transform-origin:center center !important; flex-shrink:0 !important;
+}
+body.speaking {
+  background:radial-gradient(ellipse at center,#071b31 0%,#02060f 72%) !important;
+}
+@media(max-width:420px) {
+  .robot { transform:scale(.72) !important; }
+}
+</style>
+
+
+<style id="danike-speech-indicator-style">
+.danike-speech-indicator {
+  position:absolute;
+  z-index:20;
+  left:calc(50% + 72px);
+  top:calc(50% - 34px);
+  width:clamp(90px, 29vw, 142px);
+  min-height:42px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:10px 12px;
+  border:1px solid rgba(0,190,255,.65);
+  border-radius:17px 17px 17px 4px;
+  background:linear-gradient(135deg,rgba(3,22,43,.96),rgba(4,9,22,.94));
+  box-shadow:0 0 12px rgba(0,145,255,.14),
+             inset 0 0 12px rgba(0,145,255,.07);
+  opacity:0;
+  visibility:hidden;
+  transform:translateY(7px) scale(.94);
+  transition:opacity .22s ease, transform .22s ease,
+             visibility .22s ease, box-shadow .22s ease;
+  pointer-events:none;
+}
+.danike-speech-indicator .pulse-dot {
+  width:6px;height:6px;flex:0 0 6px;border-radius:50%;
+  background:#35cfff;
+  box-shadow:0 0 9px #16bfff;
+  animation:danikeDotPulse .8s ease-in-out infinite alternate;
+}
+.danike-speech-indicator .pulse-dot:nth-child(2) {
+  animation-delay:.18s;
+}
+.danike-speech-indicator .pulse-dot:nth-child(3) {
+  animation-delay:.36s;
+}
+body.speaking .danike-speech-indicator {
+  opacity:1;
+  visibility:visible;
+  transform:translateY(0) scale(1);
+  box-shadow:0 0 17px rgba(0,174,255,.34),
+             inset 0 0 13px rgba(0,145,255,.13);
+  animation:danikeBubbleGlow 1.4s ease-in-out infinite alternate;
+}
+@keyframes danikeDotPulse {
+  from { opacity:.35; transform:scale(.72); }
+  to { opacity:1; transform:scale(1.12); }
+}
+@keyframes danikeBubbleGlow {
+  from { border-color:rgba(0,160,255,.5); }
+  to { border-color:rgba(0,220,255,.95); }
+}
+@media(max-width:390px) {
+  .danike-speech-indicator {
+    left:calc(50% + 60px);
+    width:clamp(84px, 27vw, 108px);
+    gap:5px;padding:9px 8px;
+  }
+}
+</style>
+
+</head>
+
+<body>
+<div class="ambient" aria-hidden="true"></div>
+
+<header>
+  <h1 class="brand">DANIKEAI</h1>
+  <p class="subtitle">Conectando pessoas ao futuro</p>
+</header>
+
+<main class="stage">
+  <div class="status" aria-live="polite">
+    <span class="status-dot"></span>
+    <span id="stateText">Núcleo em repouso</span>
+  </div>
+
+  <div class="robot" id="robot"
+       role="button" tabindex="0"
+       aria-label="Núcleo robótico DaNikeAI. Toque para simular fala."
+       title="Toque para ativar a simulação">
+    <div class="orbit inner"></div>
+
+    <div class="antenna"></div>
+
+    <div class="wing left" aria-hidden="true">
+      <div class="wing-piece"></div>
+      <div class="wing-piece two"></div>
+      <div class="joint"></div>
+      <div class="wing-label">MAGNETIC</div>
+    </div>
+
+    <div class="wing right" aria-hidden="true">
+      <div class="wing-piece"></div>
+      <div class="wing-piece two"></div>
+      <div class="joint"></div>
+      <div class="wing-label">MAGNETIC</div>
+    </div>
+
+    <div class="core">
+      <div class="inner-orb">
+        <div class="globe-grid"></div>
+        <i class="globe-dot dot-a"></i>
+        <i class="globe-dot dot-b"></i>
+        <i class="globe-dot dot-c"></i>
+        <i class="globe-dot dot-d"></i>
+        <i class="globe-dot dot-e"></i>
+      </div>
+    </div>
+
+    <div class="lower-shell"></div>
+    <div class="lower-light"></div>
+    <div class="seam"></div>
+    <div class="orbit"></div>
+    <div class="platform"></div>
+  </div>
+
+
+  <div id="danike-speech-indicator"
+       class="danike-speech-indicator"
+       aria-label="Magnexp está falando"
+       aria-hidden="true">
+    <span class="pulse-dot"></span>
+    <span class="pulse-dot"></span>
+    <span class="pulse-dot"></span>
+  </div>
+
+  <div class="hud">
+    <strong>DA NIKE • NÚCLEO DE INTELIGÊNCIA</strong><br>
+    SISTEMA VISUAL EXPERIMENTAL<br>
+    <span id="hint">Toque na esfera para testar a energia</span>
+  </div>
+
+  <div class="controls">
+    <button id="idle" type="button">REPOUSO</button>
+    <button id="talk" class="primary" type="button">ATIVAR ENERGIA</button>
+  </div>
+</main>
+
+<footer>
+  <span>DA NIKE STUDIO</span> · INTELIGÊNCIA EM EVOLUÇÃO
+</footer>
+
+<script>
+(() => {
+  "use strict";
+
+  const body = document.body;
+  const robot = document.getElementById("robot");
+  const talk = document.getElementById("talk");
+  const idle = document.getElementById("idle");
+  const stateText = document.getElementById("stateText");
+  const hint = document.getElementById("hint");
+
+  let timer = null;
+  let active = false;
+
+  window.DaNikeMagnexpAndroid = true;
+  function setSpeaking(on) {
+    active = Boolean(on);
+    if (window.AndroidMagnexp) {
+      try { window.AndroidMagnexp.onStateChanged(active); } catch (e) {}
+    }
+    body.classList.toggle("speaking", active);
+
+    stateText.textContent = active
+      ? "Energia ativa • simulando fala"
+      : "Núcleo em repouso";
+
+    hint.textContent = active
+      ? "Anel branco • simulação ativa"
+      : "Toque na esfera para testar a energia";
+
+    talk.textContent = active
+      ? "ENERGIA ATIVA"
+      : "ATIVAR ENERGIA";
+
+    talk.setAttribute("aria-pressed", String(active));
+
+    clearTimeout(timer);
+
+    if (active && !window.DaNikeMagnexpAndroid) {
+      timer = setTimeout(() => setSpeaking(false), 4000);
+    }
+  }
+
+  function activate() {
+    setSpeaking(true);
+  }
+
+  talk.addEventListener("click", activate);
+  idle.addEventListener("click", () => setSpeaking(false));
+
+  robot.addEventListener("click", () => {
+    if (window.AndroidMagnexp && window.DaNikeMagnexpAndroid) {
+      try { window.AndroidMagnexp.onRobotTapped(); } catch (e) {}
+    } else {
+      activate();
+    }
+  });
+  robot.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      activate();
+    }
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) setSpeaking(false);
+  });
+
+  window.DaNikeMagnexp = { setSpeaking: setSpeaking };
+  setSpeaking(false);
+})();
+</script>
+</body>
+</html>

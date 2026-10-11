@@ -230,6 +230,12 @@ public class CriarGrupoActivity extends Activity {
                             continue;
                         }
 
+                        Boolean visibilidadePerfilGrupo =
+                                doc.getBoolean("perfilPublico");
+                        if (Boolean.FALSE.equals(visibilidadePerfilGrupo)) {
+                            continue;
+                        }
+
                         String nome = doc.getString("nome");
 
                         if (nome == null ||

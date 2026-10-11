@@ -5,7 +5,7 @@ import urllib.error
 from cloudinary_auth import usuario_e_proprietario, verificar_token_firebase
 from cloudinary_delete import excluir_foto_cloudinary, excluir_foto_perfil_cloudinary
 from datetime import datetime
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ENV = os.path.expanduser("~/.config/danikeai.env")
 
@@ -761,7 +761,7 @@ if __name__ == "__main__":
     )
     print("======================================")
 
-    servidor = HTTPServer(
+    servidor = ThreadingHTTPServer(
         (HOST, PORT),
         Handler
     )

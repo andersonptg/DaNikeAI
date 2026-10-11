@@ -29,7 +29,7 @@ public class AtualizacaoTelefoneDialog {
       m.post(() -> { pb.setProgress(p); pc.setProgress(p); btnA.setText(p+"%"); ti.setText("Baixando atualização... "+p+"% • ~"+rem+"s restantes"); });
      }
      out.close(); in.close();
-     m.post(() -> { d.dismiss(); Intent i = new Intent(Intent.ACTION_VIEW); Uri u = FileProvider.getUriForFile(ctx, ctx.getPackageName()+".provider", apk); i.setDataAndType(u, "application/vnd.android.package-archive"); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_ACTIVITY_NEW_TASK); ctx.startActivity(i); });
+     m.post(() -> { d.dismiss(); Intent i = new Intent(Intent.ACTION_VIEW); Uri u = FileProvider.getUriForFile(ctx, ctx.getPackageName()+".fileprovider", apk); i.setDataAndType(u, "application/vnd.android.package-archive"); i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_ACTIVITY_NEW_TASK); ctx.startActivity(i); });
     } catch (Exception e){ new Handler(Looper.getMainLooper()).post(() -> { Toast.makeText(ctx,"Erro: "+e.getMessage(),Toast.LENGTH_LONG).show(); btnA.setEnabled(true); btnA.setText("Tentar novamente"); pb.setVisibility(View.GONE); pc.setVisibility(View.GONE); ti.setVisibility(View.GONE); btnD.setVisibility(View.VISIBLE); }); }
    });
   });

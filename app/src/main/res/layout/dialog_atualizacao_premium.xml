@@ -1,35 +1,129 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
     android:background="#E6000000">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent"
-        android:orientation="vertical" android:gravity="center" android:padding="20dp">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="vertical" android:background="@drawable/bg_premium_dialog" android:padding="24dp">
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="⚡ DaNikeAI" android:textSize="26sp" android:textStyle="bold"
-                android:textColor="#00D4FF" android:layout_gravity="center"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="ATUALIZAÇÃO DISPONÍVEL" android:textColor="#FFFFFF"
-                android:textSize="22sp" android:textStyle="bold" android:layout_gravity="center" android:layout_marginTop="12dp"/>
-            <TextView android:id="@+id/txtVersao" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:text="v1.8.6 • NOVO" android:textColor="#00D4FF" android:background="@drawable/bg_badge"
-                android:paddingHorizontal="12dp" android:paddingVertical="6dp" android:layout_gravity="center" android:layout_marginTop="10dp"/>
-            <TextView android:id="@+id/txtChangelog" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:text="Uma nova versão do DaNikeAI está disponível" android:textColor="#B0C4DE"
-                android:layout_marginTop="18dp" android:lineSpacingExtra="4dp"/>
-            <Button android:id="@+id/btnAtualizar" android:layout_width="match_parent" android:layout_height="56dp"
-                android:text="BAIXAR AGORA" android:layout_marginTop="22dp"/>
-            <Button android:id="@+id/btnDepois" android:layout_width="match_parent" android:layout_height="48dp"
-                android:text="Lembrar depois" android:layout_marginTop="10dp"/>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="20dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center_horizontal"
+                android:background="@drawable/bg_premium_dialog"
+                android:padding="24dp">
+
+                <ImageView
+                    android:id="@+id/imgLogoAtualizacao"
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:src="@drawable/danike_icon"
+                    android:contentDescription="Logo DaNikeAI"
+                    android:scaleType="fitCenter"
+                    android:adjustViewBounds="true" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="DaNikeAI"
+                    android:textSize="25sp"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:layout_marginTop="10dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="ATUALIZAÇÃO DISPONÍVEL"
+                    android:textColor="#00D4FF"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:gravity="center"
+                    android:layout_marginTop="12dp" />
+
+                <TextView
+                    android:id="@+id/txtVersao"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="v1.8.6 • NOVO"
+                    android:textColor="#FFFFFF"
+                    android:background="@drawable/bg_badge"
+                    android:paddingHorizontal="14dp"
+                    android:paddingVertical="7dp"
+                    android:layout_marginTop="12dp" />
+
+                <TextView
+                    android:id="@+id/txtChangelog"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Uma nova versão do DaNikeAI está disponível."
+                    android:textColor="#D0D9E5"
+                    android:textSize="15sp"
+                    android:gravity="center"
+                    android:layout_marginTop="20dp"
+                    android:lineSpacingExtra="5dp" />
+
+                <Button
+                    android:id="@+id/btnAtualizar"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:text="BAIXAR ATUALIZAÇÃO"
+                    android:textStyle="bold"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#087FE8"
+                    android:layout_marginTop="24dp" />
+
+                <Button
+                    android:id="@+id/btnDepois"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="Lembrar depois"
+                    android:textColor="#D0D9E5"
+                    android:backgroundTint="#303744"
+                    android:layout_marginTop="10dp" />
+            </LinearLayout>
+
+            <ProgressBar
+                android:id="@+id/progressCirculo"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:indeterminateTint="#00D4FF"
+                android:visibility="gone" />
+
+            <ProgressBar
+                android:id="@+id/progressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="8dp"
+                android:layout_marginTop="16dp"
+                android:max="100"
+                android:progressTint="#00D4FF"
+                android:progressBackgroundTint="#354052"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/txtProgressInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Preparando atualização..."
+                android:textColor="#D0D9E5"
+                android:gravity="center"
+                android:layout_gravity="center"
+                android:layout_marginTop="10dp"
+                android:visibility="gone" />
         </LinearLayout>
-        <ProgressBar android:id="@+id/progressCirculo" android:layout_width="72dp" android:layout_height="72dp"
-            android:layout_gravity="center" android:layout_marginTop="28dp" android:visibility="gone"/>
-        <ProgressBar android:id="@+id/progressBar" style="?android:attr/progressBarStyleHorizontal"
-            android:layout_width="match_parent" android:layout_height="8dp" android:layout_marginTop="16dp"
-            android:max="100" android:visibility="gone"/>
-        <TextView android:id="@+id/txtProgressInfo" android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Baixando atualização... 0% • ~ calculando..." android:textColor="#88FFFFFF"
-            android:layout_gravity="center" android:layout_marginTop="8dp" android:visibility="gone"/>
-    </LinearLayout>
+    </ScrollView>
 </FrameLayout>
