@@ -392,7 +392,8 @@ class Handler(BaseHTTPRequestHandler):
                 usuario = verificar_token_firebase(
                     autorizacao[7:].strip()
                 )
-            except Exception:
+            except Exception as erro_token:
+                print("[FOTOS_AUTH] Falha ao validar token: " + type(erro_token).__name__, flush=True)
                 self.enviar_json(401, {"erro": "Token inválido ou expirado."})
                 return
 
@@ -465,7 +466,8 @@ class Handler(BaseHTTPRequestHandler):
             if not isinstance(uid, str) or not uid or "/" in uid or "\\" in uid:
                 self.enviar_json(401, {"erro": "Não foi possível validar a conta."})
                 return
-        except Exception:
+        except Exception as erro_token:
+            print("[FOTOS_AUTH] Falha ao validar token: " + type(erro_token).__name__, flush=True)
             self.enviar_json(401, {"erro": "Token inválido ou expirado."})
             return
 
