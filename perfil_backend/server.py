@@ -5,6 +5,7 @@ import os
 import re
 import time
 import uuid
+import urllib.error
 import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -322,10 +323,26 @@ class PerfilHandler(BaseHTTPRequestHandler):
                 mensagem = str(erro)
                 self.enviar_json(415, {"erro": mensagem})
             except Exception as erro:
-                print(
-                    "[PERFIL_UPLOAD] Falha: " + type(erro).__name__,
-                    flush=True,
-                )
+                if isinstance(erro, urllib.error.HTTPError):
+                    try:
+                        detalhe = erro.read(1500).decode(
+                            "utf-8", errors="replace"
+                        )
+                    except Exception:
+                        detalhe = "corpo da resposta indisponível"
+                    print(
+                        "[PERFIL_UPLOAD] HTTPError status="
+                        + str(erro.code)
+                        + " resposta="
+                        + detalhe,
+                        flush=True,
+                    )
+                else:
+                    print(
+                        "[PERFIL_UPLOAD] Falha: "
+                        + type(erro).__name__,
+                        flush=True,
+                    )
                 self.enviar_json(
                     502, {"erro": "Não foi possível enviar a foto."}
                 )
