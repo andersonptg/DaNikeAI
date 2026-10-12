@@ -11,6 +11,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Bitmap;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -20,7 +21,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.view.Window;
 import android.widget.*;
+import android.view.animation.AlphaAnimation;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -57,14 +60,11 @@ public class AdmActivity extends Activity {
 
     private FirebaseFirestore db;
     private boolean manutencaoAtiva = false;
-    private Button manutencaoBtn;
-    private Button manutencaoIA;
-    private Button manutencaoFilmes;
-    private Button manutencaoHistorico;
-    private Button manutencaoPerfil;
-    private Button manutencaoHave;
+private Button manutencaoConexoes;
+private Button centralManutencaoBtn;
     private TextView totalUsuarios;
     private TextView onlineUsuarios;
+    private com.google.firebase.firestore.ListenerRegistration usuariosListener;
     private TextView offlineUsuarios;
     private TextView proprietarios;
     private LinearLayout listaUsuarios;
@@ -104,8 +104,7 @@ public class AdmActivity extends Activity {
         db = FirebaseFirestore.getInstance();
 
         montarTela();
-        carregarManutencao();
-        carregarUsuarios();
+        
     }
 
     private void montarTela() {
@@ -122,8 +121,42 @@ public class AdmActivity extends Activity {
 
         raiz.addView(cabecalho());
 
-        TextView visao = secao("⚡  VISÃO GERAL", AZUL);
-        raiz.addView(visao);
+        Button visao = new Button(this);
+        visao.setText("VISÃO GERAL");
+        visao.setTextSize(15);
+        visao.setTextColor(Color.rgb(210, 250, 255));
+        visao.setGravity(Gravity.CENTER);
+        visao.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        visao.setAllCaps(false);
+        visao.setPadding(0, 0, 0, 0);
+
+        GradientDrawable fundoVisao = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(5, 55, 75),
+                        Color.rgb(0, 170, 205),
+                        Color.rgb(5, 45, 65)
+                }
+        );
+
+        fundoVisao.setCornerRadius(dp(18));
+        fundoVisao.setStroke(
+                dp(2),
+                Color.rgb(0, 230, 255)
+        );
+
+        visao.setBackground(fundoVisao);
+        visao.setElevation(dp(14));
+
+        visao.setOnClickListener(v -> abrirVisaoGeral());
+
+        raiz.addView(
+                visao,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(56)
+                )
+        );
 
         LinearLayout estatisticas = new LinearLayout(this);
         estatisticas.setOrientation(LinearLayout.HORIZONTAL);
@@ -135,229 +168,46 @@ public class AdmActivity extends Activity {
 
         raiz.addView(estatisticas);
 
-        raiz.addView(secao("👥  USUÁRIOS RECENTES", AZUL));
+        raiz.addView(secao("DIAGNÓSTICO DO SISTEMA", AZUL));
+        raiz.addView(painelDiagnostico());
 
-        LinearLayout usuariosBox = painel(AZUL);
-        listaUsuarios = new LinearLayout(this);
-        listaUsuarios.setOrientation(LinearLayout.VERTICAL);
+        raiz.addView(secao("CONTROLES DO SISTEMA", AZUL));
 
-        usuariosBox.addView(listaUsuarios);
-
-        Button verTodos = pequenoBotao("VER TODOS  ›", AZUL);
-        verTodos.setOnClickListener(v -> mostrarTodosUsuarios());
-
-        usuariosBox.addView(
-                verTodos,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(46)
-                )
-        );
-
-        raiz.addView(usuariosBox);
-
-        raiz.addView(secao("🎛  CONTROLES", AZUL));
-
-        LinearLayout grade1 = new LinearLayout(this);
-        grade1.setOrientation(LinearLayout.HORIZONTAL);
-
-        manutencaoBtn = quadrado(
-                grade1,
-                "⚙",
-                "MANUTENÇÃO",
-                "Sistema",
-                ROXO
-        );
-
-        Button ia = quadrado(
-                grade1,
-                "🤖",
-                "IA",
-                "Configurações",
-                AZUL
-        );
-
-        raiz.addView(grade1);
-
-        manutencaoBtn.setOnClickListener(v -> alternarManutencao());
-
-        // ==============================
-        // MANUTENÇÃO INDIVIDUAL DAS ÁREAS
-        // ==============================
-        raiz.addView(secao("🔧  MANUTENÇÃO DAS ÁREAS", VERMELHO));
-
-        LinearLayout manutencaoAreas1 = new LinearLayout(this);
-        manutencaoAreas1.setOrientation(LinearLayout.HORIZONTAL);
-
-        manutencaoIA = quadrado(
-                manutencaoAreas1,
-                "🔧",
-                "MANUTENÇÃO IA",
-                "Controle individual",
-                AZUL
-        );
-
-        manutencaoFilmes = quadrado(
-                manutencaoAreas1,
-                "🔧",
-                "MANUTENÇÃO FILMES",
-                "Controle individual",
-                ROSA
-        );
-
-        raiz.addView(manutencaoAreas1);
-
-        LinearLayout manutencaoAreas2 = new LinearLayout(this);
-        manutencaoAreas2.setOrientation(LinearLayout.HORIZONTAL);
-
-        manutencaoHistorico = quadrado(
-                manutencaoAreas2,
-                "🔧",
-                "MANUTENÇÃO HISTÓRICO",
-                "Controle individual",
-                DOURADO
-        );
-
-        manutencaoPerfil = quadrado(
-                manutencaoAreas2,
-                "🔧",
-                "MANUTENÇÃO PERFIL",
-                "Controle individual",
-                ROXO
-        );
-
-        raiz.addView(manutencaoAreas2);
-
-        LinearLayout manutencaoAreas3 = new LinearLayout(this);
-        manutencaoAreas3.setOrientation(LinearLayout.HORIZONTAL);
-
-        manutencaoHave = quadrado(
-                manutencaoAreas3,
-                "🔧",
-                "MANUTENÇÃO HAVE",
-                "Controle individual",
-                VERDE
-        );
-
-        raiz.addView(manutencaoAreas3);
-
-        manutencaoIA.setOnClickListener(v -> alternarManutencaoArea("ia", "IA"));
-        manutencaoFilmes.setOnClickListener(v -> alternarManutencaoArea("filmes", "FILMES"));
-        manutencaoHistorico.setOnClickListener(v -> alternarManutencaoArea("historico", "HISTÓRICO"));
-        manutencaoPerfil.setOnClickListener(v -> alternarManutencaoArea("perfil", "PERFIL"));
-        manutencaoHave.setOnClickListener(v -> alternarManutencaoArea("have", "HAVE"));
-
-        ia.setOnClickListener(v -> {
-            startActivity(new Intent(this, IAActivity.class));
+        centralManutencaoBtn = botaoPremium("CENTRAL DE MANUTENÇÃO", "◆", DOURADO, true);
+        raiz.addView(centralManutencaoBtn);
+        centralManutencaoBtn.setOnClickListener(v -> {
+            startActivity(new Intent(this, CentralManutencaoActivity.class));
         });
 
-        LinearLayout grade2 = new LinearLayout(this);
-        grade2.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button filmes = quadrado(
-                grade2,
-                "🎬",
-                "FILMES",
-                "Gerenciar",
-                ROSA
-        );
-
-        Button logs = quadrado(
-                grade2,
-                "📄",
-                "LOGS / FLUXOS",
-                "Visualizar",
-                DOURADO
-        );
-
-        raiz.addView(grade2);
-
-        filmes.setOnClickListener(v -> {
-            startActivity(new Intent(this, com.danike.ai.filmes.FilmesActivity.class));
-        });
-
+        Button logs = botaoPremium("LOGS E FLUXOS", "◇", DOURADO, false);
+        raiz.addView(logs);
         logs.setOnClickListener(v -> mostrarDiagnostico());
 
-        LinearLayout grade3 = new LinearLayout(this);
-        grade3.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button banco = quadrado(
-                grade3,
-                "🗄",
-                "BANCO DE DADOS",
-                "Backup / dados",
-                VERDE
-        );
-
-        Button seguranca = quadrado(
-                grade3,
-                "🛡",
-                "SEGURANÇA",
-                "Autenticação",
-                AZUL
-        );
-
-        raiz.addView(grade3);
-
-        banco.setOnClickListener(v -> mostrarBanco());
+        Button seguranca = botaoPremium("SEGURANÇA AUTENTICAÇÃO", "◈", AZUL, false);
+        raiz.addView(seguranca);
         seguranca.setOnClickListener(v -> mostrarSeguranca());
 
-        LinearLayout grade4 = new LinearLayout(this);
-        grade4.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button reiniciar = quadrado(
-                grade4,
-                "↻",
-                "REINICIAR",
-                "Sistema",
-                AZUL
-        );
-
-        Button limpar = quadrado(
-                grade4,
-                "🗑",
-                "LIMPAR CACHE",
-                "Dados temporários",
-                VERMELHO
-        );
-
-        raiz.addView(grade4);
-
+        Button reiniciar = botaoPremium("REINICIAR SISTEMA", "↻", AZUL, false);
+        raiz.addView(reiniciar);
         reiniciar.setOnClickListener(v -> {
             Toast.makeText(this, "Atualizando painel...", Toast.LENGTH_SHORT).show();
             recreate();
         });
 
-        limpar.setOnClickListener(v -> limparCache());
-
-        LinearLayout grade5 = new LinearLayout(this);
-        grade5.setOrientation(LinearLayout.HORIZONTAL);
-
-        Button atualizacao = quadrado(
-                grade5,
-                "📲",
-                "ATUALIZAÇÃO",
-                "Gerenciar versão",
-                AZUL
-        );
-
-        Button compartilhar = quadrado(
-                grade5,
-                "📤",
-                "COMPARTILHAR",
-                "Divulgar app",
-                VERDE
-        );
-
-        raiz.addView(grade5);
-
-        atualizacao.setOnClickListener(v -> mostrarAtualizacao());
-
+        Button compartilhar = botaoPremium("COMPARTILHAR APP", "◇", VERDE, false);
+        raiz.addView(compartilhar);
         compartilhar.setOnClickListener(v -> AppDistribuicao.compartilhar(
                 this,
                 "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk"
         ));
 
+        Button atualizacao = botaoPremium("ATUALIZAÇÃO", "↑", AZUL, false);
+        raiz.addView(atualizacao);
+        atualizacao.setOnClickListener(v -> mostrarAtualizacao());
+
+        Button gerenciarVersao = botaoPremium("GERENCIAR VERSÃO", "◆", ROXO, false);
+        raiz.addView(gerenciarVersao);
+        gerenciarVersao.setOnClickListener(v -> mostrarGerenciarVersao());
 
         raiz.addView(secao("🚨  IDENTIFICAÇÃO DE ERROS DO APP", VERMELHO));
 
@@ -1356,91 +1206,68 @@ private boolean salvarPerfilEquipeLocal(
 
     private LinearLayout cabecalho() {
 
-        LinearLayout caixa = painel(AZUL);
-        caixa.setOrientation(LinearLayout.HORIZONTAL);
-        caixa.setGravity(Gravity.CENTER_VERTICAL);
-        caixa.setPadding(dp(10), dp(10), dp(10), dp(10));
+        LinearLayout caixa = painel(DOURADO);
+        caixa.setOrientation(LinearLayout.VERTICAL);
+        caixa.setGravity(Gravity.CENTER);
+        caixa.setPadding(dp(12), dp(18), dp(12), dp(18));
 
-        fotoPerfil = new ImageView(this);
-        fotoPerfil.setScaleType(ImageView.ScaleType.CENTER_CROP);
-
-        GradientDrawable circulo = new GradientDrawable();
-        circulo.setShape(GradientDrawable.OVAL);
-        circulo.setColor(Color.rgb(8, 20, 35));
-        circulo.setStroke(dp(3), AZUL);
-        fotoPerfil.setBackground(circulo);
-
-        LinearLayout.LayoutParams fotoParams =
-                new LinearLayout.LayoutParams(
-                        dp(78),
-                        dp(78)
-                );
-
-        caixa.addView(fotoPerfil, fotoParams);
-
-        LinearLayout dados = new LinearLayout(this);
-        dados.setOrientation(LinearLayout.VERTICAL);
-        dados.setPadding(dp(12), 0, dp(8), 0);
-
-        TextView instagram = texto(
-                "◎  anderson_lopes._ofc  ✓",
-                18,
-                BRANCO
+        GradientDrawable fundoAdm = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(70, 45, 5),
+                        Color.rgb(210, 155, 35),
+                        Color.rgb(85, 50, 5)
+                }
         );
 
-        instagram.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
+        fundoAdm.setCornerRadius(dp(22));
+        fundoAdm.setStroke(
+                dp(2),
+                Color.rgb(255, 215, 70)
         );
 
-        dados.addView(instagram);
+        caixa.setBackground(fundoAdm);
+        caixa.setElevation(dp(18));
 
-        TextView dono = texto(
-                "♛  PROPRIETÁRIO",
-                14,
-                DOURADO
+        TextView tituloAdm = texto(
+                "ADM",
+                32,
+                Color.rgb(255, 235, 150)
         );
 
-        dados.addView(dono);
-
-        TextView online = texto(
-                "●  ONLINE",
-                14,
-                VERDE
-        );
-
-        dados.addView(online);
-
-        caixa.addView(
-                dados,
-                new LinearLayout.LayoutParams(
-                        0,
-                        -2,
-                        1
-                )
-        );
-
-        TextView adm = texto(
-                "⚡\nADM",
-                27,
-                AZUL
-        );
-
-        adm.setGravity(Gravity.CENTER);
-        adm.setTypeface(
+        tituloAdm.setGravity(Gravity.CENTER);
+        tituloAdm.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
 
         caixa.addView(
-                adm,
+                tituloAdm,
                 new LinearLayout.LayoutParams(
-                        dp(105),
-                        dp(75)
+                        -1,
+                        dp(50)
                 )
         );
 
-        carregarFotoPerfil();
+        TextView proprietario = texto(
+                "Proprietário",
+                13,
+                Color.rgb(255, 225, 145)
+        );
+
+        proprietario.setGravity(Gravity.CENTER);
+        proprietario.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        caixa.addView(
+                proprietario,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(28)
+                )
+        );
 
         return caixa;
     }
@@ -1965,6 +1792,94 @@ private boolean salvarPerfilEquipeLocal(
     }
 
 
+    private Button botaoPremium(String titulo, String simbolo, int cor, boolean prata) {
+        Button botao = new Button(this);
+        botao.setText((simbolo + "   " + titulo).toUpperCase(java.util.Locale.ROOT));
+        botao.setTextSize(prata ? 14 : 13);
+        botao.setTextColor(prata ? android.graphics.Color.rgb(18, 20, 24) : BRANCO);
+        botao.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        botao.setGravity(android.view.Gravity.CENTER_VERTICAL | android.view.Gravity.START);
+        botao.setAllCaps(false);
+        botao.setPadding(dp(20), 0, dp(20), 0);
+
+        android.graphics.drawable.GradientDrawable fundo =
+                new android.graphics.drawable.GradientDrawable();
+
+        fundo.setColor(prata
+                ? android.graphics.Color.rgb(205, 210, 218)
+                : android.graphics.Color.rgb(18, 24, 34));
+
+        fundo.setCornerRadius(dp(18));
+
+        fundo.setStroke(dp(1), prata
+                ? android.graphics.Color.rgb(245, 248, 255)
+                : cor);
+
+        botao.setBackground(fundo);
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, dp(prata ? 64 : 58));
+
+        params.setMargins(dp(4), dp(5), dp(4), dp(5));
+        botao.setLayoutParams(params);
+
+        android.view.animation.AlphaAnimation brilho =
+                new android.view.animation.AlphaAnimation(0.78f, 1.0f);
+
+        brilho.setDuration(1150);
+        brilho.setRepeatMode(android.view.animation.Animation.REVERSE);
+        brilho.setRepeatCount(android.view.animation.Animation.INFINITE);
+
+        botao.startAnimation(brilho);
+
+        return botao;
+    }
+
+    private void mostrarGerenciarVersao() {
+        android.widget.LinearLayout layout =
+                new android.widget.LinearLayout(this);
+
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(dp(24), dp(12), dp(24), dp(8));
+
+        android.widget.TextView titulo =
+                texto("VERSÃO INSTALADA", 16, AZUL);
+
+        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        layout.addView(titulo);
+
+        android.widget.TextView atual =
+                texto(
+                        "DaNikeAI v" + BuildConfig.VERSION_NAME +
+                        "  •  CÓDIGO " + BuildConfig.VERSION_CODE,
+                        15,
+                        BRANCO
+                );
+
+        atual.setPadding(0, dp(8), 0, dp(16));
+        layout.addView(atual);
+
+        android.widget.TextView info =
+                texto(
+                        "O gerenciamento de versão permite conferir a versão instalada antes de publicar uma nova atualização.",
+                        13,
+                        android.graphics.Color.LTGRAY
+                );
+
+        info.setPadding(0, 0, 0, dp(14));
+        layout.addView(info);
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("GERENCIAR VERSÃO")
+                .setView(layout)
+                .setNegativeButton("FECHAR", null)
+                .setPositiveButton(
+                        "ABRIR ATUALIZAÇÃO",
+                        (dialog, which) -> mostrarAtualizacao()
+                )
+                .show();
+    }
+
     private void mostrarAtualizacao() {
         final String GITHUB_BUILD_URL =
                 "https://raw.githubusercontent.com/andersonptg/DaNikeAI/main/app/build.gradle";
@@ -2378,233 +2293,53 @@ private boolean salvarPerfilEquipeLocal(
         dialog.show();
     }
 
-    private void atualizarBotoesManutencaoAreas(java.util.Map<String, Object> dados) {
-        atualizarBotaoArea(manutencaoIA, "IA", dados.get("manutencao_ia"));
-        atualizarBotaoArea(manutencaoFilmes, "FILMES", dados.get("manutencao_filmes"));
-        atualizarBotaoArea(manutencaoHistorico, "HISTÓRICO", dados.get("manutencao_historico"));
-        atualizarBotaoArea(manutencaoPerfil, "PERFIL", dados.get("manutencao_perfil"));
-        atualizarBotaoArea(manutencaoHave, "HAVE", dados.get("manutencao_have"));
-    }
+    private void carregarUsuarios() {
+        if (usuariosListener != null) {
+            usuariosListener.remove();
+        }
 
-    private void atualizarBotaoArea(Button botao, String titulo, Object valor) {
-        if (botao == null) return;
-        boolean ativa = valor instanceof Boolean && (Boolean) valor;
-        botao.setText(
-                "🔧\nMANUTENÇÃO " + titulo + "\n" +
-                (ativa ? "🔴 EM MANUTENÇÃO" : "🟢 DISPONÍVEL")
-        );
-    }
+        usuariosListener = db.collection("usuarios")
+                .addSnapshotListener((snapshot, error) -> {
 
-    private void carregarManutencaoAreas() {
-        db.collection("config")
-                .document("areas")
-                .get()
-                .addOnSuccessListener(doc -> {
-                    if (doc.exists()) {
-                        atualizarBotoesManutencaoAreas(doc.getData());
-                    } else {
-                        atualizarBotoesManutencaoAreas(new java.util.HashMap<>());
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    android.util.Log.e("DaNikeADM", "ERRO AO CARREGAR AREAS", e);
-                });
-    }
-
-    private void alternarManutencaoArea(String area, String titulo) {
-        Button botao = null;
-
-        if ("ia".equals(area)) botao = manutencaoIA;
-        else if ("filmes".equals(area)) botao = manutencaoFilmes;
-        else if ("historico".equals(area)) botao = manutencaoHistorico;
-        else if ("perfil".equals(area)) botao = manutencaoPerfil;
-        else if ("have".equals(area)) botao = manutencaoHave;
-
-        boolean atual = botao != null
-                && botao.getText().toString().contains("🔴");
-
-        boolean novoEstado = !atual;
-        String campo = "manutencao_" + area;
-
-        new AlertDialog.Builder(this)
-                .setTitle((novoEstado ? "Ativar " : "Desativar ") + "manutenção")
-                .setMessage(
-                        novoEstado
-                                ? titulo + " ficará em manutenção para usuários comuns."
-                                : titulo + " voltará a funcionar normalmente."
-                )
-                .setNegativeButton("CANCELAR", null)
-                .setPositiveButton("CONFIRMAR", (d, w) -> {
-                    db.collection("config")
-                            .document("areas")
-                            .set(
-                                    Collections.singletonMap(campo, novoEstado),
-                                    com.google.firebase.firestore.SetOptions.merge()
-                            )
-                            .addOnSuccessListener(v -> {
-                                carregarManutencaoAreas();
-                                Toast.makeText(
-                                        this,
-                                        titulo + (novoEstado
-                                                ? " em manutenção."
-                                                : " disponível novamente."),
-                                        Toast.LENGTH_SHORT
-                                ).show();
-                            })
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(
-                                            this,
-                                            "Falha Firebase: " + e.getMessage(),
-                                            Toast.LENGTH_LONG
-                                    ).show()
-                            );
-                })
-                .show();
-    }
-
-    private void carregarManutencao() {
-
-        db.collection("config")
-                .document("app")
-                .get()
-                .addOnSuccessListener(doc -> {
-
-                    if (!doc.exists()) {
-                        atualizarManutencao(false);
+                    if (error != null || snapshot == null) {
+                        listaUsuarios.removeAllViews();
+                        listaUsuarios.addView(
+                                texto(
+                                        "Não foi possível carregar os usuários.\\n" +
+                                                (error != null ? error.getMessage() : "Erro desconhecido"),
+                                        13,
+                                        VERMELHO
+                                )
+                        );
+                        totalUsuarios.setText("—");
+                        onlineUsuarios.setText("—");
+                        offlineUsuarios.setText("—");
                         return;
                     }
 
-                    Boolean valor =
-                            doc.getBoolean("manutencao");
-
-                    manutencaoAtiva =
-                            valor != null && valor;
-
-                    atualizarManutencao(
-                            manutencaoAtiva
-                    );
-                })
-                .addOnFailureListener(e -> {
-
-                    if (manutencaoBtn != null) {
-                        manutencaoBtn.setText(
-                                "⚙\nMANUTENÇÃO\nFirebase indisponível"
-                        );
-                    }
-                });
-    }
-
-    private void atualizarManutencao(
-            boolean ativa
-    ) {
-
-        if (manutencaoBtn == null) return;
-
-        if (ativa) {
-            manutencaoBtn.setText(
-                    "⚙\nMANUTENÇÃO\nATIVA • toque"
-            );
-        } else {
-            manutencaoBtn.setText(
-                    "⚙\nMANUTENÇÃO\nDESATIVADA"
-            );
-        }
-    }
-
-    private void alternarManutencao() {
-
-        boolean novo = !manutencaoAtiva;
-
-        new AlertDialog.Builder(this)
-                .setTitle(
-                        novo
-                                ? "Ativar manutenção?"
-                                : "Desativar manutenção?"
-                )
-                .setMessage(
-                        novo
-                                ? "Usuários comuns verão a tela de manutenção."
-                                : "O aplicativo voltará a ficar disponível."
-                )
-                .setNegativeButton(
-                        "CANCELAR",
-                        null
-                )
-                .setPositiveButton(
-                        "CONFIRMAR",
-                        (d, w) -> {
-
-                            db.collection("config")
-                                    .document("app")
-                                    .set(
-                                            Collections.singletonMap(
-                                                    "manutencao",
-                                                    novo
-                                            ),
-                                            com.google.firebase.firestore.SetOptions.merge()
-                                    )
-                                    .addOnSuccessListener(v -> {
-
-                                        manutencaoAtiva = novo;
-
-                                        atualizarManutencao(
-                                                novo
-                                        );
-
-                                        Toast.makeText(
-                                                this,
-                                                novo
-                                                        ? "Manutenção ativada."
-                                                        : "Manutenção desativada.",
-                                                Toast.LENGTH_SHORT
-                                        ).show();
-                                    })
-                                    .addOnFailureListener(e ->
-                                            Toast.makeText(
-                                                    this,
-                                                    "Falha Firebase: "
-                                                            + e.getMessage(),
-                                                    Toast.LENGTH_LONG
-                                            ).show()
-                                    );
-                        }
-                )
-                .show();
-    }
-
-    private void carregarUsuarios() {
-
-        db.collection("usuarios")
-                .get()
-                .addOnSuccessListener(snapshot -> {
-
-                    List<Map<String, Object>> lista =
-                            new ArrayList<>();
+                    List<Map<String, Object>> lista = new ArrayList<>();
 
                     for (com.google.firebase.firestore.DocumentSnapshot d
                             : snapshot.getDocuments()) {
 
-                        Map<String, Object> mapa =
-                                d.getData();
+                        Map<String, Object> mapa = d.getData();
 
                         if (mapa != null) {
-                            lista.add(mapa);
+                            Map<String, Object> copia = new java.util.HashMap<>(mapa);
+                            copia.put("_uid", d.getId());
+                            lista.add(copia);
                         }
                     }
 
                     Collections.sort(
                             lista,
                             (a, b) -> {
-
-                                boolean ao =
-                                        Boolean.TRUE.equals(
-                                                a.get("ehProprietario")
-                                        );
-
-                                boolean bo =
-                                        Boolean.TRUE.equals(
-                                                b.get("ehProprietario")
-                                        );
+                                boolean ao = Boolean.TRUE.equals(
+                                        a.get("ehProprietario")
+                                );
+                                boolean bo = Boolean.TRUE.equals(
+                                        b.get("ehProprietario")
+                                );
 
                                 if (ao != bo) {
                                     return ao ? -1 : 1;
@@ -2613,9 +2348,7 @@ private boolean salvarPerfilEquipeLocal(
                                 return String.valueOf(
                                         a.get("nome")
                                 ).compareToIgnoreCase(
-                                        String.valueOf(
-                                                b.get("nome")
-                                        )
+                                        String.valueOf(b.get("nome"))
                                 );
                             }
                     );
@@ -2628,51 +2361,46 @@ private boolean salvarPerfilEquipeLocal(
 
                     for (Map<String, Object> u : lista) {
 
-                        boolean on =
-                                Boolean.TRUE.equals(
-                                        u.get("online")
-                                );
+                        boolean on = usuarioEstaOnline(u);
 
-                        if (on) online++;
-                        else offline++;
+                        u.put("online", on);
 
-                        adicionarUsuario(
-                                u
-                        );
+                        if (on) {
+                            online++;
+                        } else {
+                            offline++;
+                        }
+
+                        adicionarUsuario(u);
                     }
 
-                    totalUsuarios.setText(
-                            String.valueOf(total)
-                    );
-
-                    onlineUsuarios.setText(
-                            String.valueOf(online)
-                    );
-
-                    offlineUsuarios.setText(
-                            String.valueOf(offline)
-                    );
+                    totalUsuarios.setText(String.valueOf(total));
+                    onlineUsuarios.setText(String.valueOf(online));
+                    offlineUsuarios.setText(String.valueOf(offline));
 
                     proprietarios.setText("1");
-
-                })
-                .addOnFailureListener(e -> {
-
-                    listaUsuarios.removeAllViews();
-
-                    listaUsuarios.addView(
-                            texto(
-                                    "Não foi possível carregar os usuários.\n" +
-                                    e.getMessage(),
-                                    13,
-                                    VERMELHO
-                            )
-                    );
-
-                    totalUsuarios.setText("—");
-                    onlineUsuarios.setText("—");
-                    offlineUsuarios.setText("—");
                 });
+    }
+
+    private boolean usuarioEstaOnline(Map<String, Object> u) {
+
+        if (!Boolean.TRUE.equals(u.get("online"))) {
+            return false;
+        }
+
+        Object ultimo = u.get("ultimoAcesso");
+
+        if (!(ultimo instanceof com.google.firebase.Timestamp)) {
+            return false;
+        }
+
+        com.google.firebase.Timestamp ts =
+                (com.google.firebase.Timestamp) ultimo;
+
+        long idade = System.currentTimeMillis()
+                - ts.toDate().getTime();
+
+        return idade >= 0 && idade <= 90_000L;
     }
 
     private void adicionarUsuario(
@@ -2698,10 +2426,7 @@ private boolean salvarPerfilEquipeLocal(
                         u.get("ehProprietario")
                 );
 
-        boolean online =
-                Boolean.TRUE.equals(
-                        u.get("online")
-                );
+        boolean online = usuarioEstaOnline(u);
 
         TextView nome = texto(
                 (dono ? "♛ " : "● ")
@@ -2760,65 +2485,532 @@ private boolean salvarPerfilEquipeLocal(
         );
     }
 
-    private void mostrarTodosUsuarios() {
+    private void abrirVisaoGeral() {
+
+        final Dialog dialog = new Dialog(this);
+
+        LinearLayout raiz = new LinearLayout(this);
+        raiz.setOrientation(LinearLayout.VERTICAL);
+        raiz.setPadding(dp(16), dp(16), dp(16), dp(16));
+        raiz.setBackgroundColor(FUNDO);
+
+        TextView titulo = texto(
+                "VISÃO GERAL",
+                22,
+                Color.rgb(210, 250, 255)
+        );
+        titulo.setGravity(Gravity.CENTER);
+        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        raiz.addView(
+                titulo,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(55)
+                )
+        );
+
+        LinearLayout conteudo = new LinearLayout(this);
+        conteudo.setOrientation(LinearLayout.HORIZONTAL);
+        conteudo.setGravity(Gravity.TOP);
+
+        LinearLayout onlineBox = painel(VERDE);
+        onlineBox.setOrientation(LinearLayout.VERTICAL);
+
+        TextView onlineTitulo = texto(
+                "ONLINE",
+                15,
+                VERDE
+        );
+        onlineTitulo.setGravity(Gravity.CENTER);
+        onlineTitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        onlineBox.addView(onlineTitulo);
+
+        LinearLayout listaOnline = new LinearLayout(this);
+        listaOnline.setOrientation(LinearLayout.VERTICAL);
+        onlineBox.addView(listaOnline);
+
+        LinearLayout offlineBox = painel(VERMELHO);
+        offlineBox.setOrientation(LinearLayout.VERTICAL);
+
+        TextView offlineTitulo = texto(
+                "OFFLINE",
+                15,
+                VERMELHO
+        );
+        offlineTitulo.setGravity(Gravity.CENTER);
+        offlineTitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        offlineBox.addView(offlineTitulo);
+
+        LinearLayout listaOffline = new LinearLayout(this);
+        listaOffline.setOrientation(LinearLayout.VERTICAL);
+        offlineBox.addView(listaOffline);
+
+        conteudo.addView(
+                onlineBox,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -2,
+                        1
+                )
+        );
+
+        conteudo.addView(
+                offlineBox,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -2,
+                        1
+                )
+        );
+
+        raiz.addView(
+                conteudo,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
+        );
+
+        Button fechar = pequenoBotao(
+                "FECHAR",
+                AZUL
+        );
+
+        fechar.setOnClickListener(v -> dialog.dismiss());
+
+        raiz.addView(
+                fechar,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(48)
+                )
+        );
+
+        dialog.setContentView(raiz);
+
+        Window window = dialog.getWindow();
+        if (window != null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            window.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.96f),
+                    -1
+            );
+        }
+
+        dialog.show();
 
         db.collection("usuarios")
                 .get()
                 .addOnSuccessListener(snapshot -> {
 
-                    StringBuilder texto =
-                            new StringBuilder();
+                    for (com.google.firebase.firestore.DocumentSnapshot d
+                            : snapshot.getDocuments()) {
 
-                    texto.append(
-                            "USUÁRIOS CADASTRADOS\n\n"
-                    );
+                        String nome = String.valueOf(d.get("nome"));
+                        String email = String.valueOf(d.get("email"));
 
-                    for (
-                            com.google.firebase.firestore.DocumentSnapshot d
-                            : snapshot.getDocuments()
-                    ) {
-
-                        String nome =
-                                String.valueOf(
-                                        d.get("nome")
-                                );
-
-                        String email =
-                                String.valueOf(
-                                        d.get("email")
-                                );
-
-                        boolean online =
-                                Boolean.TRUE.equals(
-                                        d.get("online")
-                                );
-
-                        texto.append(
-                                online
-                                        ? "🟢 "
-                                        : "🔴 "
+                        boolean online = usuarioEstaOnline(
+                                d.getData() != null
+                                        ? d.getData()
+                                        : new java.util.HashMap<>()
                         );
 
-                        texto.append(nome)
-                                .append("\n")
-                                .append(email)
-                                .append("\n\n");
+                        adicionarUsuarioVisao(
+                                online ? listaOnline : listaOffline,
+                                nome,
+                                email,
+                                online
+                        );
                     }
-
-                    new AlertDialog.Builder(this)
-                            .setTitle("TODOS OS USUÁRIOS")
-                            .setMessage(texto.toString())
-                            .setPositiveButton("FECHAR", null)
-                            .show();
-
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(
                                 this,
-                                "Falha ao carregar usuários.",
+                                "Não foi possível carregar os usuários.",
                                 Toast.LENGTH_SHORT
                         ).show()
                 );
+    }
+
+    private void adicionarUsuarioVisao(
+            LinearLayout lista,
+            String nome,
+            String email,
+            boolean online
+    ) {
+
+        LinearLayout linha = new LinearLayout(this);
+        linha.setOrientation(LinearLayout.HORIZONTAL);
+        linha.setGravity(Gravity.CENTER_VERTICAL);
+        linha.setPadding(
+                dp(8),
+                dp(8),
+                dp(8),
+                dp(8)
+        );
+
+        View indicador = new View(this);
+
+        GradientDrawable ponto = new GradientDrawable();
+        ponto.setShape(GradientDrawable.OVAL);
+        ponto.setColor(
+                online ? VERDE : VERMELHO
+        );
+
+        indicador.setBackground(ponto);
+
+        linha.addView(
+                indicador,
+                new LinearLayout.LayoutParams(
+                        dp(8),
+                        dp(8)
+                )
+        );
+
+        LinearLayout dados = new LinearLayout(this);
+        dados.setOrientation(LinearLayout.VERTICAL);
+        dados.setPadding(dp(8), 0, 0, 0);
+
+        TextView nomeView = texto(
+                nome,
+                13,
+                BRANCO
+        );
+        nomeView.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        TextView emailView = texto(
+                email,
+                10,
+                Color.rgb(170, 190, 205)
+        );
+
+        dados.addView(nomeView);
+        dados.addView(emailView);
+
+        linha.addView(
+                dados,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -2,
+                        1
+                )
+        );
+
+        lista.addView(linha);
+
+        android.animation.ObjectAnimator pulso =
+                android.animation.ObjectAnimator.ofFloat(
+                        indicador,
+                        "alpha",
+                        0.35f,
+                        1.0f
+                );
+
+        pulso.setDuration(750);
+        pulso.setRepeatMode(
+                android.animation.ValueAnimator.REVERSE
+        );
+        pulso.setRepeatCount(
+                android.animation.ValueAnimator.INFINITE
+        );
+        pulso.start();
+    }
+
+    private void mostrarTodosUsuarios() {
+
+        final android.app.Dialog dialog = new android.app.Dialog(this);
+
+        LinearLayout principal = new LinearLayout(this);
+        principal.setOrientation(LinearLayout.VERTICAL);
+        principal.setPadding(dp(14), dp(14), dp(14), dp(14));
+
+        android.graphics.drawable.GradientDrawable fundo =
+                new android.graphics.drawable.GradientDrawable();
+        fundo.setColor(android.graphics.Color.rgb(8, 10, 16));
+        fundo.setCornerRadius(dp(22));
+        fundo.setStroke(dp(1), android.graphics.Color.rgb(55, 65, 85));
+        principal.setBackground(fundo);
+
+        TextView titulo = texto(
+                "TODOS OS USUÁRIOS",
+                20,
+                BRANCO
+        );
+        titulo.setGravity(Gravity.CENTER);
+        titulo.setTypeface(null, android.graphics.Typeface.BOLD);
+        principal.addView(titulo);
+
+        TextView subtitulo = texto(
+                "PRESENÇA EM TEMPO REAL",
+                10,
+                Color.rgb(130, 160, 180)
+        );
+        subtitulo.setGravity(Gravity.CENTER);
+        principal.addView(subtitulo);
+
+        LinearLayout colunas = new LinearLayout(this);
+        colunas.setOrientation(LinearLayout.HORIZONTAL);
+        colunas.setGravity(Gravity.TOP);
+
+        LinearLayout onlineColuna = new LinearLayout(this);
+        onlineColuna.setOrientation(LinearLayout.VERTICAL);
+
+        LinearLayout offlineColuna = new LinearLayout(this);
+        offlineColuna.setOrientation(LinearLayout.VERTICAL);
+
+        TextView tituloOnline = texto("ONLINE", 13, VERDE);
+        tituloOnline.setGravity(Gravity.CENTER);
+        tituloOnline.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        TextView tituloOffline = texto("OFFLINE", 13, VERMELHO);
+        tituloOffline.setGravity(Gravity.CENTER);
+        tituloOffline.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        onlineColuna.addView(tituloOnline);
+        offlineColuna.addView(tituloOffline);
+
+        android.widget.ScrollView scrollOnline =
+                new android.widget.ScrollView(this);
+        android.widget.ScrollView scrollOffline =
+                new android.widget.ScrollView(this);
+
+        LinearLayout listaOnline = new LinearLayout(this);
+        listaOnline.setOrientation(LinearLayout.VERTICAL);
+        listaOnline.setPadding(dp(4), dp(8), dp(4), dp(8));
+
+        LinearLayout listaOffline = new LinearLayout(this);
+        listaOffline.setOrientation(LinearLayout.VERTICAL);
+        listaOffline.setPadding(dp(4), dp(8), dp(4), dp(8));
+
+        scrollOnline.addView(listaOnline);
+        scrollOffline.addView(listaOffline);
+
+        onlineColuna.addView(
+                scrollOnline,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
+        );
+
+        offlineColuna.addView(
+                scrollOffline,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
+        );
+
+        LinearLayout.LayoutParams colunaParams =
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(430),
+                        1
+                );
+        colunaParams.setMargins(dp(4), dp(8), dp(4), dp(8));
+
+        colunas.addView(onlineColuna, colunaParams);
+
+        LinearLayout.LayoutParams separadorParams =
+                new LinearLayout.LayoutParams(
+                        dp(1),
+                        dp(430)
+                );
+
+        View separador = new View(this);
+        separador.setBackgroundColor(
+                android.graphics.Color.rgb(45, 50, 65)
+        );
+        colunas.addView(separador, separadorParams);
+
+        colunas.addView(offlineColuna, colunaParams);
+
+        principal.addView(colunas);
+
+        TextView fechar = texto("FECHAR", 12, BRANCO);
+        fechar.setGravity(Gravity.CENTER);
+        fechar.setPadding(0, dp(12), 0, dp(4));
+        fechar.setOnClickListener(v -> dialog.dismiss());
+        principal.addView(fechar);
+
+        dialog.setContentView(principal);
+
+        android.view.Window janela = dialog.getWindow();
+        if (janela != null) {
+            janela.setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(
+                            android.graphics.Color.TRANSPARENT
+                    )
+            );
+            janela.setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.94f),
+                    -2
+            );
+        }
+
+        final com.google.firebase.firestore.ListenerRegistration listener =
+                db.collection("usuarios")
+                        .addSnapshotListener((snapshot, error) -> {
+
+                            if (error != null || snapshot == null) {
+                                return;
+                            }
+
+                            listaOnline.removeAllViews();
+                            listaOffline.removeAllViews();
+
+                            for (com.google.firebase.firestore.DocumentSnapshot d
+                                    : snapshot.getDocuments()) {
+
+                                Map<String, Object> u = d.getData();
+
+                                if (u == null) {
+                                    continue;
+                                }
+
+                                boolean online = usuarioEstaOnline(u);
+
+                                String nome = String.valueOf(
+                                        u.get("nome")
+                                );
+
+                                String email = String.valueOf(
+                                        u.get("email")
+                                );
+
+                                LinearLayout balao = criarBalaoUsuario(
+                                        nome,
+                                        email,
+                                        online
+                                );
+
+                                if (online) {
+                                    listaOnline.addView(balao);
+                                } else {
+                                    listaOffline.addView(balao);
+                                }
+                            }
+                        });
+
+        dialog.setOnDismissListener(d -> listener.remove());
+
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    (int) (getResources().getDisplayMetrics().widthPixels * 0.94f),
+                    dp(540)
+            );
+        }
+    }
+
+    private LinearLayout criarBalaoUsuario(
+            String nome,
+            String email,
+            boolean online
+    ) {
+
+        LinearLayout balao = new LinearLayout(this);
+        balao.setOrientation(LinearLayout.VERTICAL);
+        balao.setPadding(dp(10), dp(9), dp(10), dp(9));
+
+        android.graphics.drawable.GradientDrawable fundo =
+                new android.graphics.drawable.GradientDrawable();
+
+        int cor = online ? VERDE : VERMELHO;
+
+        fundo.setColor(android.graphics.Color.rgb(13, 16, 24));
+        fundo.setCornerRadius(dp(14));
+        fundo.setStroke(dp(1), cor);
+
+        balao.setBackground(fundo);
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        -2
+                );
+        params.setMargins(0, 0, 0, dp(8));
+        balao.setLayoutParams(params);
+
+        LinearLayout cabecalho = new LinearLayout(this);
+        cabecalho.setOrientation(LinearLayout.HORIZONTAL);
+        cabecalho.setGravity(Gravity.CENTER_VERTICAL);
+
+        View indicador = new View(this);
+
+        android.graphics.drawable.GradientDrawable circulo =
+                new android.graphics.drawable.GradientDrawable();
+        circulo.setShape(
+                android.graphics.drawable.GradientDrawable.OVAL
+        );
+        circulo.setColor(cor);
+
+        indicador.setBackground(circulo);
+
+        cabecalho.addView(
+                indicador,
+                new LinearLayout.LayoutParams(
+                        dp(9),
+                        dp(9)
+                )
+        );
+
+        android.view.animation.AlphaAnimation pulso =
+                new android.view.animation.AlphaAnimation(
+                        0.35f,
+                        1.0f
+                );
+        pulso.setDuration(850);
+        pulso.setRepeatMode(
+                android.view.animation.Animation.REVERSE
+        );
+        pulso.setRepeatCount(
+                android.view.animation.Animation.INFINITE
+        );
+        indicador.startAnimation(pulso);
+
+        TextView status = texto(
+                online ? "  ONLINE" : "  OFFLINE",
+                10,
+                cor
+        );
+        status.setTypeface(null, android.graphics.Typeface.BOLD);
+        cabecalho.addView(status);
+
+        balao.addView(cabecalho);
+
+        TextView emailView = texto(
+                email,
+                10,
+                Color.rgb(130, 160, 180)
+        );
+        emailView.setSingleLine(true);
+        emailView.setEllipsize(
+                android.text.TextUtils.TruncateAt.END
+        );
+        emailView.setPadding(0, dp(7), 0, dp(2));
+        balao.addView(emailView);
+
+        TextView nomeView = texto(
+                nome,
+                14,
+                BRANCO
+        );
+        nomeView.setTypeface(
+                null,
+                android.graphics.Typeface.BOLD
+        );
+        balao.addView(nomeView);
+
+        return balao;
     }
 
     private void mostrarUsuario(
@@ -2834,10 +3026,7 @@ private boolean salvarPerfilEquipeLocal(
         String uid =
                 String.valueOf(u.get("uid"));
 
-        boolean online =
-                Boolean.TRUE.equals(
-                        u.get("online")
-                );
+        boolean online = usuarioEstaOnline(u);
 
         new AlertDialog.Builder(this)
                 .setTitle(
@@ -2860,6 +3049,183 @@ private boolean salvarPerfilEquipeLocal(
                         null
                 )
                 .show();
+    }
+
+    private LinearLayout painelDiagnostico() {
+
+        LinearLayout painel = painel(AZUL);
+        painel.setOrientation(LinearLayout.VERTICAL);
+        painel.setPadding(dp(14), dp(14), dp(14), dp(14));
+
+        LinearLayout topo = new LinearLayout(this);
+        topo.setOrientation(LinearLayout.HORIZONTAL);
+        topo.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView indicador = new TextView(this);
+        indicador.setText("●");
+        indicador.setTextSize(22);
+        indicador.setTextColor(VERDE);
+        indicador.setGravity(Gravity.CENTER);
+
+        AlphaAnimation pulso = new AlphaAnimation(0.35f, 1.0f);
+        pulso.setDuration(900);
+        pulso.setRepeatMode(AlphaAnimation.REVERSE);
+        pulso.setRepeatCount(AlphaAnimation.INFINITE);
+        indicador.startAnimation(pulso);
+
+        topo.addView(
+                indicador,
+                new LinearLayout.LayoutParams(dp(34), dp(42))
+        );
+
+        LinearLayout textos = new LinearLayout(this);
+        textos.setOrientation(LinearLayout.VERTICAL);
+
+        TextView titulo = new TextView(this);
+        titulo.setText("SISTEMA DE DIAGNÓSTICO");
+        titulo.setTextColor(BRANCO);
+        titulo.setTextSize(15);
+        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        TextView status = new TextView(this);
+        status.setText("MONITORAMENTO ATIVO");
+        status.setTextColor(VERDE);
+        status.setTextSize(11);
+
+        textos.addView(titulo);
+        textos.addView(status);
+
+        topo.addView(
+                textos,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -2,
+                        1
+                )
+        );
+
+        Button atualizar = new Button(this);
+        atualizar.setText("ATUALIZAR");
+        atualizar.setTextSize(10);
+        atualizar.setTextColor(BRANCO);
+        atualizar.setAllCaps(false);
+
+        GradientDrawable fundoAtualizar = new GradientDrawable();
+        fundoAtualizar.setColor(Color.rgb(8, 35, 48));
+        fundoAtualizar.setCornerRadius(dp(12));
+        fundoAtualizar.setStroke(dp(1), AZUL);
+        atualizar.setBackground(fundoAtualizar);
+
+        topo.addView(
+                atualizar,
+                new LinearLayout.LayoutParams(dp(105), dp(44))
+        );
+
+        painel.addView(topo);
+
+        TextView resumo = new TextView(this);
+        resumo.setText(
+                "Nenhum diagnóstico carregado ainda.\n" +
+                "Os erros capturados pelo sistema aparecerão aqui."
+        );
+        resumo.setTextColor(Color.rgb(180, 205, 215));
+        resumo.setTextSize(12);
+        resumo.setPadding(0, dp(12), 0, dp(8));
+
+        painel.addView(resumo);
+
+        TextView local = new TextView(this);
+        local.setText("Aguardando registros de diagnóstico...");
+        local.setTextColor(Color.rgb(125, 155, 165));
+        local.setTextSize(11);
+        local.setPadding(dp(10), dp(10), dp(10), dp(10));
+
+        GradientDrawable fundoLocal = new GradientDrawable();
+        fundoLocal.setColor(Color.rgb(3, 18, 25));
+        fundoLocal.setCornerRadius(dp(12));
+        fundoLocal.setStroke(dp(1), Color.rgb(25, 65, 78));
+        local.setBackground(fundoLocal);
+
+        painel.addView(local);
+
+        atualizar.setOnClickListener(v -> {
+            carregarDiagnosticos(painel, resumo, local);
+        });
+
+        carregarDiagnosticos(painel, resumo, local);
+
+        return painel;
+    }
+
+    private void carregarDiagnosticos(
+            LinearLayout painel,
+            TextView resumo,
+            TextView local
+    ) {
+
+        db.collection("diagnosticos")
+                .orderBy(
+                        "timestamp",
+                        com.google.firebase.firestore.Query.Direction.DESCENDING
+                )
+                .limit(8)
+                .get()
+                .addOnSuccessListener(snapshot -> {
+
+                    int total = snapshot.size();
+
+                    resumo.setText(
+                            total == 0
+                                    ? "SISTEMA ESTÁVEL\nNenhum erro registrado."
+                                    : total + " diagnóstico(s) recente(s) encontrado(s)."
+                    );
+
+                    if (total == 0) {
+                        local.setText("✓ Nenhum erro registrado.");
+                        local.setTextColor(VERDE);
+                        return;
+                    }
+
+                    StringBuilder texto = new StringBuilder();
+
+                    for (com.google.firebase.firestore.DocumentSnapshot doc
+                            : snapshot.getDocuments()) {
+
+                        String tipo = String.valueOf(doc.get("tipo"));
+                        String mensagem = String.valueOf(doc.get("mensagem"));
+                        String arquivo = String.valueOf(doc.get("arquivo"));
+                        String metodo = String.valueOf(doc.get("metodo"));
+                        Object linha = doc.get("linha");
+
+                        texto.append("▸ ")
+                                .append(tipo)
+                                .append("\n")
+                                .append(mensagem)
+                                .append("\n")
+                                .append(arquivo)
+                                .append(":")
+                                .append(linha)
+                                .append("  •  ")
+                                .append(metodo)
+                                .append("\n\n");
+                    }
+
+                    local.setText(texto.toString());
+                    local.setTextColor(Color.rgb(220, 235, 240));
+                })
+                .addOnFailureListener(e -> {
+
+                    resumo.setText("NÃO FOI POSSÍVEL CARREGAR OS DIAGNÓSTICOS.");
+
+                    local.setText(
+                            "Firestore: " +
+                            e.getClass().getSimpleName() +
+                            "\n" +
+                            String.valueOf(e.getMessage())
+                    );
+
+                    local.setTextColor(ROSA);
+                });
     }
 
     private void mostrarDiagnostico() {

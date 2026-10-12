@@ -25,8 +25,11 @@ import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.SetOptions;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class ChatIndividualActivity extends Activity {
@@ -68,7 +71,7 @@ public class ChatIndividualActivity extends Activity {
 
         montarInterface();
         carregarPerfil();
-        iniciarMensagens();
+        prepararConversa();
     }
 
     private void montarInterface() {
@@ -489,6 +492,98 @@ public class ChatIndividualActivity extends Activity {
         }
 
         return outroUid + "_" + meuUid;
+    }
+
+
+    private void prepararConversa() {
+        if (meuUid == null || meuUid.trim().isEmpty()
+                || outroUid == null || outroUid.trim().isEmpty()
+                || meuUid.equals(outroUid)) {
+            Toast.makeText(
+                    this,
+                    "Não foi possível identificar os participantes.",
+                    Toast.LENGTH_LONG
+            ).show();
+            finish();
+            return;
+        }
+
+        String conversaId = gerarIdConversa();
+        List<String> participantes = new ArrayList<>();
+
+        if (meuUid.compareTo(outroUid) < 0) {
+            participantes.add(meuUid);
+            participantes.add(outroUid);
+        } else {
+            participantes.add(outroUid);
+            participantes.add(meuUid);
+        }
+
+        com.google.firebase.firestore.DocumentReference ref =
+                db.collection("chats").document(conversaId);
+
+        // Primeiro verifica se a conversa já existe.
+        // Não tenta regravar um documento existente ao abrir o chat.
+        ref.get()
+                .addOnSuccessListener(documento -> {
+                    if (isFinishing() || isDestroyed()) return;
+
+                    if (documento.exists()) {
+                        Object valor = documento.get("participantes");
+
+                        if (valor instanceof List
+                                && participantes.equals(valor)
+                                && participantes.contains(meuUid)) {
+                            iniciarMensagens();
+                        } else {
+                            Toast.makeText(
+                                    this,
+                                    "A conversa existente tem dados incompatíveis. "
+                                            + "Ela não foi alterada.",
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        }
+                        return;
+                    }
+
+                    Map<String, Object> dadosConversa = new HashMap<>();
+                    dadosConversa.put("participantes", participantes);
+
+                    // Criação apenas quando o documento ainda não existe.
+                    ref.set(dadosConversa)
+                            .addOnSuccessListener(v -> {
+                                if (!isFinishing() && !isDestroyed()) {
+                                    iniciarMensagens();
+                                }
+                            })
+                            .addOnFailureListener(e -> {
+                                android.util.Log.e(
+                                        "DaNikeAI",
+                                        "Falha ao criar conversa " + conversaId,
+                                        e
+                                );
+                                Toast.makeText(
+                                        this,
+                                        "Não foi possível criar a conversa. "
+                                                + "Verifique se os dois usuários "
+                                                + "estão conectados.",
+                                        Toast.LENGTH_LONG
+                                ).show();
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e(
+                            "DaNikeAI",
+                            "Falha ao consultar conversa " + conversaId,
+                            e
+                    );
+                    Toast.makeText(
+                            this,
+                            "Não foi possível verificar a conversa. "
+                                    + "Confira sua conexão e permissões.",
+                            Toast.LENGTH_LONG
+                    ).show();
+                });
     }
 
     private void iniciarMensagens() {
