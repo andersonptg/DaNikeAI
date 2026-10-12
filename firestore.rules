@@ -9,6 +9,13 @@ service cloud.firestore {
         && request.auth.uid == "nd9zWE3GF2hOJDg4BfgTtaSy3H33";
     }
 
+
+    match /config/areas {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+        && request.auth.uid == "nd9zWE3GF2hOJDg4BfgTtaSy3H33";
+    }
+
     match /config/update {
       allow read: if request.auth != null;
       allow write: if request.auth != null
@@ -118,6 +125,87 @@ service cloud.firestore {
     // =========================
     // GRUPOS
     // =========================
+
+    // CHAT PRIVADO: somente os dois participantes da conversa.
+    match /chats/{conversaId} {
+      function conexoesAceitas(uidA, uidB) {
+        return exists(
+          /databases/$(database)/documents/conexoes/$(uidA)/usuarios/$(uidB)
+        ) && exists(
+          /databases/$(database)/documents/conexoes/$(uidB)/usuarios/$(uidA)
+        );
+      }
+
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['participantes'])
+        && request.resource.data.participantes is list
+        && request.resource.data.participantes.size() == 2
+        && request.auth.uid in request.resource.data.participantes
+        && conexoesAceitas(
+             request.resource.data.participantes[0],
+             request.resource.data.participantes[1]
+           )
+        && request.resource.data.participantes[0]
+             < request.resource.data.participantes[1]
+        && conversaId == request.resource.data.participantes[0]
+             + '_' + request.resource.data.participantes[1];
+
+      allow read: if request.auth != null
+        && request.auth.uid in resource.data.participantes
+        && conexoesAceitas(
+             resource.data.participantes[0],
+             resource.data.participantes[1]
+           );
+
+      // Não permite trocar os participantes depois da criação.
+      allow update: if request.auth != null
+        && request.auth.uid in resource.data.participantes
+        && request.resource.data.participantes
+             == resource.data.participantes
+        && request.resource.data.diff(resource.data)
+             .affectedKeys().hasOnly(['participantes']);
+
+      allow delete: if false;
+
+      match /mensagens/{mensagemId} {
+        function conversa() {
+          return get(
+            /databases/$(database)/documents/chats/$(conversaId)
+          );
+        }
+
+        allow read: if request.auth != null
+          && request.auth.uid in conversa().data.participantes
+          && conexoesAceitas(
+               conversa().data.participantes[0],
+               conversa().data.participantes[1]
+             );
+
+        allow create: if request.auth != null
+          && request.auth.uid in conversa().data.participantes
+          && conexoesAceitas(
+               conversa().data.participantes[0],
+               conversa().data.participantes[1]
+             )
+          && request.resource.data.keys().hasOnly([
+               'remetenteUid', 'destinatarioUid',
+               'texto', 'tipo', 'criadoEm'
+             ])
+          && request.resource.data.remetenteUid == request.auth.uid
+          && request.resource.data.destinatarioUid
+               in conversa().data.participantes
+          && request.resource.data.destinatarioUid != request.auth.uid
+          && request.resource.data.texto is string
+          && request.resource.data.tipo == 'texto';
+
+        allow update: if false;
+
+        allow delete: if request.auth != null
+          && request.auth.uid == resource.data.remetenteUid
+          && request.auth.uid in conversa().data.participantes;
+      }
+    }
+
     match /grupos/{grupoId} {
 
       // Apenas participantes podem visualizar o grupo.

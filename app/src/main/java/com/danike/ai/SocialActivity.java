@@ -1429,67 +1429,111 @@ private LinearLayout barraInferior;
         db.collection("convites")
             .document(meuUid)
             .collection("recebidos")
-            .whereEqualTo("status", "pendente")
             .get()
             .addOnSuccessListener(recebidos -> {
-
                 if (recebidos != null) {
-                    for (DocumentSnapshot convite :
-                            recebidos.getDocuments()) {
-
+                    for (DocumentSnapshot convite : recebidos.getDocuments()) {
                         String uid = convite.getId();
+                        String status = convite.getString("status");
 
-                        if (uid != null &&
-                            !uid.trim().isEmpty()) {
+                        if (uid == null || uid.trim().isEmpty()) {
+                            continue;
+                        }
+
+                        if ("pendente".equals(status)
+                                || "aceito".equals(status)) {
                             bloqueados.add(uid);
+                        }
+
+                        if ("aceito".equals(status)) {
+                            criarConexao(uid, null, null);
                         }
                     }
                 }
 
-                db.collectionGroup("recebidos")
-                    .whereEqualTo("uidRemetente", meuUid)
-                    .whereEqualTo("status", "pendente")
-                    .get()
-                    .addOnSuccessListener(enviados -> {
-
-                        if (enviados != null) {
-                            for (DocumentSnapshot convite :
-                                    enviados.getDocuments()) {
-
-                                String uidDestino =
-                                    convite.getReference()
-                                        .getParent()
-                                        .getParent()
-                                        .getId();
-
-                                if (uidDestino != null &&
-                                    !uidDestino.trim().isEmpty()) {
-                                    bloqueados.add(uidDestino);
-                                }
-                            }
-                        }
-
-                        adicionarPessoasGlobal(
-                            perfis,
-                            bloqueados,
-                            lista
-                        );
-                    })
-                    .addOnFailureListener(e ->
-                        adicionarPessoasGlobal(
-                            perfis,
-                            bloqueados,
-                            lista
-                        )
-                    );
+                verificarConvitesEnviados(perfis, 0, bloqueados, lista);
             })
-            .addOnFailureListener(e ->
-                adicionarPessoasGlobal(
-                    perfis,
-                    bloqueados,
-                    lista
-                )
+            .addOnFailureListener(e -> {
+                android.util.Log.e(
+                    "DaNikeAI",
+                    "Falha ao consultar convites recebidos",
+                    e
+                );
+
+                lista.removeAllViews();
+                TextView erro = texto(
+                    "Não foi possível verificar suas solicitações.\n" +
+                    "Tente novamente.",
+                    14,
+                    Color.rgb(220, 130, 140)
+                );
+                erro.setGravity(Gravity.CENTER);
+                lista.addView(
+                    erro,
+                    new LinearLayout.LayoutParams(-1, dp(160))
+                );
+            });
+    }
+
+    private void verificarConvitesEnviados(
+        com.google.firebase.firestore.QuerySnapshot perfis,
+        int indice,
+        java.util.HashSet<String> bloqueados,
+        LinearLayout lista
+    ) {
+        if (indice >= perfis.size()) {
+            adicionarPessoasGlobal(perfis, bloqueados, lista);
+            return;
+        }
+
+        DocumentSnapshot perfil = perfis.getDocuments().get(indice);
+        String uidDestino = perfil.getId();
+
+        if (uidDestino == null
+                || uidDestino.trim().isEmpty()
+                || uidDestino.equals(meuUid)) {
+            verificarConvitesEnviados(
+                perfis, indice + 1, bloqueados, lista
             );
+            return;
+        }
+
+        // Consulta somente o convite enviado a este perfil.
+        // O documento fica em /convites/{destino}/recebidos/{remetente}.
+        db.collection("convites")
+            .document(uidDestino)
+            .collection("recebidos")
+            .document(meuUid)
+            .get()
+            .addOnSuccessListener(convite -> {
+                String status = convite.getString("status");
+
+                if ("pendente".equals(status)
+                        || "aceito".equals(status)) {
+                    bloqueados.add(uidDestino);
+                }
+
+                if ("aceito".equals(status)) {
+                    // Recupera o registro na lista da conta atual.
+                    criarConexao(uidDestino, null, null);
+                }
+
+                verificarConvitesEnviados(
+                    perfis, indice + 1, bloqueados, lista
+                );
+            })
+            .addOnFailureListener(e -> {
+                android.util.Log.e(
+                    "DaNikeAI",
+                    "Falha ao verificar convite para " + uidDestino,
+                    e
+                );
+
+                // Continua carregando o Global mesmo se um convite falhar.
+                verificarConvitesEnviados(
+                    perfis, indice + 1, bloqueados, lista
+                );
+            });
     }
 
     private void adicionarPessoasGlobal(
@@ -1505,6 +1549,7 @@ private LinearLayout barraInferior;
 
             if (uid == null ||
                 uid.trim().isEmpty() ||
+                uid.equals(meuUid) ||
                 bloqueados.contains(uid)) {
                 continue;
             }
@@ -2211,57 +2256,48 @@ private LinearLayout barraInferior;
             boolean aceitar,
             View card
     ) {
-
-        if (meuUid == null || meuUid.trim().isEmpty()) {
+        if (meuUid == null || meuUid.trim().isEmpty()
+                || uidRemetente == null || uidRemetente.trim().isEmpty()) {
             return;
         }
 
-        String novoStatus =
-                aceitar ? "aceito" : "recusado";
-
-        Map<String, Object> atualizacao =
-                new HashMap<>();
-
-        atualizacao.put(
-                "status",
-                novoStatus
-        );
-
-        atualizacao.put(
-                "respondidoEm",
-                FieldValue.serverTimestamp()
-        );
+        String novoStatus = aceitar ? "aceito" : "recusado";
+        Map<String, Object> atualizacao = new HashMap<>();
+        atualizacao.put("status", novoStatus);
+        atualizacao.put("respondidoEm", FieldValue.serverTimestamp());
 
         db.collection("convites")
                 .document(meuUid)
                 .collection("recebidos")
                 .document(uidRemetente)
-                .set(
-                        atualizacao,
-                        SetOptions.merge()
-                )
+                .set(atualizacao, SetOptions.merge())
                 .addOnSuccessListener(v -> {
-
-                    if (aceitar) {
-
-                        criarConexao(uidRemetente);
-
-                        Toast.makeText(
-                                this,
-                                "Conexão aceita!",
-                                Toast.LENGTH_SHORT
-                        ).show();
-
-                    } else {
-
+                    if (!aceitar) {
                         Toast.makeText(
                                 this,
                                 "Solicitação recusada.",
                                 Toast.LENGTH_SHORT
                         ).show();
+                        card.setVisibility(View.GONE);
+                        return;
                     }
 
-                    card.setVisibility(View.GONE);
+                    criarConexao(
+                            uidRemetente,
+                            () -> {
+                                Toast.makeText(
+                                        this,
+                                        "Conexão aceita!",
+                                        Toast.LENGTH_SHORT
+                                ).show();
+                                card.setVisibility(View.GONE);
+                            },
+                            () -> Toast.makeText(
+                                    this,
+                                    "Convite aceito, mas não foi possível salvar a conexão. Tente novamente.",
+                                    Toast.LENGTH_LONG
+                            ).show()
+                    );
                 })
                 .addOnFailureListener(e ->
                         Toast.makeText(
@@ -2273,46 +2309,48 @@ private LinearLayout barraInferior;
     }
 
     private void criarConexao(String outroUid) {
+        criarConexao(outroUid, null, null);
+    }
 
-        if (outroUid == null ||
-                outroUid.trim().isEmpty() ||
-                meuUid == null ||
-                meuUid.trim().isEmpty()) {
+    private void criarConexao(
+            String outroUid,
+            Runnable aoSucesso,
+            Runnable aoFalhar
+    ) {
+        if (outroUid == null || outroUid.trim().isEmpty()
+                || meuUid == null || meuUid.trim().isEmpty()) {
+            if (aoFalhar != null) {
+                aoFalhar.run();
+            }
             return;
         }
 
-        Map<String, Object> dados =
-                new HashMap<>();
-
+        Map<String, Object> dados = new HashMap<>();
         dados.put("uid", outroUid);
-        dados.put(
-                "criadoEm",
-                FieldValue.serverTimestamp()
-        );
+        dados.put("criadoEm", FieldValue.serverTimestamp());
 
+        // Cada usuário grava somente a própria lista de conexões.
         db.collection("conexoes")
                 .document(meuUid)
                 .collection("usuarios")
                 .document(outroUid)
-                .set(dados, SetOptions.merge());
-
-        Map<String, Object> dadosInverso =
-                new HashMap<>();
-
-        dadosInverso.put("uid", meuUid);
-        dadosInverso.put(
-                "criadoEm",
-                FieldValue.serverTimestamp()
-        );
-
-        db.collection("conexoes")
-                .document(outroUid)
-                .collection("usuarios")
-                .document(meuUid)
-                .set(
-                        dadosInverso,
-                        SetOptions.merge()
-                );
+                .set(dados, SetOptions.merge())
+                .addOnSuccessListener(v -> {
+                    if (aoSucesso != null) {
+                        aoSucesso.run();
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    if (aoFalhar != null) {
+                        aoFalhar.run();
+                    } else {
+                        Toast.makeText(
+                                this,
+                                "Não foi possível salvar a conexão.",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                });
     }
 
 private void mostrarGrupos() {

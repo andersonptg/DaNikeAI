@@ -1495,23 +1495,9 @@ public class MainActivity extends Activity {
                         String.valueOf(usuarioAtual.getEmail())
                 );
 
-        Button adm = null;
 
         if (ehDono) {
 
-            adm = card(
-                    "ADM",
-                    "Painel administrativo",
-                    "⚡"
-            );
-
-            LinearLayout.LayoutParams admParams =
-                    new LinearLayout.LayoutParams(
-                            -1,
-                            dp(135)
-                    );
-
-            admParams.setMargins(0, dp(5), 0, dp(10));
         }
 
         // =========================
@@ -1710,12 +1696,67 @@ public class MainActivity extends Activity {
                 Typeface.BOLD
         );
 
-        TextView[] botoesNav = {
-                botaoHome,
-                botaoConexoes,
-                botaoPerfil,
-                botaoMais
-        };
+        // =========================
+        // ADM VIP — SOMENTE DONO
+        // =========================
+        TextView botaoAdm = null;
+
+        if (ehDono) {
+            botaoAdm = txt("ADM", 12, Color.rgb(255, 235, 150));
+            botaoAdm.setGravity(Gravity.CENTER);
+            botaoAdm.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+            GradientDrawable fundoAdmGold =
+                    new GradientDrawable(
+                            GradientDrawable.Orientation.TL_BR,
+                            new int[]{
+                                    Color.rgb(70, 45, 5),
+                                    Color.rgb(210, 155, 35),
+                                    Color.rgb(85, 50, 5)
+                            }
+                    );
+
+            fundoAdmGold.setCornerRadius(dp(18));
+            fundoAdmGold.setStroke(
+                    dp(2),
+                    Color.rgb(255, 215, 70)
+            );
+
+            botaoAdm.setBackground(fundoAdmGold);
+            botaoAdm.setElevation(dp(24));
+
+            android.animation.ObjectAnimator pulsoAdm =
+                    android.animation.ObjectAnimator.ofFloat(
+                            botaoAdm,
+                            "alpha",
+                            0.78f,
+                            1.0f
+                    );
+
+            pulsoAdm.setDuration(900);
+            pulsoAdm.setRepeatMode(
+                    android.animation.ValueAnimator.REVERSE
+            );
+            pulsoAdm.setRepeatCount(
+                    android.animation.ValueAnimator.INFINITE
+            );
+            pulsoAdm.start();
+        }
+
+        TextView[] botoesNav = ehDono
+                ? new TextView[]{
+                        botaoHome,
+                        botaoConexoes,
+                        botaoPerfil,
+                        botaoMais,
+                        botaoAdm
+                }
+                : new TextView[]{
+                        botaoHome,
+                        botaoConexoes,
+                        botaoPerfil,
+                        botaoMais
+                };
 
         for (TextView botao : botoesNav) {
             botao.setPadding(
@@ -1924,10 +1965,9 @@ public class MainActivity extends Activity {
             );
         });
 
-        if (adm != null) {
-
-            adm.setOnClickListener(v -> {
-
+        // ADM — acesso exclusivo do proprietário
+        if (botaoAdm != null) {
+            botaoAdm.setOnClickListener(v -> {
                 com.google.firebase.auth.FirebaseUser dono =
                         com.google.firebase.auth.FirebaseAuth
                                 .getInstance()
@@ -1946,7 +1986,6 @@ public class MainActivity extends Activity {
                     );
 
                 } else {
-
                     Toast.makeText(
                             MainActivity.this,
                             "Acesso administrativo não autorizado.",
@@ -1965,11 +2004,10 @@ public class MainActivity extends Activity {
         animarEntrada(historico, 340);
         animarEntrada(perfil, 460);
 
-        if (adm != null) {
-            animarEntrada(adm, 580);
-            animarEntrada(rave, 700);
-        } else {
-            animarEntrada(rave, 580);
+        animarEntrada(rave, 580);
+
+        if (botaoAdm != null) {
+            animarEntrada(botaoAdm, 700);
         }
     }
 
@@ -2353,139 +2391,631 @@ public class MainActivity extends Activity {
     }
 
     private void mostrarTelaManutencao(String titulo) {
-        final android.app.Dialog dialog = new android.app.Dialog(this);
+
+        final android.app.Dialog dialog =
+                new android.app.Dialog(this);
 
         String tituloExibicao = titulo;
-        if (tituloExibicao == null || tituloExibicao.trim().isEmpty()) {
+
+        if (tituloExibicao == null ||
+                tituloExibicao.trim().isEmpty()) {
             tituloExibicao = "SISTEMA";
         }
+
         if (tituloExibicao.equalsIgnoreCase("GERAL")) {
             tituloExibicao = "SISTEMA";
         }
 
-        android.widget.FrameLayout fundo = new android.widget.FrameLayout(this);
+        final String areaFinal =
+                tituloExibicao.toUpperCase(
+                        java.util.Locale.ROOT
+                );
 
-        GradientDrawable fundoNeon = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{
-                        Color.rgb(1, 5, 15),
-                        Color.rgb(3, 8, 20),
-                        Color.rgb(7, 2, 22),
-                        Color.rgb(1, 5, 15)
-                }
+        android.widget.FrameLayout fundo =
+                new android.widget.FrameLayout(this);
+
+        fundo.setBackgroundColor(
+                Color.rgb(1, 3, 7)
         );
-        fundoNeon.setStroke(dp(2), Color.rgb(0, 170, 255));
-        fundo.setBackground(fundoNeon);
 
-        // Fagulhas e partículas animadas.
-        android.view.View particulas = new android.view.View(this) {
+        /*
+         * FUNDO HUD
+         */
+        android.view.View fundoHud =
+                new android.view.View(this) {
 
-            final java.util.Random random = new java.util.Random();
-            final java.util.ArrayList<float[]> faiscas =
-                    new java.util.ArrayList<>();
-
-            {
-                for (int i = 0; i < 85; i++) {
-                    faiscas.add(new float[]{
-                            random.nextFloat(),
-                            random.nextFloat(),
-                            1.0f + random.nextFloat() * 3.0f,
-                            -0.0015f - random.nextFloat() * 0.0045f,
-                            random.nextBoolean() ? 1f : 0f
-                    });
-                }
-            }
-
-            @Override
-            protected void onDraw(android.graphics.Canvas canvas) {
-                super.onDraw(canvas);
-
-                android.graphics.Paint paint =
-                        new android.graphics.Paint(
-                                android.graphics.Paint.ANTI_ALIAS_FLAG
-                        );
-
-                float largura = getWidth();
-                float altura = getHeight();
-
-                for (float[] f : faiscas) {
-
-                    f[1] += f[3];
-
-                    if (f[1] < -0.05f) {
-                        f[0] = random.nextFloat();
-                        f[1] = 1.05f;
-                    }
-
-                    float x = f[0] * largura;
-                    float y = f[1] * altura;
-                    float tamanho = f[2];
-
-                    if (f[4] == 1f) {
-                        paint.setColor(Color.rgb(255, 145, 25));
-                    } else {
-                        paint.setColor(Color.rgb(0, 185, 255));
-                    }
-
-                    paint.setStrokeWidth(tamanho);
-                    paint.setStrokeCap(
-                            android.graphics.Paint.Cap.ROUND
+            private final android.graphics.Paint paint =
+                    new android.graphics.Paint(
+                            android.graphics.Paint.ANTI_ALIAS_FLAG
                     );
 
+            @Override
+            protected void onDraw(
+                    android.graphics.Canvas canvas
+            ) {
+                float w = getWidth();
+                float h = getHeight();
+
+                android.graphics.RadialGradient grad =
+                        new android.graphics.RadialGradient(
+                                w / 2f,
+                                h * .34f,
+                                Math.max(w, h) * .62f,
+                                new int[]{
+                                        Color.rgb(7, 22, 38),
+                                        Color.rgb(2, 8, 15),
+                                        Color.rgb(1, 3, 7)
+                                },
+                                new float[]{
+                                        0f,
+                                        .42f,
+                                        1f
+                                },
+                                android.graphics.Shader.TileMode.CLAMP
+                        );
+
+                paint.setShader(grad);
+
+                canvas.drawRect(
+                        0,
+                        0,
+                        w,
+                        h,
+                        paint
+                );
+
+                paint.setShader(null);
+
+                paint.setStyle(
+                        android.graphics.Paint.Style.STROKE
+                );
+
+                paint.setStrokeWidth(1);
+
+                paint.setColor(
+                        Color.argb(22, 255, 20, 35)
+                );
+
+                int passo = dp(38);
+
+                for (int x = 0; x < w; x += passo) {
                     canvas.drawLine(
                             x,
-                            y,
-                            x - tamanho * 2.5f,
-                            y + tamanho * 5f,
+                            0,
+                            x,
+                            h,
                             paint
                     );
                 }
 
-                postInvalidateDelayed(35);
+                for (int y = 0; y < h; y += passo) {
+                    canvas.drawLine(
+                            0,
+                            y,
+                            w,
+                            y,
+                            paint
+                    );
+                }
+
+                /*
+                 * Cantos HUD
+                 */
+                paint.setColor(
+                        Color.argb(150, 255, 0, 25)
+                );
+
+                paint.setStrokeWidth(dp(1));
+
+                float c = dp(24);
+
+                canvas.drawLine(
+                        0, c,
+                        c, c,
+                        paint
+                );
+
+                canvas.drawLine(
+                        c, c,
+                        c, 0,
+                        paint
+                );
+
+                canvas.drawLine(
+                        w, c,
+                        w - c, c,
+                        paint
+                );
+
+                canvas.drawLine(
+                        w - c, c,
+                        w - c, 0,
+                        paint
+                );
+
+                canvas.drawLine(
+                        0, h - c,
+                        c, h - c,
+                        paint
+                );
+
+                canvas.drawLine(
+                        c, h - c,
+                        c, h,
+                        paint
+                );
+
+                canvas.drawLine(
+                        w, h - c,
+                        w - c, h - c,
+                        paint
+                );
+
+                canvas.drawLine(
+                        w - c, h - c,
+                        w - c, h,
+                        paint
+                );
+
+                paint.setStyle(
+                        android.graphics.Paint.Style.FILL
+                );
             }
         };
 
         fundo.addView(
-                particulas,
-                new android.widget.FrameLayout.LayoutParams(-1, -1)
+                fundoHud,
+                new android.widget.FrameLayout.LayoutParams(
+                        -1,
+                        -1
+                )
         );
 
+        /*
+         * CONTEÚDO
+         */
         android.widget.LinearLayout conteudo =
                 new android.widget.LinearLayout(this);
 
         conteudo.setOrientation(
                 android.widget.LinearLayout.VERTICAL
         );
-        conteudo.setGravity(Gravity.CENTER_HORIZONTAL);
+
+        conteudo.setGravity(
+                Gravity.CENTER_HORIZONTAL
+        );
+
         conteudo.setPadding(
                 dp(18),
-                dp(20),
                 dp(18),
-                dp(12)
+                dp(18),
+                dp(10)
         );
 
-        // 🔧 Chaves girando.
-        android.widget.TextView ferramentas =
+        /*
+         * MARCA
+         */
+        android.widget.TextView marca =
                 new android.widget.TextView(this);
 
-        ferramentas.setText("🔧  🔧");
-        ferramentas.setTextSize(54);
-        ferramentas.setGravity(Gravity.CENTER);
-        ferramentas.setShadowLayer(
-                dp(12),
-                0,
-                0,
-                Color.rgb(0, 190, 255)
+        marca.setText(
+                "DANIKEAI  //  SYSTEM CONTROL"
         );
 
-        // Título da área.
+        marca.setTextSize(9);
+        marca.setLetterSpacing(.30f);
+        marca.setGravity(Gravity.CENTER);
+        marca.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        marca.setTextColor(
+                Color.rgb(255, 120, 130)
+        );
+
+        conteudo.addView(
+                marca,
+                new android.widget.LinearLayout.LayoutParams(
+                        -1,
+                        dp(34)
+                )
+        );
+
+        /*
+         * ÁREA DO REATOR
+         */
+        android.widget.FrameLayout reator =
+                new android.widget.FrameLayout(this);
+
+        int tamanho = dp(305);
+
+        reator.setClipChildren(false);
+
+        /*
+         * HALO AZUL
+         */
+        android.view.View halo =
+                new android.view.View(this) {
+
+            private final android.graphics.Paint p =
+                    new android.graphics.Paint(
+                            android.graphics.Paint.ANTI_ALIAS_FLAG
+                    );
+
+            @Override
+            protected void onDraw(
+                    android.graphics.Canvas canvas
+            ) {
+                float cx = getWidth() / 2f;
+                float cy = getHeight() / 2f;
+
+                android.graphics.RadialGradient g =
+                        new android.graphics.RadialGradient(
+                                cx,
+                                cy,
+                                getWidth() * .47f,
+                                new int[]{
+                                        Color.argb(
+                                                80, 255, 0, 25
+                                        ),
+                                        Color.argb(
+                                                20, 180, 0, 15
+                                        ),
+                                        Color.TRANSPARENT
+                                },
+                                null,
+                                android.graphics.Shader.TileMode.CLAMP
+                        );
+
+                p.setShader(g);
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        getWidth() * .47f,
+                        p
+                );
+
+                p.setShader(null);
+            }
+        };
+
+        reator.addView(
+                halo,
+                centralizarParams(tamanho)
+        );
+
+        /*
+         * ANEL AZUL EXTERNO
+         */
+        android.view.View azul =
+                criarAnelManutencao(
+                        tamanho,
+                        Color.rgb(255, 0, 25),
+                        1
+                );
+
+        reator.addView(
+                azul,
+                centralizarParams(tamanho)
+        );
+
+        /*
+         * ANEL AZUL INTERNO
+         */
+        android.view.View azul2 =
+                criarAnelManutencao(
+                        dp(245),
+                        Color.rgb(255, 35, 55),
+                        -1
+                );
+
+        reator.addView(
+                azul2,
+                centralizarParams(dp(245))
+        );
+
+        /*
+         * ANEL VERMELHO
+         */
+        android.view.View vermelho =
+                criarAnelManutencao(
+                        dp(190),
+                        Color.rgb(255, 25, 50),
+                        1
+                );
+
+        reator.addView(
+                vermelho,
+                centralizarParams(dp(190))
+        );
+
+        /*
+         * ÓRBITA AZUL
+         */
+        android.view.View orbitaAzul =
+                criarOrbitaManutencao(
+                        dp(270),
+                        Color.rgb(255, 0, 25),
+                        1
+                );
+
+        reator.addView(
+                orbitaAzul,
+                centralizarParams(dp(270))
+        );
+
+        /*
+         * ÓRBITA VERMELHA
+         */
+        android.view.View orbitaVermelha =
+                criarOrbitaManutencao(
+                        dp(255),
+                        Color.rgb(255, 30, 55),
+                        -1
+                );
+
+        reator.addView(
+                orbitaVermelha,
+                centralizarParams(dp(255))
+        );
+
+        /*
+         * NÚCLEO CENTRAL VIP
+         * Duas chaves cruzadas + núcleo energético vermelho
+         */
+        android.view.View nucleo =
+                new android.view.View(this) {
+
+            private final android.graphics.Paint p =
+                    new android.graphics.Paint(
+                            android.graphics.Paint.ANTI_ALIAS_FLAG
+                    );
+
+            @Override
+            protected void onDraw(
+                    android.graphics.Canvas canvas
+            ) {
+                float cx = getWidth() / 2f;
+                float cy = getHeight() / 2f;
+
+                /*
+                 * NÚCLEO ENERGÉTICO
+                 */
+                android.graphics.RadialGradient energia =
+                        new android.graphics.RadialGradient(
+                                cx,
+                                cy,
+                                getWidth() * .50f,
+                                new int[]{
+                                        Color.argb(210, 255, 0, 25),
+                                        Color.argb(150, 150, 0, 15),
+                                        Color.rgb(18, 2, 6),
+                                        Color.rgb(3, 3, 5)
+                                },
+                                new float[]{
+                                        0f, .22f, .65f, 1f
+                                },
+                                android.graphics.Shader.TileMode.CLAMP
+                        );
+
+                p.setShader(energia);
+                p.setStyle(android.graphics.Paint.Style.FILL);
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        getWidth() * .48f,
+                        p
+                );
+
+                p.setShader(null);
+
+                /*
+                 * ANÉIS INTERNOS
+                 */
+                p.setStyle(android.graphics.Paint.Style.STROKE);
+
+                p.setStrokeWidth(dp(3));
+                p.setColor(Color.rgb(255, 0, 25));
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        getWidth() * .42f,
+                        p
+                );
+
+                p.setStrokeWidth(dp(2));
+                p.setColor(Color.argb(230, 255, 55, 70));
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        getWidth() * .34f,
+                        p
+                );
+
+                p.setStrokeWidth(dp(1));
+
+                p.setColor(
+                        Color.argb(190, 255, 130, 140)
+                );
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        getWidth() * .27f,
+                        p
+                );
+
+                /*
+                 * DUAS CHAVES CRUZADAS
+                 */
+                desenharChaveNeon(
+                        canvas,
+                        cx,
+                        cy,
+                        getWidth() * .18f,
+                        -1
+                );
+
+                desenharChaveNeon(
+                        canvas,
+                        cx,
+                        cy,
+                        getWidth() * .18f,
+                        1
+                );
+
+                /*
+                 * NÚCLEO CENTRAL
+                 */
+                p.setStyle(android.graphics.Paint.Style.FILL);
+
+                android.graphics.RadialGradient centro =
+                        new android.graphics.RadialGradient(
+                                cx,
+                                cy,
+                                getWidth() * .13f,
+                                new int[]{
+                                        Color.WHITE,
+                                        Color.rgb(255, 80, 90),
+                                        Color.rgb(255, 0, 20),
+                                        Color.TRANSPARENT
+                                },
+                                null,
+                                android.graphics.Shader.TileMode.CLAMP
+                        );
+
+                p.setShader(centro);
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        getWidth() * .13f,
+                        p
+                );
+
+                p.setShader(null);
+
+                /*
+                 * PONTO CENTRAL
+                 */
+                p.setColor(Color.WHITE);
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        dp(3),
+                        p
+                );
+            }
+        };
+
+        android.animation.ObjectAnimator pulsoNucleo =
+                android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                        nucleo,
+
+                        android.animation.PropertyValuesHolder.ofFloat(
+                                "scaleX",
+                                .94f,
+                                1.03f,
+                                .94f
+                        ),
+
+                        android.animation.PropertyValuesHolder.ofFloat(
+                                "scaleY",
+                                .94f,
+                                1.03f,
+                                .94f
+                        ),
+
+                        android.animation.PropertyValuesHolder.ofFloat(
+                                "alpha",
+                                .82f,
+                                1f,
+                                .82f
+                        )
+                );
+
+        pulsoNucleo.setDuration(1500);
+
+        pulsoNucleo.setRepeatCount(
+                android.animation.ValueAnimator.INFINITE
+        );
+
+        pulsoNucleo.start();
+
+        reator.addView(
+                nucleo,
+                centralizarParams(dp(145))
+        );
+
+        conteudo.addView(
+                reator,
+                new android.widget.LinearLayout.LayoutParams(
+                        -1,
+                        tamanho
+                )
+        );
+
+        /*
+         * STATUS VERMELHO
+         */
+        android.widget.TextView status =
+                new android.widget.TextView(this);
+
+        status.setText(
+                "●  MANUTENÇÃO EM ANDAMENTO"
+        );
+
+        status.setTextSize(9);
+        status.setLetterSpacing(.22f);
+        status.setGravity(Gravity.CENTER);
+        status.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        status.setTextColor(
+                Color.rgb(255, 70, 85)
+        );
+
+        android.animation.ObjectAnimator pulsoStatus =
+                android.animation.ObjectAnimator.ofFloat(
+                        status,
+                        "alpha",
+                        .45f,
+                        1f,
+                        .45f
+                );
+
+        pulsoStatus.setDuration(1000);
+
+        pulsoStatus.setRepeatCount(
+                android.animation.ValueAnimator.INFINITE
+        );
+
+        pulsoStatus.start();
+
+        conteudo.addView(
+                status,
+                new android.widget.LinearLayout.LayoutParams(
+                        -1,
+                        dp(32)
+                )
+        );
+
+        /*
+         * TÍTULO
+         */
         android.widget.TextView tituloView =
                 new android.widget.TextView(this);
 
         tituloView.setText(
-                tituloExibicao.toUpperCase(
-                        java.util.Locale.ROOT
-                ) + " EM MANUTENÇÃO"
+                areaFinal + " EM MANUTENÇÃO"
         );
 
         tituloView.setTextSize(25);
@@ -2494,52 +3024,97 @@ public class MainActivity extends Activity {
                 Typeface.DEFAULT,
                 Typeface.BOLD
         );
-        tituloView.setTextColor(Color.WHITE);
+
+        tituloView.setLetterSpacing(.06f);
+
+        tituloView.setTextColor(
+                Color.rgb(245, 245, 248)
+        );
+
         tituloView.setShadowLayer(
                 dp(12),
                 0,
                 0,
-                Color.rgb(0, 175, 255)
-        );
-        tituloView.setPadding(
-                0,
-                dp(8),
-                0,
-                dp(10)
+                Color.rgb(255, 20, 45)
         );
 
-        // Mensagem profissional.
+        conteudo.addView(
+                tituloView,
+                new android.widget.LinearLayout.LayoutParams(
+                        -1,
+                        dp(58)
+                )
+        );
+
+        /*
+         * LINHA NEON
+         */
+        android.view.View linha =
+                new android.view.View(this);
+
+        GradientDrawable linhaFundo =
+                new GradientDrawable(
+                        GradientDrawable.Orientation.LEFT_RIGHT,
+                        new int[]{
+                                Color.TRANSPARENT,
+                                Color.rgb(255, 0, 25),
+                                Color.rgb(255, 30, 50),
+                                Color.rgb(255, 0, 25),
+                                Color.TRANSPARENT
+                        }
+                );
+
+        linha.setBackground(linhaFundo);
+
+        conteudo.addView(
+                linha,
+                new android.widget.LinearLayout.LayoutParams(
+                        dp(190),
+                        dp(2)
+                )
+        );
+
+        /*
+         * MENSAGEM
+         */
         android.widget.TextView mensagem =
                 new android.widget.TextView(this);
 
         mensagem.setText(
-                "Estamos realizando melhorias e ajustes nesta área.\n\n" +
-                "Nossa equipe está trabalhando para oferecer " +
-                "uma experiência mais estável, segura e completa.\n\n" +
-                "Esta função estará disponível novamente em breve."
+                "ESTA ÁREA ESTÁ TEMPORARIAMENTE\n" +
+                "INDISPONÍVEL. TENTE NOVAMENTE\n" +
+                "MAIS TARDE."
         );
 
-        mensagem.setTextSize(15);
+        mensagem.setTextSize(11);
         mensagem.setGravity(Gravity.CENTER);
+        mensagem.setLetterSpacing(.16f);
+        mensagem.setLineSpacing(0, 1.25f);
+
         mensagem.setTextColor(
-                Color.rgb(190, 215, 235)
-        );
-        mensagem.setLineSpacing(0, 1.12f);
-        mensagem.setPadding(
-                dp(8),
-                dp(5),
-                dp(8),
-                dp(18)
+                Color.rgb(210, 210, 215)
         );
 
-        // Botão VOLTAR.
+        conteudo.addView(
+                mensagem,
+                new android.widget.LinearLayout.LayoutParams(
+                        -1,
+                        dp(82)
+                )
+        );
+
+        /*
+         * BOTÃO
+         */
         android.widget.Button voltar =
                 new android.widget.Button(this);
 
         voltar.setText("VOLTAR");
+
+        voltar.setTextSize(11);
+        voltar.setLetterSpacing(.15f);
         voltar.setTextColor(Color.WHITE);
-        voltar.setTextSize(14);
-        voltar.setAllCaps(false);
+
         voltar.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
@@ -2549,118 +3124,61 @@ public class MainActivity extends Activity {
                 new GradientDrawable();
 
         botao.setColor(
-                Color.rgb(4, 14, 32)
+                Color.rgb(4, 10, 18)
         );
-        botao.setCornerRadius(dp(18));
+
+        botao.setCornerRadius(
+                dp(18)
+        );
+
         botao.setStroke(
-                dp(2),
-                Color.rgb(0, 200, 255)
+                dp(1),
+                Color.rgb(255, 0, 25)
         );
 
         voltar.setBackground(botao);
-        voltar.setElevation(dp(8));
 
         voltar.setOnClickListener(
                 v -> dialog.dismiss()
         );
 
-        // Rodapé com nome + selo azul.
-        android.widget.LinearLayout assinatura =
-                new android.widget.LinearLayout(this);
-
-        assinatura.setOrientation(
-                android.widget.LinearLayout.HORIZONTAL
-        );
-        assinatura.setGravity(Gravity.CENTER);
-
-        android.widget.TextView nome =
-                new android.widget.TextView(this);
-
-        nome.setText(
-                "Anderson Lopes dos Santos Francisco"
-        );
-        nome.setTextSize(12);
-        nome.setTextColor(
-                Color.rgb(205, 220, 235)
-        );
-        nome.setGravity(Gravity.CENTER_VERTICAL);
-
-        android.widget.TextView selo =
-                new android.widget.TextView(this);
-
-        selo.setText("✓");
-        selo.setTextSize(9);
-        selo.setTextColor(Color.WHITE);
-        selo.setGravity(Gravity.CENTER);
-
-        GradientDrawable seloFundo =
-                new GradientDrawable();
-
-        seloFundo.setShape(
-                GradientDrawable.OVAL
-        );
-        seloFundo.setColor(
-                Color.rgb(25, 145, 245)
-        );
-
-        selo.setBackground(seloFundo);
-        selo.setElevation(dp(3));
-
-        android.widget.LinearLayout.LayoutParams seloParams =
-                new android.widget.LinearLayout.LayoutParams(
-                        dp(18),
-                        dp(18)
-                );
-
-        seloParams.leftMargin = dp(6);
-
-        assinatura.addView(nome);
-        assinatura.addView(selo, seloParams);
-
-        // Montagem.
-        conteudo.addView(
-                ferramentas,
-                new android.widget.LinearLayout.LayoutParams(
-                        -1,
-                        dp(105)
-                )
-        );
-
-        conteudo.addView(
-                tituloView,
-                new android.widget.LinearLayout.LayoutParams(
-                        -1,
-                        dp(78)
-                )
-        );
-
-        conteudo.addView(
-                mensagem,
-                new android.widget.LinearLayout.LayoutParams(
-                        -1,
-                        dp(175)
-                )
-        );
-
         conteudo.addView(
                 voltar,
                 new android.widget.LinearLayout.LayoutParams(
-                        dp(230),
-                        dp(58)
+                        dp(190),
+                        dp(48)
                 )
         );
 
-        android.widget.LinearLayout.LayoutParams assinaturaParams =
+        /*
+         * RODAPÉ
+         */
+        android.widget.TextView rodape =
+                new android.widget.TextView(this);
+
+        rodape.setText(
+                "DANIKEAI  •  SEMPRE EVOLUINDO"
+        );
+
+        rodape.setTextSize(7);
+        rodape.setLetterSpacing(.22f);
+        rodape.setGravity(Gravity.CENTER);
+
+        rodape.setTextColor(
+                Color.rgb(70, 120, 150)
+        );
+
+        android.widget.LinearLayout.LayoutParams rodapeParams =
                 new android.widget.LinearLayout.LayoutParams(
                         -1,
-                        dp(48)
+                        dp(34)
                 );
 
-        assinaturaParams.topMargin = dp(12);
+        rodapeParams.topMargin = dp(6);
 
         conteudo.addView(
-                assinatura,
-                assinaturaParams
+                rodape,
+                rodapeParams
         );
 
         fundo.addView(
@@ -2672,55 +3190,415 @@ public class MainActivity extends Activity {
                 )
         );
 
-        // Giro contínuo das chaves.
-        android.view.animation.RotateAnimation giro =
-                new android.view.animation.RotateAnimation(
-                        0,
-                        360,
-                        android.view.animation.Animation.RELATIVE_TO_SELF,
-                        .5f,
-                        android.view.animation.Animation.RELATIVE_TO_SELF,
-                        .5f
-                );
+        dialog.setContentView(fundo);
 
-        giro.setDuration(1800);
-        giro.setRepeatCount(
-                android.view.animation.Animation.INFINITE
-        );
-        giro.setInterpolator(
-                new android.view.animation.LinearInterpolator()
-        );
+        android.view.Window window =
+                dialog.getWindow();
 
-        ferramentas.startAnimation(giro);
+        if (window != null) {
 
-        dialog.
-
-        setContentView(fundo);
-
-        android.view.Window janela = dialog.getWindow();
-
-        if (janela != null) {
-            janela.setBackgroundDrawableResource(
-                    android.R.color.transparent
+            window.setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(
+                            Color.TRANSPARENT
+                    )
             );
-            janela.setDimAmount(0.35f);
-            janela.addFlags(
-                    android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND
-            );
+
+            android.view.WindowManager.LayoutParams params =
+                    window.getAttributes();
+
+            params.width =
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT;
+
+            params.height =
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT;
+
+            params.dimAmount = .80f;
+
+            window.setAttributes(params);
         }
+
+        dialog.setCancelable(true);
 
         dialog.show();
 
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setLayout(
-                    android.view.WindowManager.LayoutParams.MATCH_PARENT,
-                    android.view.WindowManager.LayoutParams.MATCH_PARENT
-            );
 
-            dialog.getWindow().setBackgroundDrawableResource(
-                    android.R.color.transparent
+            android.view.WindowManager.LayoutParams params =
+                    dialog.getWindow().getAttributes();
+
+            params.width =
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT;
+
+            params.height =
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT;
+
+            params.dimAmount = .80f;
+
+            dialog.getWindow().setAttributes(params);
+        }
+    }
+
+    private void desenharChaveNeon(
+            android.graphics.Canvas canvas,
+            float cx,
+            float cy,
+            float r,
+            int sentido
+    ) {
+        android.graphics.Paint p =
+                new android.graphics.Paint(
+                        android.graphics.Paint.ANTI_ALIAS_FLAG
+                );
+
+        p.setStyle(android.graphics.Paint.Style.STROKE);
+        p.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+        p.setStrokeJoin(android.graphics.Paint.Join.ROUND);
+
+        /*
+         * HALO DA CHAVE
+         */
+        p.setStrokeWidth(dp(11));
+        p.setColor(Color.argb(35, 255, 0, 25));
+
+        desenharFormaChave(
+                canvas,
+                p,
+                cx,
+                cy,
+                r,
+                sentido
+        );
+
+        /*
+         * CORPO NEON
+         */
+        p.setStrokeWidth(dp(6));
+        p.setColor(Color.rgb(255, 0, 25));
+
+        desenharFormaChave(
+                canvas,
+                p,
+                cx,
+                cy,
+                r,
+                sentido
+        );
+
+        /*
+         * BRILHO INTERNO
+         */
+        p.setStrokeWidth(dp(2));
+        p.setColor(Color.rgb(255, 150, 155));
+
+        desenharFormaChave(
+                canvas,
+                p,
+                cx,
+                cy,
+                r,
+                sentido
+        );
+    }
+
+    private void desenharFormaChave(
+            android.graphics.Canvas canvas,
+            android.graphics.Paint p,
+            float cx,
+            float cy,
+            float r,
+            int sentido
+    ) {
+        float s = sentido;
+
+        canvas.drawLine(
+                cx - r * .70f,
+                cy + s * r * .70f,
+                cx + r * .55f,
+                cy - s * r * .55f,
+                p
+        );
+
+        p.setStyle(android.graphics.Paint.Style.STROKE);
+
+        android.graphics.RectF cabeca =
+                new android.graphics.RectF(
+                        cx - r * .98f,
+                        cy + s * r * .48f - r * .32f,
+                        cx - r * .36f,
+                        cy + s * r * .48f + r * .32f
+                );
+
+        if (sentido < 0) {
+            cabeca.set(
+                    cx + r * .36f,
+                    cy - r * .80f,
+                    cx + r * .98f,
+                    cy - r * .16f
             );
         }
+
+        canvas.drawArc(
+                cabeca,
+                sentido < 0 ? -45 : 135,
+                250,
+                false,
+                p
+        );
+    }
+
+    private android.widget.FrameLayout.LayoutParams centralizarParams(
+            int tamanho
+    ) {
+        return new android.widget.FrameLayout.LayoutParams(
+                tamanho,
+                tamanho,
+                Gravity.CENTER
+        );
+    }
+
+    private android.view.View criarAnelManutencao(
+            int tamanho,
+            int cor,
+            int sentido
+    ) {
+
+        android.view.View anel =
+                new android.view.View(this) {
+
+            private final android.graphics.Paint paint =
+                    new android.graphics.Paint(
+                            android.graphics.Paint.ANTI_ALIAS_FLAG
+                    );
+
+            @Override
+            protected void onDraw(
+                    android.graphics.Canvas canvas
+            ) {
+
+                float cx = getWidth() / 2f;
+                float cy = getHeight() / 2f;
+                float r = Math.min(
+                        getWidth(),
+                        getHeight()
+                ) * .46f;
+
+                paint.setStyle(
+                        android.graphics.Paint.Style.STROKE
+                );
+
+                paint.setStrokeCap(
+                        android.graphics.Paint.Cap.ROUND
+                );
+
+                /*
+                 * Halo
+                 */
+                paint.setStrokeWidth(dp(14));
+
+                paint.setColor(
+                        Color.argb(
+                                35,
+                                Color.red(cor),
+                                Color.green(cor),
+                                Color.blue(cor)
+                        )
+                );
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        r,
+                        paint
+                );
+
+                /*
+                 * Anel principal
+                 */
+                paint.setStrokeWidth(dp(3));
+
+                paint.setColor(cor);
+
+                canvas.drawCircle(
+                        cx,
+                        cy,
+                        r,
+                        paint
+                );
+
+                /*
+                 * Segmentos luminosos
+                 */
+                paint.setStrokeWidth(dp(10));
+
+                android.graphics.RectF oval =
+                        new android.graphics.RectF(
+                                cx - r,
+                                cy - r,
+                                cx + r,
+                                cy + r
+                        );
+
+                for (int i = 0; i < 4; i++) {
+
+                    canvas.drawArc(
+                            oval,
+                            i * 90f + 10f,
+                            34f,
+                            false,
+                            paint
+                    );
+                }
+
+                /*
+                 * Pontos técnicos
+                 */
+                paint.setStyle(
+                        android.graphics.Paint.Style.FILL
+                );
+
+                for (int i = 0; i < 8; i++) {
+
+                    double a =
+                            Math.toRadians(i * 45);
+
+                    float x =
+                            cx + (float)Math.cos(a) * r;
+
+                    float y =
+                            cy + (float)Math.sin(a) * r;
+
+                    canvas.drawCircle(
+                            x,
+                            y,
+                            dp(3),
+                            paint
+                    );
+                }
+            }
+        };
+
+        android.animation.ObjectAnimator giro =
+                android.animation.ObjectAnimator.ofFloat(
+                        anel,
+                        "rotation",
+                        0f,
+                        sentido > 0 ? 360f : -360f
+                );
+
+        giro.setDuration(
+                sentido > 0 ? 11500 : 8500
+        );
+
+        giro.setRepeatCount(
+                android.animation.ValueAnimator.INFINITE
+        );
+
+        giro.setInterpolator(
+                new android.view.animation.LinearInterpolator()
+        );
+
+        giro.start();
+
+        return anel;
+    }
+
+    private android.view.View criarOrbitaManutencao(
+            int tamanho,
+            int cor,
+            int sentido
+    ) {
+
+        android.view.View orbita =
+                new android.view.View(this) {
+
+            private final android.graphics.Paint paint =
+                    new android.graphics.Paint(
+                            android.graphics.Paint.ANTI_ALIAS_FLAG
+                    );
+
+            @Override
+            protected void onDraw(
+                    android.graphics.Canvas canvas
+            ) {
+
+                float cx = getWidth() / 2f;
+                float cy = getHeight() / 2f;
+
+                float rx = getWidth() * .47f;
+                float ry = getHeight() * .22f;
+
+                paint.setStyle(
+                        android.graphics.Paint.Style.STROKE
+                );
+
+                paint.setStrokeWidth(dp(3));
+                paint.setColor(cor);
+
+                android.graphics.RectF oval =
+                        new android.graphics.RectF(
+                                cx - rx,
+                                cy - ry,
+                                cx + rx,
+                                cy + ry
+                        );
+
+                canvas.drawOval(
+                        oval,
+                        paint
+                );
+
+                paint.setStyle(
+                        android.graphics.Paint.Style.FILL
+                );
+
+                paint.setShadowLayer(
+                        dp(8),
+                        0,
+                        0,
+                        cor
+                );
+
+                canvas.drawCircle(
+                        cx + rx,
+                        cy,
+                        dp(6),
+                        paint
+                );
+
+                canvas.drawCircle(
+                        cx - rx,
+                        cy,
+                        dp(4),
+                        paint
+                );
+
+                paint.clearShadowLayer();
+            }
+        };
+
+        android.animation.ObjectAnimator giro =
+                android.animation.ObjectAnimator.ofFloat(
+                        orbita,
+                        "rotation",
+                        0f,
+                        sentido > 0 ? 360f : -360f
+                );
+
+        giro.setDuration(
+                sentido > 0 ? 9000 : 12000
+        );
+
+        giro.setRepeatCount(
+                android.animation.ValueAnimator.INFINITE
+        );
+
+        giro.setInterpolator(
+                new android.view.animation.LinearInterpolator()
+        );
+
+        giro.start();
+
+        return orbita;
     }
 
     private void abrirMenuPrincipal() {

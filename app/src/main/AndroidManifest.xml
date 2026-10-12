@@ -50,7 +50,8 @@
 
         android:allowBackup="true"
 
-        android:supportsRtl="true">
+        android:supportsRtl="true"
+        android:name=".DaNikeAIApplication">
 
         <activity
 
@@ -81,6 +82,7 @@
         <activity android:name=".ManutencaoActivity" android:exported="false" />
 
         <activity android:name=".AdmActivity" android:exported="false" />
+        <activity android:name=".CentralManutencaoActivity" android:exported="false" />
 
         <activity android:name=".MembrosActivity" android:exported="false" />
 
@@ -174,7 +176,10 @@
 
     <activity android:name=".ChatGrupoActivity" android:exported="false" />
 
-        <activity android:name=".ChatIndividualActivity" android:exported="false" />
+        <activity
+            android:name=".ChatIndividualActivity"
+            android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
 
 
 
