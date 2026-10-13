@@ -1,6 +1,7 @@
 import os
 import json
 import urllib.request
+import urllib.parse
 import urllib.error
 from cloudinary_auth import usuario_e_proprietario, verificar_token_firebase
 from cloudinary_delete import excluir_foto_cloudinary, excluir_foto_perfil_cloudinary
@@ -220,8 +221,9 @@ def carregar_tmdb_token():
 
 def buscar_catalogo_have():
     token = carregar_tmdb_token()
+    api_key = os.getenv("TMDB_API_KEY", "").strip()
 
-    if not token:
+    if not token and not api_key:
         return {"results": [], "erro": "TMDB não configurado"}
 
     # Principais serviços que o Have pode exibir.
@@ -247,13 +249,12 @@ def buscar_catalogo_have():
             "&page=1"
         )
 
-        req = urllib.request.Request(
-            url,
-            headers={
-                "Authorization": "Bearer " + token,
-                "Accept": "application/json"
-            }
-        )
+        if api_key:
+            url += "&" + urllib.parse.urlencode({"api_key": api_key})
+        headers = {"Accept": "application/json"}
+        if not api_key:
+            headers["Authorization"] = "Bearer " + token
+        req = urllib.request.Request(url, headers=headers)
 
         try:
             with urllib.request.urlopen(req, timeout=20) as resposta:
