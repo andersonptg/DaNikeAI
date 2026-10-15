@@ -385,7 +385,7 @@ public class LoginActivity extends Activity {
         );
         tela.setBackground(new LoginBackgroundDrawable(android.graphics.BitmapFactory.decodeResource(getResources(), com.danike.ai.R.drawable.login_background)));
 
-        
+
         // ===== CABEÇALHO FIXO DO LOGIN =====
         LinearLayout topoLogin = new LinearLayout(this);
         topoLogin.setOrientation(LinearLayout.HORIZONTAL);
@@ -446,21 +446,11 @@ TextView robo = new TextView(this);
         robo.setGravity(Gravity.CENTER);
 
         LinearLayout.LayoutParams logoParams =
-                new LinearLayout.LayoutParams(dp(72), dp(54));
+                new LinearLayout.LayoutParams(dp(90), dp(68));
         logoParams.gravity = Gravity.CENTER;
         tela.addView(robo, logoParams);
 
-        TextView titulo = new TextView(this);
-        titulo.setText("DaNikeAI");
-        titulo.setTextColor(Color.WHITE);
-        titulo.setTextSize(30);
-        titulo.setTypeface(Typeface.DEFAULT_BOLD);
-        titulo.setGravity(Gravity.CENTER);
 
-        tela.addView(
-                titulo,
-                new LinearLayout.LayoutParams(-1, dp(50))
-        );
 
         TextView subtitulo = new TextView(this);
         subtitulo.setText("ENTRE NA SUA CONTA");
@@ -550,9 +540,12 @@ TextView robo = new TextView(this);
 
         Button entrar = new Button(this);
         entrar.setText("ENTRAR");
-        entrar.setTextColor(Color.BLACK);
-        entrar.setTextSize(14);
+        entrar.setTextColor(Color.WHITE);
+        entrar.setTextSize(16);
         entrar.setTypeface(Typeface.DEFAULT_BOLD);
+        entrar.setLetterSpacing(0.08f);
+        entrar.setElevation(dp(6));
+        entrar.setAllCaps(false);
         entrar.setAllCaps(false);
         entrar.setBackground(
                 fundo(Color.rgb(70, 220, 255), 16)
@@ -943,7 +936,7 @@ TextView robo = new TextView(this);
         aplicarNeonLogin(tela);
     }
 
-    
+
 
     private void aplicarNeonLogin(android.view.ViewGroup raiz) {
         aplicarNeonRecursivo(raiz);
@@ -959,9 +952,9 @@ TextView robo = new TextView(this);
 
                 android.graphics.drawable.GradientDrawable fundo =
                         new android.graphics.drawable.GradientDrawable();
-                fundo.setColor(Color.argb(205, 4, 12, 42));
-                fundo.setCornerRadius(dp(28));
-                fundo.setStroke(dp(2), Color.rgb(0, 170, 255));
+                fundo.setColor(Color.argb(225, 5, 10, 25));
+                fundo.setCornerRadius(dp(18));
+                fundo.setStroke(dp(1), Color.rgb(0, 190, 255));
                 e.setBackground(fundo);
                 e.setTextColor(Color.WHITE);
                 e.setHintTextColor(Color.rgb(190, 195, 215));

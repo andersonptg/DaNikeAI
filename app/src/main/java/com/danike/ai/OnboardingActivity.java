@@ -382,7 +382,7 @@ public class OnboardingActivity extends Activity {
             Intent i =
                     new Intent(
                             this,
-                            IAActivity.class
+                            MainActivity.class
                     );
 
             startActivity(i);

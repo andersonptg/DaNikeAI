@@ -969,6 +969,19 @@ private LinearLayout barraInferior;
                         -1,
                         -1
                 );
+        GradientDrawable fundoConteudo = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(3, 7, 15),
+                        Color.rgb(7, 14, 28),
+                        Color.rgb(3, 6, 13)
+                }
+        );
+        fundoConteudo.setCornerRadius(dp(22));
+        fundoConteudo.setStroke(dp(1), Color.rgb(35, 105, 180));
+        conteudo.setBackground(fundoConteudo);
+        conteudo.setPadding(dp(8), dp(8), dp(8), dp(8));
+
         conteudoParams.setMargins(
                 0,
                 dp(95),
@@ -1213,11 +1226,27 @@ private LinearLayout barraInferior;
 
             if (i == posicao) {
                 fundo.setColor(Color.rgb(18, 42, 78));
-                fundo.setStroke(dp(1), Color.rgb(70, 160, 255));
+                fundo.setStroke(dp(2), Color.rgb(70, 190, 255));
                 botoes[i].setTextColor(Color.WHITE);
+
+                botoes[i].animate()
+                        .scaleX(1.04f)
+                        .scaleY(1.04f)
+                        .alpha(1.0f)
+                        .setDuration(220)
+                        .start();
+
             } else {
                 fundo.setColor(Color.TRANSPARENT);
+                fundo.setStroke(dp(1), Color.rgb(35, 75, 120));
                 botoes[i].setTextColor(Color.rgb(145, 160, 185));
+
+                botoes[i].animate()
+                        .scaleX(1.0f)
+                        .scaleY(1.0f)
+                        .alpha(0.82f)
+                        .setDuration(220)
+                        .start();
             }
 
             botoes[i].setBackground(fundo);
@@ -3306,6 +3335,30 @@ private void mostrarGrupos() {
         t.setVisibility(View.VISIBLE);
         t.setIncludeFontPadding(true);
         t.setLineSpacing(0, 0.95f);
+
+        // Movimento neon suave
+        t.setPivotX(0.5f);
+        t.setPivotY(0.5f);
+
+        android.animation.ObjectAnimator pulso =
+                android.animation.ObjectAnimator.ofPropertyValuesHolder(
+                        t,
+                        android.animation.PropertyValuesHolder.ofFloat(
+                                View.SCALE_X, 1.0f, 1.035f, 1.0f
+                        ),
+                        android.animation.PropertyValuesHolder.ofFloat(
+                                View.SCALE_Y, 1.0f, 1.035f, 1.0f
+                        ),
+                        android.animation.PropertyValuesHolder.ofFloat(
+                                View.ALPHA, 0.82f, 1.0f, 0.82f
+                        )
+                );
+
+        pulso.setDuration(1800);
+        pulso.setStartDelay((long) (Math.random() * 700));
+        pulso.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        pulso.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        pulso.start();
 
         return t;
     }

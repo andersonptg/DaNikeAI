@@ -2514,13 +2514,13 @@ public class IAActivity extends Activity {
 
         entrada = new EditText(this);
 
-        entrada.setHint("Digite...");
+        entrada.setHint("Digite aqui…");
 
-        entrada.setHintTextColor(Color.rgb(80, 125, 165));
+        entrada.setHintTextColor(Color.rgb(125, 170, 205));
 
         entrada.setTextColor(Color.WHITE);
 
-        entrada.setTextSize(14);
+        entrada.setTextSize(16);
 
         entrada.setSingleLine(true);
 
@@ -2571,6 +2571,26 @@ public class IAActivity extends Activity {
         linhaMensagem.addView(botaoMicrofoneMensagem, micParams);
 
 
+
+        // Câmera: recurso visual para futura análise de imagens
+        Button botaoCameraMensagem = botao("📷", Color.TRANSPARENT);
+        botaoCameraMensagem.setTextSize(18);
+        botaoCameraMensagem.setPadding(0, 0, 0, 0);
+        botaoCameraMensagem.setContentDescription("Câmera — recurso em preparação");
+        botaoCameraMensagem.setBackground(
+                fundo(Color.argb(45, 150, 70, 255), 20));
+
+        LinearLayout.LayoutParams cameraParams =
+                new LinearLayout.LayoutParams(dp(44), dp(54));
+        cameraParams.setMargins(dp(2), 0, dp(2), 0);
+        linhaMensagem.addView(botaoCameraMensagem, cameraParams);
+
+        botaoCameraMensagem.setOnClickListener(v ->
+                Toast.makeText(
+                        IAActivity.this,
+                        "A análise de imagens chegará em uma próxima atualização.",
+                        Toast.LENGTH_SHORT
+                ).show());
 
         // Enviar
 
@@ -3357,14 +3377,14 @@ public class IAActivity extends Activity {
 
 
     private TextView criarBolha(String textoMensagem, boolean usuario) {
+        return criarBolha(textoMensagem, usuario, System.currentTimeMillis());
+    }
 
+    private TextView criarBolha(String textoMensagem, boolean usuario, long criadoEm) {
         String horaAtual = new java.text.SimpleDateFormat(
-
                 "HH:mm",
-
                 java.util.Locale.getDefault()
-
-        ).format(new java.util.Date());
+        ).format(new java.util.Date(criadoEm));
 
 
 
@@ -3506,7 +3526,47 @@ public class IAActivity extends Activity {
 
 
 
-        return b;
+
+b.setOnLongClickListener(v -> {
+    String textoCopiar = textoMensagem;
+    int quebra = textoCopiar.indexOf('\n');
+    if (quebra >= 0) textoCopiar = textoCopiar.substring(quebra + 1);
+    final String mensagemCopiar = textoCopiar;
+
+    new android.app.AlertDialog.Builder(IAActivity.this)
+            .setItems(new String[]{"Copiar mensagem", "Apagar mensagem"},
+                    (dialog, escolha) -> {
+                        if (escolha == 0) {
+                            android.content.ClipboardManager cm =
+                                    (android.content.ClipboardManager)
+                                            getSystemService(CLIPBOARD_SERVICE);
+                            cm.setPrimaryClip(android.content.ClipData.newPlainText(
+                                    "Mensagem DaNikeAI", mensagemCopiar));
+                            Toast.makeText(IAActivity.this,
+                                    "Mensagem copiada", Toast.LENGTH_SHORT).show();
+                        } else {
+                            new android.app.AlertDialog.Builder(IAActivity.this)
+                                    .setTitle("Apagar mensagem?")
+                                    .setMessage("A mensagem será removida do histórico local deste aparelho.")
+                                    .setNegativeButton("Cancelar", null)
+                                    .setPositiveButton("Apagar", (d, w) -> {
+                                        Object tag = v.getTag();
+                                        if (tag instanceof Long) {
+                                            chatDB.apagarMensagem(sessaoAtual, (Long) tag);
+                                        }
+                                        if (chatLista != null) chatLista.removeView(v);
+                                        Toast.makeText(IAActivity.this,
+                                                "Mensagem removida deste aparelho",
+                                                Toast.LENGTH_SHORT).show();
+                                    })
+                                    .show();
+                        }
+                    })
+            .show();
+    return true;
+});
+
+return b;
 
     }
 
@@ -4573,6 +4633,14 @@ public class IAActivity extends Activity {
                 tipo,
 
                 textoMensagem);
+        if (chatLista != null && chatLista.getChildCount() > 0) {
+            View ultima = chatLista.getChildAt(chatLista.getChildCount() - 1);
+            if (ultima instanceof TextView) {
+                long idMensagem = chatDB.ultimaMensagemId(
+                        sessaoAtual, tipo, textoMensagem);
+                if (idMensagem > 0) ultima.setTag(Long.valueOf(idMensagem));
+            }
+        }
 
 
 
@@ -4698,13 +4766,17 @@ public class IAActivity extends Activity {
 
 
 
-                if (tipo == 1)
+                long criadoEm = c.getLong(
+                        c.getColumnIndexOrThrow("criado_em"));
 
-                    adicionarBolhaUsuario(msg);
+                TextView bolha = criarBolha(
+                        (tipo == 1 ? "VOCÊ\n" : "DANIKEAI\n") + msg,
+                        tipo == 1,
+                        criadoEm);
 
-                else
-
-                    adicionarBolhaIA(msg);
+                bolha.setTag(Long.valueOf(
+                        c.getLong(c.getColumnIndexOrThrow("id"))));
+                chatLista.addView(bolha);
 
 
 
@@ -5580,6 +5652,33 @@ public class IAActivity extends Activity {
 
 
 
+        long ultimaMensagemId(long sessaoId, int tipo, String texto) {
+            Cursor c = getReadableDatabase().rawQuery(
+                    "SELECT id FROM mensagens WHERE sessao_id=? AND tipo=? AND texto=? " +
+                            "ORDER BY id DESC LIMIT 1",
+                    new String[]{
+                            String.valueOf(sessaoId),
+                            String.valueOf(tipo),
+                            texto
+                    });
+            try {
+                return c.moveToFirst() ? c.getLong(0) : -1L;
+            } finally {
+                c.close();
+            }
+        }
+
+        void apagarMensagem(long sessaoId, long mensagemId) {
+            SQLiteDatabase db = getWritableDatabase();
+            db.delete(
+                    "mensagens",
+                    "id=? AND sessao_id=?",
+                    new String[]{
+                            String.valueOf(mensagemId),
+                            String.valueOf(sessaoId)
+                    });
+        }
+
         Cursor sessoes() {
 
             return getReadableDatabase().rawQuery(
@@ -5598,9 +5697,9 @@ public class IAActivity extends Activity {
 
             return getReadableDatabase().rawQuery(
 
-                    "SELECT tipo,texto FROM (" +
+                    "SELECT id,tipo,texto,criado_em FROM (" +
 
-                            "SELECT tipo,texto,id FROM mensagens " +
+                            "SELECT id,tipo,texto,criado_em FROM mensagens " +
 
                             "WHERE sessao_id=? " +
 

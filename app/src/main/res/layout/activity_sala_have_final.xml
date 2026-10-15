@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#000000">
+
+    <!-- TOPO: Video -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#111111">
+
+        <WebView
+            android:id="@+id/webViewSala"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="12dp"
+            android:background="#80000000">
+
+            <TextView
+                android:id="@+id/txtLinkConvite"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Link de convite: have://..."
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"/>
+
+            <TextView
+                android:id="@+id/btnConvidar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_have_outline"
+                android:padding="8dp"
+                android:text="Convidar"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"/>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- BAIXO: Chat HAVE -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="320dp"
+        android:orientation="vertical"
+        android:background="#0A0A0A"
+        android:padding="12dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerChat"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <EditText
+                android:id="@+id/editHave"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="#222222"
+                android:hint="Have..."
+                android:textColor="#FFFFFF"
+                android:textColorHint="#666666"
+                android:paddingLeft="16dp"/>
+
+            <TextView
+                android:id="@+id/btnEnviarHave"
+                android:layout_width="64dp"
+                android:layout_height="match_parent"
+                android:layout_marginLeft="8dp"
+                android:background="@drawable/bg_have_outline"
+                android:gravity="center"
+                android:text="HAVE"
+                android:textColor="#A020F0"/>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

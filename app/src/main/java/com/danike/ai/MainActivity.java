@@ -366,7 +366,7 @@ public class MainActivity extends Activity {
     private FrameLayout raiz;
     private FrameLayout telaMenu;
 
-    
+
     // Controle da equipe exibida na Home
     private String equipeJsonExibida = null;
 
@@ -381,6 +381,7 @@ public class MainActivity extends Activity {
     private View pontoHistorico;
     private View pontoPerfil;
     private View pontoHave;
+    private View pontoConexoes;
 
 
 
@@ -554,10 +555,40 @@ public class MainActivity extends Activity {
 
         botaoMenu.setOnClickListener(v -> abrirMenuPrincipal());
 
-        raiz.addView(
-                fundo,
-                new FrameLayout.LayoutParams(-1, -1)
+
+raiz.addView(fundo, new FrameLayout.LayoutParams(-1, -1));
+
+// PERFIL NO CANTO SUPERIOR DIREITO DA HOME
+TextView botaoPerfilTopo = txt("👤", 22, Color.WHITE);
+botaoPerfilTopo.setGravity(Gravity.CENTER);
+GradientDrawable fundoPerfilTopo = new GradientDrawable();
+fundoPerfilTopo.setShape(GradientDrawable.OVAL);
+fundoPerfilTopo.setColor(Color.rgb(15, 30, 55));
+fundoPerfilTopo.setStroke(dp(1), Color.rgb(70, 145, 255));
+botaoPerfilTopo.setBackground(fundoPerfilTopo);
+botaoPerfilTopo.setElevation(dp(12));
+
+FrameLayout.LayoutParams perfilTopoParams =
+        new FrameLayout.LayoutParams(
+                dp(48), dp(48), Gravity.TOP | Gravity.END
         );
+perfilTopoParams.setMargins(0, dp(12), dp(14), 0);
+raiz.addView(botaoPerfilTopo, perfilTopoParams);
+
+botaoPerfilTopo.setOnClickListener(v ->
+        startActivity(new Intent(MainActivity.this, PerfilActivity.class))
+);
+
+        LinearLayout telaHomeVazia = new LinearLayout(this);
+        telaHomeVazia.setOrientation(LinearLayout.VERTICAL);
+        telaHomeVazia.setGravity(Gravity.CENTER);
+        TextView mensagemHome = txt("🏠\\nHome", 24, Color.WHITE);
+        mensagemHome.setGravity(Gravity.CENTER);
+        mensagemHome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        telaHomeVazia.addView(mensagemHome, new LinearLayout.LayoutParams(-1, dp(100)));
+        FrameLayout.LayoutParams homeVaziaParams = new FrameLayout.LayoutParams(-1, -1);
+        homeVaziaParams.bottomMargin = dp(76);
+        raiz.addView(telaHomeVazia, homeVaziaParams);
 
 
         // =========================
@@ -1550,7 +1581,7 @@ public class MainActivity extends Activity {
                         .versionName;
 
                 String link = "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk";
-                        
+
 
                 String mensagem =
                         "🚀 Baixe o DaNikeAI!\n\n"
@@ -1592,6 +1623,9 @@ public class MainActivity extends Activity {
                 temEquipe ? dp(260) : dp(5);
         telaParams.bottomMargin = dp(76);
         raiz.addView(tela, telaParams);
+        tela.setVisibility(View.GONE);
+        equipeTopo.setVisibility(View.GONE);
+        botaoMenu.setVisibility(View.GONE);
 
         // =========================================================
         // BARRA DE NAVEGAÇÃO FIXA — HOME / CONEXÕES / PERFIL
@@ -1636,9 +1670,14 @@ public class MainActivity extends Activity {
                 Typeface.BOLD
         );
 
-        TextView botaoConexoes =
-                txt("👥\nConexões", 12, Color.WHITE);
+        TextView botaoColaboradores = txt("👥\\nColaboradores", 11, Color.WHITE);
+        botaoColaboradores.setGravity(Gravity.CENTER);
+        botaoColaboradores.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
         botaoConexoes.setGravity(Gravity.CENTER);
+
+        pontoConexoes = criarIndicadorManutencao();
+        pontoConexoes.setVisibility(View.VISIBLE);
         botaoConexoes.setTypeface(
                 Typeface.DEFAULT,
                 Typeface.BOLD
@@ -1745,17 +1784,11 @@ public class MainActivity extends Activity {
 
         TextView[] botoesNav = ehDono
                 ? new TextView[]{
-                        botaoHome,
-                        botaoConexoes,
-                        botaoPerfil,
-                        botaoMais,
+                        botaoHome, botaoColaboradores, botaoConexoes, botaoMais,
                         botaoAdm
                 }
                 : new TextView[]{
-                        botaoHome,
-                        botaoConexoes,
-                        botaoPerfil,
-                        botaoMais
+                        botaoHome, botaoColaboradores, botaoConexoes, botaoMais
                 };
 
         for (TextView botao : botoesNav) {
@@ -1804,6 +1837,12 @@ public class MainActivity extends Activity {
         fundoConexoes.setCornerRadius(dp(18));
         fundoConexoes.setStroke(dp(1), Color.rgb(70, 145, 255));
         botaoConexoes.setBackground(fundoConexoes);
+        GradientDrawable fundoColaboradores = new GradientDrawable();
+        fundoColaboradores.setColor(Color.rgb(20, 35, 70));
+        fundoColaboradores.setCornerRadius(dp(18));
+        fundoColaboradores.setStroke(dp(1), Color.rgb(70, 145, 255));
+        botaoColaboradores.setBackground(fundoColaboradores);
+        botaoColaboradores.setElevation(dp(10));
         botaoConexoes.setElevation(dp(10));
 
         GradientDrawable fundoPerfil = new GradientDrawable();
@@ -1814,19 +1853,35 @@ public class MainActivity extends Activity {
         botaoPerfil.setElevation(dp(10));
 
         botaoHome.setOnClickListener(v -> {
+            botaoPerfilTopo.setVisibility(View.VISIBLE);
+            tela.setVisibility(View.GONE);
+            equipeTopo.setVisibility(View.GONE);
+            botaoMenu.setVisibility(View.GONE);
+            telaHomeVazia.setVisibility(View.VISIBLE);
+        });
+        botaoColaboradores.setOnClickListener(v -> {
+            botaoPerfilTopo.setVisibility(View.GONE);
+            telaHomeVazia.setVisibility(View.GONE);
+            tela.setVisibility(View.VISIBLE);
+            equipeTopo.setVisibility(View.VISIBLE);
+            botaoMenu.setVisibility(View.VISIBLE);
             scroll.smoothScrollTo(0, 0);
         });
 
-        botaoConexoes.setOnClickListener(v -> {
-            startActivity(
-                    new Intent(
-                            MainActivity.this,
-                            SocialActivity.class
-                    )
-            );
-        });
+        botaoConexoes.setOnClickListener(v ->
+        abrirAreaComManutencao(
+            "conexoes",
+            "CONEXÕES",
+            () -> startActivity(
+                new Intent(
+                    MainActivity.this,
+                    SocialActivity.class
+                )
+            )
+        )
+    );
 
-        botaoPerfil.setOnClickListener(v -> {
+    botaoPerfil.setOnClickListener(v -> {
             startActivity(
                     new Intent(
                             MainActivity.this,
@@ -1854,6 +1909,7 @@ public class MainActivity extends Activity {
                 barraNavegacao,
                 navParams
         );
+        botaoPerfilTopo.bringToFront();
 
 
 
@@ -1883,7 +1939,8 @@ public class MainActivity extends Activity {
                 pontoFilmes,
                 pontoHistorico,
                 pontoPerfil,
-                pontoHave
+                pontoHave,
+                pontoConexoes
         );
 
         // =========================
@@ -2353,7 +2410,8 @@ public class MainActivity extends Activity {
             View pontoFilmes,
             View pontoHistorico,
             View pontoPerfil,
-            View pontoHave
+            View pontoHave,
+            View pontoConexoes
     ) {
         com.google.firebase.firestore.FirebaseFirestore.getInstance()
                 .collection("config")
@@ -3996,7 +4054,8 @@ public class MainActivity extends Activity {
                     pontoFilmes,
                     pontoHistorico,
                     pontoPerfil,
-                    pontoHave
+                    pontoHave,
+                    pontoConexoes
             );
         }
 

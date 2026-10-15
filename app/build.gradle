@@ -34,8 +34,8 @@ android {
         applicationId 'com.danike.ai'
         minSdk 23
         targetSdk 35
-        versionCode 37
-        versionName '1.8.9'
+        versionCode 38
+        versionName '1.9.0'
     }
 
     buildTypes {
@@ -50,10 +50,11 @@ android {
 }
 
 dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation platform('com.google.firebase:firebase-bom:34.19.0')
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-firestore'
     implementation 'com.google.firebase:firebase-functions'
-    implementation "com.google.firebase:firebase-messaging:24.1.2"
+    implementation 'com.google.firebase:firebase-messaging:24.1.2'
     implementation 'com.google.firebase:firebase-storage'
 }

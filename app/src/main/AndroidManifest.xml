@@ -3,6 +3,16 @@
 
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <queries>
+        <package android:name="com.netflix.mediaclient" />
+        <package android:name="com.amazon.avod.thirdpartyclient" />
+        <package android:name="com.disney.disneyplus" />
+        <package android:name="com.hbo.hbonow" />
+        <package android:name="com.globo.globoplay" />
+        <package android:name="com.google.android.youtube" />
+    </queries>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
@@ -247,7 +257,21 @@
 
             android:label="Magnexp - Teste" />
 
-    </application>
+        <activity android:name=".HaveConnectActivity" android:exported="false" />
+        <activity android:name=".HaveServicoActivity" android:exported="false" />
+                <activity android:name=".HavePlataformasActivity" />
+        <activity android:name=".SalaHAVEActivity" android:exported="false" />
+        <service
+            android:name=".HaveOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="HAVE floating room bubble over media apps" />
+        </service>
+
+    <activity android:name=".HaveSalaStreamingActivity" android:exported="false" />
+</application>
 
 
 

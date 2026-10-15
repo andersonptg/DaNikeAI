@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#07080E"
+    android:padding="8dp">
+
+    <!-- TOPO -->
+    <TextView android:layout_width="match_parent" android:layout_height="52dp"
+        android:text="  Sala HAVE  • AO VIVO • Netflix"
+        android:textColor="#33CCFF" android:textStyle="bold"
+        android:gravity="center_vertical" android:background="#130E26"/>
+
+    <!-- BANNER AMARELO DO PRINT -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="130dp"
+        android:orientation="vertical" android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/bg_borda_amarela">
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="NETFLIX" android:textColor="#E8B84A" android:textSize="26sp" android:textStyle="bold"/>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="HAVE" android:textColor="#E8B84A" android:textSize="20sp" android:layout_marginTop="6dp"/>
+    </LinearLayout>
+
+    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:text="👥 PARTICIPANTES DA SALA" android:textColor="#9CCBFF"
+        android:layout_marginTop="10dp" android:layout_marginBottom="8dp"/>
+
+    <!-- AQUI É ONDE A NETFLIX VAI APARECER - CAMPO VAZIO DO SEU PRINT -->
+    <WebView
+        android:id="@+id/webViewSala"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#000000"/>
+
+    <!-- CHAT EMBAIXO IGUAL DO PRINT -->
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical"
+        android:layout_marginTop="8dp">
+        <EditText android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
+            android:hint="Fale com a sala..." android:background="@drawable/bg_chat_input"
+            android:paddingLeft="16dp" android:textColorHint="#888"/>
+        <TextView android:layout_width="48dp" android:layout_height="48dp"
+            android:text="HAVE" android:gravity="center" android:background="@drawable/bg_have_roxo"
+            android:layout_marginLeft="8dp" android:textColor="#FFF" android:textSize="10sp"/>
+    </LinearLayout>
+</LinearLayout>
