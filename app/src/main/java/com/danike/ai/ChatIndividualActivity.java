@@ -616,6 +616,8 @@ private TextView pontosDigitando;
             return;
         }
 
+        PerfilFirebase.atualizarStatusDigitando(digitando);
+
         String conversaId = gerarIdConversa();
 
         if (digitando) {

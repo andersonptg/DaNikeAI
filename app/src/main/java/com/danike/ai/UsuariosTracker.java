@@ -166,10 +166,7 @@ public final class UsuariosTracker {
                     return;
                 }
 
-                PerfilFirebase.atualizarPresenca(
-                        true,
-                        "online"
-                );
+                PerfilFirebase.atualizarHeartbeat();
 
                 if (handler != null) {
 
@@ -209,19 +206,7 @@ public final class UsuariosTracker {
      * Chamado quando o usuário volta ao aplicativo.
      */
     public static void entrouEmCena() {
-
-        FirebaseUser user =
-                FirebaseAuth
-                        .getInstance()
-                        .getCurrentUser();
-
-        if (user == null) {
-            return;
-        }
-
-        PerfilFirebase.marcarOnline();
-
-        iniciarHeartbeat();
+        marcarOffline();
     }
 
     /**

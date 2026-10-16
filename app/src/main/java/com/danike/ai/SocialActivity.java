@@ -4342,7 +4342,19 @@ private void pararListenerPerfis() {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+            UsuariosTracker.marcarOnline();
+        }
+    }
+
+    @Override
     protected void onDestroy() {
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+            UsuariosTracker.marcarOffline();
+        }
         pararListenerPerfis();
         pararListenerConversas();
         executor.shutdownNow();

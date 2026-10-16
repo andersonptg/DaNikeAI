@@ -870,6 +870,38 @@ public static void atualizarNome(
     /**
      * Marca o usuário como online.
      */
+    public static void atualizarStatusDigitando(boolean digitando) {
+        FirebaseUser user = usuarioAtual();
+        if (user == null) return;
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        Map<String, Object> dados = new HashMap<>();
+        dados.put("online", true);
+        dados.put("digitando", digitando);
+        dados.put("ultimoStatus", digitando ? "digitando" : "online");
+        dados.put("ultimoAcesso", FieldValue.serverTimestamp());
+
+        db.collection(COLECAO_PRIVADA).document(user.getUid())
+                .set(dados, SetOptions.merge());
+        db.collection(COLECAO_PUBLICA).document(user.getUid())
+                .set(dados, SetOptions.merge());
+    }
+
+    public static void atualizarHeartbeat() {
+        FirebaseUser user = usuarioAtual();
+        if (user == null) return;
+
+        Map<String, Object> dados = new HashMap<>();
+        dados.put("online", true);
+        dados.put("ultimoAcesso", FieldValue.serverTimestamp());
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        db.collection(COLECAO_PRIVADA).document(user.getUid())
+                .set(dados, SetOptions.merge());
+        db.collection(COLECAO_PUBLICA).document(user.getUid())
+                .set(dados, SetOptions.merge());
+    }
+
     public static void marcarOnline() {
         atualizarPresenca(
                 true,
@@ -985,10 +1017,7 @@ public static void atualizarNome(
         tarefa[0] = () -> {
 
             if (usuarioAtual() != null) {
-                atualizarPresenca(
-                        true,
-                        "online"
-                );
+                atualizarHeartbeat();
 
                 handler.postDelayed(
                         tarefa[0],
