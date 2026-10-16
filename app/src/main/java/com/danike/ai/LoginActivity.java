@@ -181,7 +181,7 @@ public class LoginActivity extends Activity {
 
                             } else {
 
-                                destino = OnboardingActivity.class;
+                                destino = MainActivity.class;
                             }
 
                             startActivity(
@@ -754,7 +754,7 @@ TextView robo = new TextView(this);
                             if (proprietario || onboardingConcluido || !nomeSalvo.isEmpty()) {
                                 destino = MainActivity.class;
                             } else {
-                                destino = OnboardingActivity.class;
+                                destino = MainActivity.class;
                             }
 
                             final Class<?> destinoFinal = destino;

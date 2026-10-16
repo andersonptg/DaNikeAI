@@ -1,4 +1,9 @@
 package com.danike.ai;
+
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
+import android.animation.ValueAnimator;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.Manifest;
 import android.content.ClipData;
 import android.content.pm.PackageManager;
@@ -12,6 +17,8 @@ import androidx.core.content.FileProvider;
 import java.io.File;
 
 import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.Locale;
 
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 
@@ -25,7 +32,9 @@ import android.graphics.drawable.GradientDrawable;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -33,6 +42,7 @@ import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
@@ -53,11 +63,16 @@ public class SocialActivity extends Activity {
     private FrameLayout conteudo;
     private TextView titulo;
     private TextView[] botoes;
+    private boolean mensagensAbertas = false;
+    private boolean gruposAbertos = false;
 private LinearLayout barraInferior;
 
     private FirebaseFirestore db;
     private ListenerRegistration listenerPerfis;
     private ListenerRegistration listenerSolicitacoes;
+    private ListenerRegistration listenerConversas;
+    private ListenerRegistration listenerGrupos;
+    private ObjectAnimator[] animacoesIndicadores = new ObjectAnimator[6];
     private final ExecutorService executor = Executors.newCachedThreadPool();
 
     private String meuUid = "";
@@ -1097,8 +1112,73 @@ private LinearLayout barraInferior;
                     0
             );
 
-            barraInferior.addView(
+            FrameLayout recipienteBotao =
+                    new FrameLayout(this);
+
+            recipienteBotao.setClipChildren(false);
+            recipienteBotao.setClipToPadding(false);
+
+            recipienteBotao.addView(
                     botaoAtual,
+                    new FrameLayout.LayoutParams(
+                            -1,
+                            -1
+                    )
+            );
+
+            TextView indicador =
+                    new TextView(this);
+
+            indicador.setTag(
+                    "indicadorNotificacao_" + posicao
+            );
+            indicador.setVisibility(View.GONE);
+
+            GradientDrawable fundoIndicador =
+                    new GradientDrawable();
+
+            fundoIndicador.setShape(
+                    GradientDrawable.OVAL
+            );
+
+            fundoIndicador.setColor(
+                    Color.rgb(255, 35, 65)
+            );
+
+            fundoIndicador.setStroke(
+                    dp(1),
+                    Color.rgb(255, 120, 135)
+            );
+
+            indicador.setBackground(
+                    fundoIndicador
+            );
+
+            indicador.setTag(
+                    "indicadorNotificacao_" + posicao
+            );
+
+            FrameLayout.LayoutParams indicadorParams =
+                    new FrameLayout.LayoutParams(
+                            dp(11),
+                            dp(11),
+                            Gravity.TOP | Gravity.RIGHT
+                    );
+
+            indicadorParams.setMargins(
+                    0,
+                    dp(-3),
+                    dp(-3),
+                    0
+            );
+
+            recipienteBotao.addView(
+                    indicador,
+                    indicadorParams
+            );
+
+            barraInferior.addView(
+                    recipienteBotao,
                     botaoParams
             );
 
@@ -1140,6 +1220,84 @@ private LinearLayout barraInferior;
 
     }
 
+    private void atualizarIndicadorNotificacao(
+            int indice,
+            boolean mostrar
+    ) {
+        if (botoes == null
+                || indice < 0
+                || indice >= botoes.length
+                || indice >= animacoesIndicadores.length) {
+            return;
+        }
+
+        android.view.ViewParent parent =
+                botoes[indice].getParent();
+
+        if (!(parent instanceof FrameLayout)) {
+            return;
+        }
+
+        FrameLayout recipiente =
+                (FrameLayout) parent;
+
+        View indicador =
+                recipiente.findViewWithTag(
+                        "indicadorNotificacao_" + indice
+                );
+
+        if (indicador == null) {
+            return;
+        }
+
+        ObjectAnimator pulso =
+                animacoesIndicadores[indice];
+
+        if (mostrar) {
+            indicador.setVisibility(View.VISIBLE);
+
+            if (pulso == null) {
+                pulso =
+                        ObjectAnimator.ofPropertyValuesHolder(
+                                indicador,
+                                PropertyValuesHolder.ofFloat(
+                                        View.SCALE_X,
+                                        0.75f, 1.15f, 0.75f
+                                ),
+                                PropertyValuesHolder.ofFloat(
+                                        View.SCALE_Y,
+                                        0.75f, 1.15f, 0.75f
+                                ),
+                                PropertyValuesHolder.ofFloat(
+                                        View.ALPHA,
+                                        0.55f, 1.0f, 0.55f
+                                )
+                        );
+
+                pulso.setDuration(900);
+                pulso.setRepeatCount(
+                        ValueAnimator.INFINITE
+                );
+                pulso.setInterpolator(
+                        new AccelerateDecelerateInterpolator()
+                );
+
+                animacoesIndicadores[indice] = pulso;
+            }
+
+            if (!pulso.isStarted()) {
+                pulso.start();
+            }
+
+        } else {
+            if (pulso != null) {
+                pulso.cancel();
+            }
+
+            indicador.setVisibility(View.GONE);
+        }
+    }
+
     private void iniciarListenerSolicitacoes() {
 
         if (meuUid == null || meuUid.trim().isEmpty()) {
@@ -1169,57 +1327,15 @@ private LinearLayout barraInferior;
     }
 
     private void atualizarBadgeSolicitacoes(int quantidade) {
-
-        for (int i = 0; i < botoes.length; i++) {
-
-            if (i != 2) {
-                continue;
-            }
-
-            android.view.ViewParent parent = botoes[i].getParent();
-
-            if (!(parent instanceof FrameLayout)) {
-                return;
-            }
-
-            FrameLayout aba =
-                    (FrameLayout) parent;
-
-            View badge =
-                    aba.findViewWithTag(
-                            "badgeSolicitacoes"
-                    );
-
-            if (!(badge instanceof TextView)) {
-                return;
-            }
-
-            TextView textoBadge =
-                    (TextView) badge;
-
-            if (quantidade <= 0) {
-
-                textoBadge.setText("");
-                textoBadge.setVisibility(
-                        View.GONE
-                );
-
-            } else {
-
-                textoBadge.setText(
-                        quantidade > 99
-                                ? "99+"
-                                : String.valueOf(quantidade)
-                );
-
-                textoBadge.setVisibility(
-                        View.VISIBLE
-                );
-            }
-        }
+        atualizarIndicadorNotificacao(
+                2,
+                quantidade > 0
+        );
     }
 
     private void selecionar(int posicao) {
+        mensagensAbertas = (posicao == 3);
+        gruposAbertos = (posicao == 4);
         for (int i = 0; i < botoes.length; i++) {
             GradientDrawable fundo = new GradientDrawable();
             fundo.setCornerRadius(dp(18));
@@ -1254,39 +1370,550 @@ private LinearLayout barraInferior;
 
         if (posicao == 0) {
             titulo.setText("GLOBAL");
+            pararListenerConversas();
             mostrarGlobal();
 
         } else if (posicao == 1) {
             titulo.setText("CONEXÕES");
+            pararListenerConversas();
             mostrarConexao();
 
         } else if (posicao == 2) {
+            atualizarIndicadorNotificacao(2, false);
             titulo.setText("SOLICITAÇÕES");
+            pararListenerConversas();
             pararListenerPerfis();
             mostrarSolicitacoes();
 
         } else if (posicao == 3) {
-            titulo.setText("MENSAGENS");
+            atualizarIndicadorNotificacao(3, false);
+        titulo.setText("MENSAGENS");
             pararListenerPerfis();
-            mostrarMensagem(
-                "Suas conversas aparecerão aqui.\n\n" +
-                "Quando uma conexão aceitar seu convite,\n" +
-                "a conversa ficará disponível nesta área."
-            );
-
+            iniciarListenerConversas();
         } else if (posicao == 4) {
-            titulo.setText("GRUPOS");
+            atualizarIndicadorNotificacao(4, false);
+        iniciarListenerGrupos();
+        titulo.setText("GRUPOS");
+            pararListenerConversas();
             pararListenerPerfis();
             mostrarGrupos();
 
         } else if (posicao == 5) {
             titulo.setText("STATUS");
+            pararListenerConversas();
             pararListenerPerfis();
-            mostrarMensagem(
-                "Os status das suas conexões aparecerão aqui.\n\n" +
-                "Somente conexões poderão visualizar seus status."
-            );
+            mostrarTelaInicialStatus();
         }
+    }
+
+    private void mostrarTelaInicialStatus() {
+        conteudo.removeAllViews();
+
+        LinearLayout principal = new LinearLayout(this);
+        principal.setOrientation(LinearLayout.VERTICAL);
+        principal.setPadding(dp(16), dp(14), dp(16), dp(18));
+
+        TextView cabecalho = texto(
+                "STATUS",
+                15,
+                Color.rgb(120, 210, 255)
+        );
+        cabecalho.setTypeface(null, android.graphics.Typeface.BOLD);
+        principal.addView(cabecalho);
+
+        TextView meuTitulo = texto(
+                "MEU STATUS",
+                12,
+                Color.rgb(170, 180, 195)
+        );
+        meuTitulo.setTypeface(null, android.graphics.Typeface.BOLD);
+        meuTitulo.setPadding(0, dp(16), 0, dp(8));
+        principal.addView(meuTitulo);
+
+        HorizontalScrollView rolagem =
+                new HorizontalScrollView(this);
+        rolagem.setHorizontalScrollBarEnabled(false);
+        rolagem.setClipToPadding(false);
+
+        LinearLayout cards =
+                new LinearLayout(this);
+        cards.setOrientation(LinearLayout.HORIZONTAL);
+        cards.setPadding(0, 0, dp(8), 0);
+
+        LinearLayout meuCard =
+                new LinearLayout(this);
+        meuCard.setOrientation(LinearLayout.VERTICAL);
+        meuCard.setGravity(Gravity.CENTER);
+        meuCard.setPadding(dp(10), dp(10), dp(10), dp(10));
+
+        GradientDrawable fundoMeuCard =
+                new GradientDrawable();
+        fundoMeuCard.setColor(Color.rgb(9, 15, 24));
+        fundoMeuCard.setCornerRadius(dp(22));
+        fundoMeuCard.setStroke(
+                dp(1),
+                Color.rgb(0, 210, 255)
+        );
+        meuCard.setBackground(fundoMeuCard);
+
+        TextView circulo =
+                texto("+", 38, Color.WHITE);
+        circulo.setGravity(Gravity.CENTER);
+        circulo.setTypeface(null, android.graphics.Typeface.BOLD);
+
+        GradientDrawable fundoCirculo =
+                new GradientDrawable();
+        fundoCirculo.setShape(GradientDrawable.OVAL);
+        fundoCirculo.setColor(Color.rgb(18, 30, 43));
+        fundoCirculo.setStroke(
+                dp(3),
+                Color.rgb(0, 210, 255)
+        );
+        circulo.setBackground(fundoCirculo);
+
+        LinearLayout.LayoutParams lpCirculo =
+                new LinearLayout.LayoutParams(
+                        dp(112),
+                        dp(112)
+                );
+        meuCard.addView(circulo, lpCirculo);
+
+        TextView adicionar =
+                texto(
+                        "Adicionar status",
+                        13,
+                        Color.WHITE
+                );
+        adicionar.setGravity(Gravity.CENTER);
+        adicionar.setTypeface(
+                null,
+                android.graphics.Typeface.BOLD
+        );
+        adicionar.setPadding(0, dp(10), 0, 0);
+        meuCard.addView(adicionar);
+
+        LinearLayout.LayoutParams lpMeuCard =
+                new LinearLayout.LayoutParams(
+                        dp(158),
+                        dp(205)
+                );
+        lpMeuCard.setMargins(0, 0, dp(10), 0);
+        cards.addView(meuCard, lpMeuCard);
+
+        TextView dica =
+                texto(
+                        "Publique uma foto, vídeo ou texto\\npara compartilhar com suas conexões.",
+                        12,
+                        Color.rgb(150, 160, 175)
+                );
+        dica.setGravity(Gravity.CENTER);
+        dica.setPadding(dp(8), dp(8), dp(8), dp(8));
+
+        GradientDrawable fundoDica =
+                new GradientDrawable();
+        fundoDica.setColor(Color.rgb(7, 11, 18));
+        fundoDica.setCornerRadius(dp(18));
+        fundoDica.setStroke(
+                dp(1),
+                Color.rgb(45, 65, 85)
+        );
+        dica.setBackground(fundoDica);
+
+        LinearLayout.LayoutParams lpDica =
+                new LinearLayout.LayoutParams(
+                        dp(220),
+                        dp(205)
+                );
+        lpDica.setMargins(0, 0, dp(10), 0);
+        cards.addView(dica, lpDica);
+
+        rolagem.addView(
+                cards,
+                new HorizontalScrollView.LayoutParams(
+                        -2,
+                        dp(205)
+                )
+        );
+
+        principal.addView(
+                rolagem,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(215)
+                )
+        );
+
+        TextView conexoes =
+                texto(
+                        "STATUS DAS CONEXÕES",
+                        13,
+                        Color.rgb(120, 210, 255)
+                );
+        conexoes.setTypeface(
+                null,
+                android.graphics.Typeface.BOLD
+        );
+        conexoes.setPadding(0, dp(18), 0, dp(8));
+        principal.addView(conexoes);
+
+        LinearLayout listaStatusConexoes =
+                new LinearLayout(this);
+        listaStatusConexoes.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+        listaStatusConexoes.setPadding(
+                0,
+                dp(4),
+                0,
+                dp(8)
+        );
+
+        TextView vazio =
+                texto(
+                        "Nenhum status novo por enquanto.",
+                        13,
+                        Color.rgb(145, 155, 168)
+                );
+        vazio.setPadding(dp(2), 0, 0, 0);
+
+        listaStatusConexoes.addView(
+                vazio,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(60)
+                )
+        );
+
+        principal.addView(
+                listaStatusConexoes,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(210)
+                )
+        );
+
+        carregarStatusDasConexoes(listaStatusConexoes);
+
+        adicionar.setOnClickListener(v ->
+                publicarStatusTexto()
+        );
+
+        circulo.setOnClickListener(v ->
+                publicarStatusTexto()
+        );
+
+        conteudo.addView(
+                principal,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        -1
+                )
+        );
+    }
+
+
+    private void carregarStatusDasConexoes(LinearLayout listaStatusConexoes) {
+        if (meuUid == null || meuUid.trim().isEmpty()) {
+            return;
+        }
+
+        db.collection("conexoes")
+                .document(meuUid)
+                .collection("usuarios")
+                .get()
+                .addOnSuccessListener(conexoes -> {
+
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+
+                    for (DocumentSnapshot conexao : conexoes.getDocuments()) {
+
+                        String uidConexao = conexao.getId();
+
+                        if (uidConexao == null
+                                || uidConexao.trim().isEmpty()
+                                || uidConexao.equals(meuUid)) {
+                            continue;
+                        }
+
+                        db.collection("status")
+                                .whereEqualTo("autorUid", uidConexao)
+                                .whereGreaterThan(
+                                        "expiraEm",
+                                        System.currentTimeMillis()
+                                )
+                                .get()
+                                .addOnSuccessListener(status -> {
+
+                                    if (isFinishing() || isDestroyed()) {
+                                        return;
+                                    }
+
+                                    if (status == null || status.isEmpty()) {
+                                        return;
+                                    }
+
+                                    DocumentSnapshot statusAtivo =
+                                            status.getDocuments().get(0);
+
+                                    db.collection("perfis_publicos")
+                                            .document(uidConexao)
+                                            .get()
+                                            .addOnSuccessListener(perfil -> {
+
+                                                if (isFinishing() || isDestroyed()) {
+                                                    return;
+                                                }
+
+                                                String nome =
+                                                        perfil.getString("nome");
+
+                                                if (nome == null || nome.trim().isEmpty()) {
+                                                    nome = "Conexão";
+                                                }
+
+                                                TextView card =
+                                                        texto(
+                                                                "● " + nome,
+                                                                12,
+                                                                Color.WHITE
+                                                        );
+
+                                                card.setGravity(Gravity.CENTER);
+                                                card.setTypeface(
+                                                        null,
+                                                        android.graphics.Typeface.BOLD
+                                                );
+                                                card.setPadding(
+                                                        dp(8),
+                                                        dp(8),
+                                                        dp(8),
+                                                        dp(8)
+                                                );
+
+                                                GradientDrawable fundo =
+                                                        new GradientDrawable();
+
+                                                fundo.setColor(
+                                                        Color.rgb(9, 15, 24)
+                                                );
+                                                fundo.setCornerRadius(dp(22));
+                                                fundo.setStroke(
+                                                        dp(2),
+                                                        Color.rgb(0, 210, 255)
+                                                );
+
+                                                card.setBackground(fundo);
+
+                                                final String nomeStatus = nome;
+
+                                                card.setOnClickListener(v ->
+                                                        Toast.makeText(
+                                                                this,
+                                                                "Status de " + nomeStatus,
+                                                                Toast.LENGTH_SHORT
+                                                        ).show()
+                                                );
+
+                                                if (listaStatusConexoes != null) {
+                                                    listaStatusConexoes.addView(
+                                                            card,
+                                                            new LinearLayout.LayoutParams(
+                                                                    dp(145),
+                                                                    dp(190)
+                                                            )
+                                                    );
+                                                }
+                                            });
+                                });
+                    }
+                });
+    }
+
+
+    private void publicarStatusTexto() {
+        if (meuUid == null || meuUid.trim().isEmpty()) {
+            Toast.makeText(
+                    this,
+                    "Faça login novamente para publicar.",
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        final EditText entrada = new EditText(this);
+        entrada.setHint("Escreva seu status...");
+        entrada.setTextColor(Color.WHITE);
+        entrada.setHintTextColor(Color.rgb(120, 135, 150));
+        entrada.setTextSize(16);
+        entrada.setGravity(Gravity.TOP | Gravity.START);
+        entrada.setPadding(dp(16), dp(14), dp(16), dp(14));
+
+        GradientDrawable fundoEntrada = new GradientDrawable();
+        fundoEntrada.setColor(Color.rgb(9, 15, 24));
+        fundoEntrada.setCornerRadius(dp(18));
+        fundoEntrada.setStroke(
+                dp(1),
+                Color.rgb(0, 210, 255)
+        );
+        entrada.setBackground(fundoEntrada);
+
+        int limite = 500;
+
+        TextView contador = texto(
+                "0/" + limite,
+                11,
+                Color.rgb(120, 135, 150)
+        );
+        contador.setGravity(Gravity.RIGHT);
+
+        entrada.addTextChangedListener(
+                new android.text.TextWatcher() {
+                    @Override
+                    public void beforeTextChanged(
+                            CharSequence s,
+                            int start,
+                            int count,
+                            int after
+                    ) {}
+
+                    @Override
+                    public void onTextChanged(
+                            CharSequence s,
+                            int start,
+                            int before,
+                            int count
+                    ) {
+                        contador.setText(
+                                s.length() + "/" + limite
+                        );
+                    }
+
+                    @Override
+                    public void afterTextChanged(
+                            android.text.Editable s
+                    ) {}
+                }
+        );
+
+        LinearLayout caixa = new LinearLayout(this);
+        caixa.setOrientation(LinearLayout.VERTICAL);
+        caixa.setPadding(dp(4), dp(4), dp(4), 0);
+        caixa.addView(
+                entrada,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(150)
+                )
+        );
+        caixa.addView(
+                contador,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(28)
+                )
+        );
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("NOVO STATUS")
+                .setView(caixa)
+                .setNegativeButton(
+                        "CANCELAR",
+                        null
+                )
+                .setPositiveButton(
+                        "PUBLICAR",
+                        null
+                )
+                .create();
+
+        android.app.AlertDialog dialog =
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle("NOVO STATUS")
+                        .setView(caixa)
+                        .setNegativeButton(
+                                "CANCELAR",
+                                null
+                        )
+                        .setPositiveButton(
+                                "PUBLICAR",
+                                null
+                        )
+                        .create();
+
+        dialog.setOnShowListener(d -> {
+            android.widget.Button publicar =
+                    dialog.getButton(
+                            android.app.AlertDialog.BUTTON_POSITIVE
+                    );
+
+            publicar.setOnClickListener(v -> {
+
+                String textoStatus =
+                        entrada.getText()
+                                .toString()
+                                .trim();
+
+                if (textoStatus.isEmpty()) {
+                    Toast.makeText(
+                            this,
+                            "Escreva algo para publicar.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
+
+                if (textoStatus.length() > limite) {
+                    Toast.makeText(
+                            this,
+                            "O Status pode ter até 500 caracteres.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
+
+                publicar.setEnabled(false);
+                publicar.setText("PUBLICANDO...");
+
+                Map<String, Object> dados =
+                        StatusModelo.novo(
+                                meuUid,
+                                "mensagem",
+                                textoStatus,
+                                "",
+                                "",
+                                "padrao",
+                                null
+                        );
+
+                db.collection("status")
+                        .add(dados)
+                        .addOnSuccessListener(documento -> {
+                            dialog.dismiss();
+
+                            Toast.makeText(
+                                    this,
+                                    "Status publicado.",
+                                    Toast.LENGTH_SHORT
+                            ).show();
+
+                            mostrarTelaInicialStatus();
+                        })
+                        .addOnFailureListener(e -> {
+                            publicar.setEnabled(true);
+                            publicar.setText("PUBLICAR");
+
+                            Toast.makeText(
+                                    this,
+                                    "Não foi possível publicar o Status.",
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        });
+            });
+        });
+
+        dialog.show();
     }
 
     private void mostrarGlobal() {
@@ -2382,6 +3009,64 @@ private LinearLayout barraInferior;
                 });
     }
 
+private void iniciarListenerGrupos() {
+    if (meuUid == null || meuUid.trim().isEmpty()) {
+        return;
+    }
+
+    if (listenerGrupos != null) {
+        listenerGrupos.remove();
+        listenerGrupos = null;
+    }
+
+    listenerGrupos =
+        db.collection("grupos")
+          .whereArrayContains("participantes", meuUid)
+          .addSnapshotListener((snapshots, erro) -> {
+
+              if (erro != null || snapshots == null) {
+                  return;
+              }
+
+              if (gruposAbertos) {
+                  return;
+              }
+
+              for (DocumentSnapshot grupo : snapshots.getDocuments()) {
+
+                  String grupoId = grupo.getId();
+
+                  db.collection("grupos")
+                    .document(grupoId)
+                    .collection("mensagens")
+                    .orderBy("criadoEm", Query.Direction.DESCENDING)
+                    .limit(1)
+                    .get()
+                    .addOnSuccessListener(mensagens -> {
+
+                        if (mensagens.isEmpty() || gruposAbertos) {
+                            return;
+                        }
+
+                        DocumentSnapshot ultima =
+                            mensagens.getDocuments().get(0);
+
+                        String remetente =
+                            ultima.getString("remetenteUid");
+
+                        if (remetente != null
+                                && !meuUid.equals(remetente)) {
+
+                            atualizarIndicadorNotificacao(
+                                    4,
+                                    true
+                            );
+                        }
+                    });
+              }
+          });
+}
+
 private void mostrarGrupos() {
 
         conteudo.removeAllViews();
@@ -3281,7 +3966,276 @@ private void mostrarGrupos() {
         });
     }
 
-    private void pararListenerPerfis() {
+    private void iniciarListenerConversas() {
+        if (meuUid == null || meuUid.trim().isEmpty()) {
+            return;
+        }
+
+        if (listenerConversas != null) {
+            listenerConversas.remove();
+            listenerConversas = null;
+        }
+
+        listenerConversas = db.collection("chats")
+                .whereArrayContains("participantes", meuUid)
+                .addSnapshotListener((snapshots, erro) -> {
+                    if (erro != null || snapshots == null) {
+                        return;
+                    }
+
+                    if (botoes == null || botoes.length < 4) {
+                        return;
+                    }
+
+                    if (botoes[3].getCurrentTextColor() == Color.TRANSPARENT) {
+                        return;
+                    }
+
+                    carregarListaConversas(snapshots.getDocuments());
+                });
+    }
+
+    private void carregarListaConversas(List<DocumentSnapshot> documentos) {
+        if (conteudo == null || isFinishing() || isDestroyed()) {
+            return;
+        }
+
+        conteudo.removeAllViews();
+
+        if (documentos == null || documentos.isEmpty()) {
+            mostrarMensagem(
+                    "💬\n\nNenhuma conversa ainda.\n\n" +
+                    "Quando você conversar com uma conexão, " +
+                    "ela aparecerá aqui."
+            );
+            return;
+        }
+
+        LinearLayout lista = new LinearLayout(this);
+        lista.setOrientation(LinearLayout.VERTICAL);
+        lista.setPadding(dp(10), dp(10), dp(10), dp(100));
+
+        conteudo.addView(
+                lista,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+
+        for (DocumentSnapshot conversa : documentos) {
+            Object participantesObj = conversa.get("participantes");
+
+            if (!(participantesObj instanceof List)) {
+                continue;
+            }
+
+            List<?> participantes = (List<?>) participantesObj;
+
+            for (Object participante : participantes) {
+                if (!(participante instanceof String)) {
+                    continue;
+                }
+
+                String uidOutro = (String) participante;
+
+                if (uidOutro == null || uidOutro.trim().isEmpty()
+                        || meuUid.equals(uidOutro)) {
+                    continue;
+                }
+
+                carregarDadosConversa(lista, conversa.getId(), uidOutro);
+                break;
+            }
+        }
+    }
+
+    private void carregarDadosConversa(
+            LinearLayout lista,
+            String conversaId,
+            String uidOutro
+    ) {
+        db.collection("perfis_publicos")
+                .document(uidOutro)
+                .get()
+                .addOnSuccessListener(perfil -> {
+                    if (isFinishing() || isDestroyed()) {
+                        return;
+                    }
+
+                    String nome = perfil.getString("nome");
+                    String fotoUrl = perfil.getString("fotoUrl");
+
+                    if (nome == null || nome.trim().isEmpty()) {
+                        nome = "Usuário";
+                    }
+
+                    final String nomeFinal = nome;
+                    final String fotoFinal = fotoUrl;
+
+                    db.collection("chats")
+                            .document(conversaId)
+                            .collection("mensagens")
+                            .orderBy("criadoEm", Query.Direction.DESCENDING)
+                            .limit(1)
+                            .get()
+                            .addOnSuccessListener(mensagens -> {
+                                if (isFinishing() || isDestroyed()) {
+                                    return;
+                                }
+
+                                DocumentSnapshot ultima =
+                                        mensagens.isEmpty()
+                                                ? null
+                                                : mensagens.getDocuments().get(0);
+
+                                                                if (ultima != null && !mensagensAbertas) {
+                                    String remetente = ultima.getString("remetenteUid");
+                                    if (remetente != null && !meuUid.equals(remetente)) {
+                                        atualizarIndicadorNotificacao(3, true);
+                                    }
+                                }
+adicionarCardConversa(
+                                        lista,
+                                        uidOutro,
+                                        nomeFinal,
+                                        fotoFinal,
+                                        ultima
+                                );
+                            });
+                });
+    }
+
+    private void adicionarCardConversa(
+            LinearLayout lista,
+            String uidOutro,
+            String nome,
+            String fotoUrl,
+            DocumentSnapshot ultima
+    ) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(12), dp(10), dp(12), dp(10));
+
+        GradientDrawable fundo = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(9, 17, 34),
+                        Color.rgb(17, 10, 31),
+                        Color.rgb(7, 19, 31)
+                }
+        );
+        fundo.setCornerRadius(dp(24));
+        fundo.setStroke(dp(1), Color.rgb(45, 125, 205));
+        card.setBackground(fundo);
+        card.setElevation(dp(7));
+
+        ImageView foto = new ImageView(this);
+        foto.setScaleType(ImageView.ScaleType.CENTER_CROP);
+
+        GradientDrawable fundoFoto = new GradientDrawable();
+        fundoFoto.setShape(GradientDrawable.OVAL);
+        fundoFoto.setColor(Color.rgb(20, 30, 48));
+        fundoFoto.setStroke(dp(2), Color.rgb(55, 145, 225));
+        foto.setBackground(fundoFoto);
+        foto.setClipToOutline(true);
+
+        LinearLayout.LayoutParams fotoParams =
+                new LinearLayout.LayoutParams(dp(58), dp(58));
+        fotoParams.setMargins(0, 0, dp(12), 0);
+        card.addView(foto, fotoParams);
+
+        if (fotoUrl != null && !fotoUrl.trim().isEmpty()) {
+            carregarImagem(foto, fotoUrl);
+        }
+
+        LinearLayout centro = new LinearLayout(this);
+        centro.setOrientation(LinearLayout.VERTICAL);
+        centro.setGravity(Gravity.CENTER_VERTICAL);
+
+        LinearLayout.LayoutParams centroParams =
+                new LinearLayout.LayoutParams(0, -2, 1);
+        centroParams.setMargins(0, 0, dp(8), 0);
+
+        TextView nomeView = texto(nome, 16, Color.WHITE);
+        nomeView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        nomeView.setSingleLine(true);
+
+        centro.addView(
+                nomeView,
+                new LinearLayout.LayoutParams(-1, dp(28))
+        );
+
+        String ultimaTexto = "Nenhuma mensagem ainda";
+        String hora = "";
+
+        if (ultima != null) {
+            String textoUltima = ultima.getString("texto");
+
+            if (textoUltima != null && !textoUltima.trim().isEmpty()) {
+                ultimaTexto = textoUltima.trim();
+            }
+
+            Object criadoEm = ultima.get("criadoEm");
+
+            if (criadoEm instanceof Timestamp) {
+                hora = new SimpleDateFormat(
+                        "HH:mm",
+                        Locale.getDefault()
+                ).format(((Timestamp) criadoEm).toDate());
+            }
+        }
+
+        TextView mensagem = texto(
+                ultimaTexto,
+                13,
+                Color.rgb(150, 170, 195)
+        );
+        mensagem.setSingleLine(true);
+        mensagem.setEllipsize(android.text.TextUtils.TruncateAt.END);
+
+        LinearLayout.LayoutParams mensagemParams =
+                new LinearLayout.LayoutParams(0, dp(24), 1);
+        centro.addView(mensagem, mensagemParams);
+
+        card.addView(centro, centroParams);
+
+        TextView horaView = texto(
+                hora,
+                11,
+                Color.rgb(105, 190, 255)
+        );
+        horaView.setGravity(Gravity.CENTER);
+        horaView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        card.addView(
+                horaView,
+                new LinearLayout.LayoutParams(dp(48), dp(34))
+        );
+
+        card.setOnClickListener(v -> {
+            Intent chat = new Intent(
+                    SocialActivity.this,
+                    ChatIndividualActivity.class
+            );
+
+            chat.putExtra("uid", uidOutro);
+            startActivity(chat);
+        });
+
+        LinearLayout.LayoutParams cardParams =
+                new LinearLayout.LayoutParams(-1, dp(82));
+        cardParams.setMargins(0, 0, 0, dp(12));
+
+        lista.addView(card, cardParams);
+    }
+
+    private void pararListenerConversas() {
+    if (listenerConversas != null) {
+        listenerConversas.remove();
+        listenerConversas = null;
+    }
+}
+
+private void pararListenerPerfis() {
 
         if (listenerPerfis != null) {
             listenerPerfis.remove();
@@ -3390,6 +4344,7 @@ private void mostrarGrupos() {
     @Override
     protected void onDestroy() {
         pararListenerPerfis();
+        pararListenerConversas();
         executor.shutdownNow();
         super.onDestroy();
     }
