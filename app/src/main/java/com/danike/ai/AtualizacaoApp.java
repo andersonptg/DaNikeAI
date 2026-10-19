@@ -12,6 +12,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -226,14 +227,15 @@ public final class AtualizacaoApp {
         card.setElevation(dp(activity, 12));
 
         // Identidade visual.
-        TextView logo = texto(
-                activity,
-                "⚡ DaNikeAI",
-                23,
-                AZUL,
-                true
+        ImageView logo = new ImageView(activity);
+        logo.setImageResource(R.drawable.nexo_logo);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        logo.setContentDescription("Logo NEXO");
+        LinearLayout.LayoutParams pLogo = new LinearLayout.LayoutParams(
+                dp(activity, 140),
+                dp(activity, 88)
         );
-        logo.setLetterSpacing(0.025f);
+        pLogo.bottomMargin = dp(activity, 5);
 
         TextView subtitulo = texto(
                 activity,
@@ -399,7 +401,7 @@ public final class AtualizacaoApp {
         // Botão principal.
         TextView btnAtualizar = texto(
                 activity,
-                "ATUALIZAR AGORA   →",
+                "ATUALIZAR APP   →",
                 14,
                 Color.WHITE,
                 true
@@ -414,13 +416,14 @@ public final class AtualizacaoApp {
 
         GradientDrawable fundoBotao = new GradientDrawable();
         fundoBotao.setColors(new int[]{
-                Color.rgb(0, 176, 230),
-                Color.rgb(0, 93, 220)
+                Color.rgb(0, 255, 130),
+                Color.rgb(0, 170, 85)
         });
         fundoBotao.setOrientation(
                 GradientDrawable.Orientation.LEFT_RIGHT
         );
         fundoBotao.setCornerRadius(dp(activity, 13));
+        fundoBotao.setStroke(dp(activity, 1), Color.rgb(80, 255, 160));
         btnAtualizar.setBackground(fundoBotao);
         btnAtualizar.setElevation(dp(activity, 3));
         btnAtualizar.setClickable(true);
@@ -433,7 +436,7 @@ public final class AtualizacaoApp {
                 );
         pBotao.bottomMargin = dp(activity, 8);
 
-        card.addView(logo);
+        card.addView(logo, pLogo);
         card.addView(subtitulo, pSubtitulo);
         card.addView(tituloView, pTitulo);
         card.addView(badge, pBadge);
@@ -456,10 +459,13 @@ public final class AtualizacaoApp {
                     dp(activity, 12),
                     dp(activity, 11)
             );
-            btnDepois.setBackground(arredondado(
-                    Color.TRANSPARENT,
-                    dp(activity, 12)
-            ));
+            GradientDrawable fundoDepois = new GradientDrawable();
+            fundoDepois.setColor(Color.rgb(55, 15, 25));
+            fundoDepois.setCornerRadius(dp(activity, 12));
+            fundoDepois.setStroke(dp(activity, 1), Color.rgb(255, 65, 90));
+            btnDepois.setBackground(fundoDepois);
+            btnDepois.setTextColor(Color.rgb(255, 105, 125));
+            btnDepois.setGravity(Gravity.CENTER);
             btnDepois.setClickable(true);
             btnDepois.setFocusable(true);
 
