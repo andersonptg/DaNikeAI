@@ -225,7 +225,7 @@ public class SplashActivity extends Activity {
 
             logo = BitmapFactory.decodeResource(
                     getResources(),
-                    R.drawable.danike_splash_logo
+                    R.drawable.nexo_logo
             );
 
             setLayerType(View.LAYER_TYPE_SOFTWARE, null);
@@ -281,21 +281,8 @@ public class SplashActivity extends Activity {
 
             // Fundo totalmente preto
             // Fundo premium azul-marinho, sem efeitos em movimento
-            canvas.drawColor(Color.rgb(3, 8, 20));
+            canvas.drawColor(Color.BLACK);
 
-            Paint luz = new Paint(Paint.ANTI_ALIAS_FLAG);
-            luz.setShader(new RadialGradient(
-                    w / 2f, h * 0.43f, w * 0.72f,
-                    new int[]{
-                            Color.rgb(15, 43, 78),
-                            Color.rgb(6, 17, 36),
-                            Color.rgb(3, 8, 20)
-                    },
-                    new float[]{0f, 0.48f, 1f},
-                    Shader.TileMode.CLAMP
-            ));
-            canvas.drawRect(0, 0, w, h, luz);
-            luz.setShader(null);
 
             desenharLogo(canvas, w, h);
             desenharBarra(canvas, w, h);
@@ -314,26 +301,23 @@ public class SplashActivity extends Activity {
                 return;
             }
 
-            float maxW = w * 0.54f;
-            float maxH = h * 0.29f;
+            float centroX = w / 2f;
+            float centroY = h * 0.43f;
 
-            float escala =
-                    Math.min(
-                            maxW / logo.getWidth(),
-                            maxH / logo.getHeight()
-                    );
+            // Mantém a proporção original da logo
+            float limiteLargura = w * 0.52f;
+            float limiteAltura = h * 0.28f;
 
-            float largura =
-                    logo.getWidth() * escala;
+            float escala = Math.min(
+                    limiteLargura / logo.getWidth(),
+                    limiteAltura / logo.getHeight()
+            );
 
-            float altura =
-                    logo.getHeight() * escala;
+            float larguraLogo = logo.getWidth() * escala;
+            float alturaLogo = logo.getHeight() * escala;
 
-            float left =
-                    (w - largura) / 2f;
-
-            float top =
-                    (h - altura) / 2f - d(8);
+            float left = centroX - larguraLogo / 2f;
+            float top = centroY - alturaLogo / 2f;
 
             canvas.drawBitmap(
                     logo,
@@ -341,15 +325,17 @@ public class SplashActivity extends Activity {
                     new android.graphics.RectF(
                             left,
                             top,
-                            left + largura,
-                            top + altura
+                            left + larguraLogo,
+                            top + alturaLogo
                     ),
                     logoPaint
             );
-        }
 
         // ========================================================
-        // BARRA PRATA
+
+        }
+
+// BARRA PRATA
         // ========================================================
 
         private void desenharBarra(

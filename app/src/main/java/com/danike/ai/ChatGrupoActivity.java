@@ -5,11 +5,13 @@ import java.util.Map;
 import com.google.firebase.Timestamp;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.Gravity;
+import android.view.Window;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
@@ -63,6 +65,153 @@ public class ChatGrupoActivity extends Activity {
 
         montarTela();
         ouvirMensagens();
+    }
+
+    private void abrirSeletorFundo() {
+        final Dialog dialog = new Dialog(this);
+        dialog.getWindow();
+
+        LinearLayout raiz = new LinearLayout(this);
+        raiz.setOrientation(LinearLayout.VERTICAL);
+        raiz.setPadding(dp(14), dp(14), dp(14), dp(14));
+        raiz.setBackgroundColor(Color.rgb(3, 7, 14));
+
+        LinearLayout topoFundo = new LinearLayout(this);
+        topoFundo.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView tituloFundo = texto(
+                "FUNDO DA CONVERSA",
+                18,
+                Color.WHITE
+        );
+        tituloFundo.setTypeface(Typeface.DEFAULT_BOLD);
+
+        topoFundo.addView(
+                tituloFundo,
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(55),
+                        1
+                )
+        );
+
+        TextView cancelar = texto("✕", 25, Color.WHITE);
+        cancelar.setGravity(Gravity.CENTER);
+        topoFundo.addView(
+                cancelar,
+                new LinearLayout.LayoutParams(dp(50), dp(55))
+        );
+
+        raiz.addView(topoFundo);
+
+        TextView preview = texto(
+                "PRÉVIA DO FUNDO",
+                13,
+                Color.LTGRAY
+        );
+        preview.setGravity(Gravity.CENTER);
+        preview.setPadding(dp(10), dp(10), dp(10), dp(10));
+
+        GradientDrawable previewBg = new GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                new int[]{
+                        Color.rgb(8, 18, 35),
+                        Color.rgb(2, 6, 16)
+                }
+        );
+        preview.setBackground(previewBg);
+
+        raiz.addView(
+                preview,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(230)
+                )
+        );
+
+        TextView escolher = texto(
+                "🖼  ESCOLHER DA GALERIA",
+                14,
+                Color.WHITE
+        );
+        escolher.setGravity(Gravity.CENTER);
+        escolher.setPadding(dp(10), dp(10), dp(10), dp(10));
+
+        GradientDrawable escolherBg = new GradientDrawable();
+        escolherBg.setColor(Color.rgb(15, 25, 40));
+        escolherBg.setCornerRadius(dp(14));
+        escolherBg.setStroke(dp(1), Color.rgb(45, 130, 220));
+        escolher.setBackground(escolherBg);
+
+        LinearLayout.LayoutParams lpEscolher =
+                new LinearLayout.LayoutParams(-1, dp(52));
+        lpEscolher.topMargin = dp(12);
+
+        raiz.addView(escolher, lpEscolher);
+
+        LinearLayout botoes = new LinearLayout(this);
+        botoes.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView voltar = texto("✕  CANCELAR", 14, Color.WHITE);
+        voltar.setGravity(Gravity.CENTER);
+
+        TextView salvar = texto("✓  SALVAR", 14, Color.WHITE);
+        salvar.setGravity(Gravity.CENTER);
+
+        botoes.addView(
+                voltar,
+                new LinearLayout.LayoutParams(0, dp(55), 1)
+        );
+        botoes.addView(
+                salvar,
+                new LinearLayout.LayoutParams(0, dp(55), 1)
+        );
+
+        LinearLayout.LayoutParams lpBotoes =
+                new LinearLayout.LayoutParams(-1, dp(60));
+        lpBotoes.topMargin = dp(10);
+
+        raiz.addView(botoes, lpBotoes);
+
+        voltar.setOnClickListener(v -> dialog.dismiss());
+        cancelar.setOnClickListener(v -> dialog.dismiss());
+
+        escolher.setOnClickListener(v -> {
+            Toast.makeText(
+                    this,
+                    "Galeria será adicionada no próximo passo.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        });
+
+        salvar.setOnClickListener(v -> {
+            Toast.makeText(
+                    this,
+                    "Fundo salvo.",
+                    Toast.LENGTH_SHORT
+            ).show();
+            dialog.dismiss();
+        });
+
+        dialog.setContentView(raiz);
+
+        Window janela = dialog.getWindow();
+        if (janela != null) {
+            janela.setBackgroundDrawableResource(
+                    android.R.color.transparent
+            );
+            janela.setLayout(
+                    -1,
+                    -1
+            );
+        }
+
+        dialog.show();
+
+        janela = dialog.getWindow();
+        if (janela != null) {
+            janela.setLayout(-1, -1);
+        }
     }
 
     private void montarTela() {
@@ -181,6 +330,45 @@ public class ChatGrupoActivity extends Activity {
                 )
         );
 
+        menu.setOnClickListener(v -> {
+            PopupMenu popup = new PopupMenu(this, menu);
+
+            popup.getMenu().add("SILENCIAR");
+            popup.getMenu().add("PESQUISAR");
+            popup.getMenu().add("FUNDO DA CONVERSA");
+
+            popup.setOnMenuItemClickListener(item -> {
+                String opcao = item.getTitle().toString();
+
+                if ("FUNDO DA CONVERSA".equals(opcao)) {
+                    abrirSeletorFundo();
+                    return true;
+                }
+
+                if ("SILENCIAR".equals(opcao)) {
+                    Toast.makeText(
+                            this,
+                            "Silenciar será configurado aqui.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return true;
+                }
+
+                if ("PESQUISAR".equals(opcao)) {
+                    Toast.makeText(
+                            this,
+                            "Pesquisa da conversa será aberta aqui.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return true;
+                }
+
+                return false;
+            });
+
+            popup.show();
+        });
+
         raiz.addView(
                 topo,
                 new LinearLayout.LayoutParams(
@@ -206,6 +394,11 @@ public class ChatGrupoActivity extends Activity {
                 dp(14),
                 dp(12),
                 dp(14)
+        );
+
+        FundoConversaHelper.aplicar(
+                this,
+                listaMensagens
         );
 
         scroll.addView(listaMensagens);

@@ -876,10 +876,7 @@ public static void atualizarNome(
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
         Map<String, Object> dados = new HashMap<>();
-        dados.put("online", true);
         dados.put("digitando", digitando);
-        dados.put("ultimoStatus", digitando ? "digitando" : "online");
-        dados.put("ultimoAcesso", FieldValue.serverTimestamp());
 
         db.collection(COLECAO_PRIVADA).document(user.getUid())
                 .set(dados, SetOptions.merge());

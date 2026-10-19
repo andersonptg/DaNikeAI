@@ -1,0 +1,94 @@
+{
+  "versao": 6,
+  "nome": "NEXO",
+  "categorias": [
+    "DESTAQUES",
+    "AÇÃO",
+    "COMÉDIA",
+    "TERROR",
+    "CLÁSSICOS",
+    "SÉRIES"
+  ],
+  "filmes": [
+    {
+      "id": 1,
+      "titulo": "Homem-Aranha",
+      "ano": 2002,
+      "genero": "Ação • Super-herói",
+      "nota": 7.4,
+      "categoria": "DESTAQUES"
+    },
+    {
+      "id": 2,
+      "titulo": "Homem-Aranha 2",
+      "ano": 2004,
+      "genero": "Ação • Super-herói",
+      "nota": 7.5,
+      "categoria": "DESTAQUES"
+    },
+    {
+      "id": 3,
+      "titulo": "O Espetacular Homem-Aranha",
+      "ano": 2012,
+      "genero": "Ação • Super-herói",
+      "nota": 7.0,
+      "categoria": "AÇÃO"
+    },
+    {
+      "id": 4,
+      "titulo": "Homem-Aranha: De Volta ao Lar",
+      "ano": 2017,
+      "genero": "Ação • Super-herói",
+      "nota": 7.4,
+      "categoria": "AÇÃO"
+    },
+    {
+      "id": 5,
+      "titulo": "Homem-Aranha: Sem Volta para Casa",
+      "ano": 2021,
+      "genero": "Ação • Super-herói",
+      "nota": 8.2,
+      "categoria": "DESTAQUES"
+    },
+    {
+      "id": 6,
+      "titulo": "Batman",
+      "ano": 2022,
+      "genero": "Ação • Crime • Super-herói",
+      "nota": 7.8,
+      "categoria": "AÇÃO"
+    },
+    {
+      "id": 7,
+      "titulo": "Os Vingadores",
+      "ano": 2012,
+      "genero": "Ação • Super-herói",
+      "nota": 8.0,
+      "categoria": "DESTAQUES"
+    },
+    {
+      "id": 8,
+      "titulo": "Homem de Ferro 2",
+      "ano": 2010,
+      "genero": "Ação • Super-herói",
+      "nota": 6.9,
+      "categoria": "AÇÃO"
+    },
+    {
+      "id": 9,
+      "titulo": "Homem-Aranha no Aranhaverso",
+      "ano": 2018,
+      "genero": "Animação • Ação • Super-herói",
+      "nota": 8.4,
+      "categoria": "DESTAQUES"
+    },
+    {
+      "id": 10,
+      "titulo": "Homem-Aranha: Através do Aranhaverso",
+      "ano": 2023,
+      "genero": "Animação • Ação • Super-herói",
+      "nota": 8.6,
+      "categoria": "DESTAQUES"
+    }
+  ]
+}

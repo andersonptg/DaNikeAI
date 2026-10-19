@@ -101,6 +101,7 @@ public class LoginActivity extends Activity {
             if (task.isSuccessful()) {
 
                 UsuariosTracker.registrarEntrada("");
+                DaNikeNotificacoes.registrarTokenFCM(this);
 
                 mensagem.setTextColor(
                         Color.rgb(80, 255, 150)
@@ -373,6 +374,8 @@ public class LoginActivity extends Activity {
         getWindow().setStatusBarColor(Color.BLACK);
         getWindow().setNavigationBarColor(Color.BLACK);
 
+        android.widget.FrameLayout rootLogin = new android.widget.FrameLayout(this);
+
         LinearLayout tela = new LinearLayout(this);
 
         tela.setOrientation(LinearLayout.VERTICAL);
@@ -385,74 +388,30 @@ public class LoginActivity extends Activity {
         );
         tela.setBackground(new LoginBackgroundDrawable(android.graphics.BitmapFactory.decodeResource(getResources(), com.danike.ai.R.drawable.login_background)));
 
-
-        // ===== CABEÇALHO FIXO DO LOGIN =====
-        LinearLayout topoLogin = new LinearLayout(this);
-        topoLogin.setOrientation(LinearLayout.HORIZONTAL);
-        topoLogin.setGravity(Gravity.CENTER_VERTICAL);
-        topoLogin.setPadding(dp(10), 0, dp(8), 0);
-
-        android.graphics.drawable.GradientDrawable fundoTopo =
-                new android.graphics.drawable.GradientDrawable();
-        fundoTopo.setColor(Color.argb(190, 8, 8, 28));
-        fundoTopo.setCornerRadius(dp(28));
-        fundoTopo.setStroke(dp(1), Color.rgb(170, 35, 255));
-        topoLogin.setBackground(fundoTopo);
-
-        topoLogin.setClickable(true);
-        topoLogin.setFocusable(true);
-        topoLogin.setOnClickListener(v -> {
-            try {
-                Intent app = new Intent(Intent.ACTION_VIEW,
-                        Uri.parse("instagram://user?username=anderson_lopes._ofc"));
-                startActivity(app);
-            } catch (Exception e) {
-                Intent web = new Intent(Intent.ACTION_VIEW,
-                        Uri.parse("https://www.instagram.com/anderson_lopes._ofc?stkn=amN5ZXBlYnhwYjIy"));
-                startActivity(web);
-            }
-        });
-
-        LoginInstagramIcon instagramIcon = new LoginInstagramIcon(this);
-        topoLogin.addView(instagramIcon,
-                new LinearLayout.LayoutParams(dp(27), dp(27)));
-
-        TextView instagramNome = new TextView(this);
-        instagramNome.setText("anderson_lopes._ofc");
-        instagramNome.setTextColor(Color.WHITE);
-        instagramNome.setTextSize(11);
-        instagramNome.setGravity(Gravity.CENTER_VERTICAL);
-        instagramNome.setSingleLine(true);
-
-        LinearLayout.LayoutParams nomeParams =
-                new LinearLayout.LayoutParams(-2, -1);
-        nomeParams.leftMargin = dp(7);
-        topoLogin.addView(instagramNome, nomeParams);
-
-        LoginVerifiedBadge selo = new LoginVerifiedBadge(this);
-        topoLogin.addView(selo,
-                new LinearLayout.LayoutParams(dp(22), dp(22)));
-
-        LinearLayout.LayoutParams topoParams =
-                new LinearLayout.LayoutParams(dp(315), dp(43));
-        topoParams.gravity = Gravity.START;
-        topoParams.bottomMargin = dp(10);
-
-        tela.addView(topoLogin, 0, topoParams);
-
-TextView robo = new TextView(this);
-        robo.setText(""); robo.setBackgroundResource(com.danike.ai.R.drawable.danike_splash_logo);
-        robo.setTextSize(1);
-        robo.setGravity(Gravity.CENTER);
-
-        LinearLayout.LayoutParams logoParams =
-                new LinearLayout.LayoutParams(dp(90), dp(68));
-        logoParams.gravity = Gravity.CENTER;
-        tela.addView(robo, logoParams);
+        android.widget.FrameLayout.LayoutParams telaParams =
+                new android.widget.FrameLayout.LayoutParams(-1, -1);
+        rootLogin.addView(tela, telaParams);
 
 
+        // Logo NEXO centralizada acima do título
+        android.widget.ImageView logoNexoSuperior =
+                new android.widget.ImageView(this);
+        logoNexoSuperior.setImageResource(
+                com.danike.ai.R.drawable.nexo_logo
+        );
+        logoNexoSuperior.setScaleType(
+                android.widget.ImageView.ScaleType.FIT_CENTER
+        );
+        logoNexoSuperior.setAdjustViewBounds(true);
+        logoNexoSuperior.setContentDescription("Logo NEXO");
 
-        TextView subtitulo = new TextView(this);
+        LinearLayout.LayoutParams logoSuperiorParams =
+                new LinearLayout.LayoutParams(-1, dp(105));
+        logoSuperiorParams.gravity = Gravity.CENTER_HORIZONTAL;
+        logoSuperiorParams.bottomMargin = dp(5);
+        tela.addView(logoNexoSuperior, logoSuperiorParams);
+
+TextView subtitulo = new TextView(this);
         subtitulo.setText("ENTRE NA SUA CONTA");
         subtitulo.setTextColor(Color.rgb(70, 220, 255));
         subtitulo.setTextSize(13);
@@ -696,6 +655,7 @@ TextView robo = new TextView(this);
 
                 if (task.isSuccessful()) {
                     UsuariosTracker.registrarEntrada("");
+                DaNikeNotificacoes.registrarTokenFCM(this);
 
                     mensagem.setTextColor(
                             Color.rgb(80, 255, 150)
@@ -932,7 +892,7 @@ TextView robo = new TextView(this);
             );
         }
 
-        setContentView(tela);
+        setContentView(rootLogin);
         aplicarNeonLogin(tela);
     }
 

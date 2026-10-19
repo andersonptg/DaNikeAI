@@ -52,11 +52,11 @@
 
         android:usesCleartextTraffic="true"
 
-        android:icon="@drawable/danike_icon"
+        android:icon="@drawable/nexo_icon"
 
         android:theme="@style/AppTheme"
 
-        android:label="DaNikeAI"
+        android:label="NEXO"
 
         android:allowBackup="true"
 
@@ -92,6 +92,7 @@
         <activity android:name=".ManutencaoActivity" android:exported="false" />
 
         <activity android:name=".AdmActivity" android:exported="false" />
+        <activity android:name=".AnunciosActivity" android:exported="false" />
         <activity android:name=".CentralManutencaoActivity" android:exported="false" />
 
         <activity android:name=".MembrosActivity" android:exported="false" />
@@ -271,7 +272,8 @@
         </service>
 
     <activity android:name=".HaveSalaStreamingActivity" android:exported="false" />
-</application>
+        <activity android:name=".JFDemoActivity" android:exported="false" />
+    </application>
 
 
 

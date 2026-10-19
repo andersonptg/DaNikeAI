@@ -206,7 +206,7 @@ public final class UsuariosTracker {
      * Chamado quando o usuário volta ao aplicativo.
      */
     public static void entrouEmCena() {
-        marcarOffline();
+        marcarOnline();
     }
 
     /**

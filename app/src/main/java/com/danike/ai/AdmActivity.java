@@ -209,6 +209,16 @@ private Button centralManutencaoBtn;
         raiz.addView(gerenciarVersao);
         gerenciarVersao.setOnClickListener(v -> mostrarGerenciarVersao());
 
+        Button gerenciarAnuncios = botaoPremium(
+                "GERENCIAR ANÚNCIOS", "📢", AZUL, false
+        );
+        raiz.addView(gerenciarAnuncios);
+        gerenciarAnuncios.setOnClickListener(v ->
+                startActivity(new android.content.Intent(
+                        AdmActivity.this, AnunciosActivity.class
+                ))
+        );
+
         raiz.addView(secao("🚨  IDENTIFICAÇÃO DE ERROS DO APP", VERMELHO));
 
         LinearLayout erros = painel(VERMELHO);

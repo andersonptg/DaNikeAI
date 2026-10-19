@@ -32,6 +32,8 @@ import androidx.core.content.FileProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.io.File;
 import java.io.InputStream;
@@ -522,7 +524,15 @@ adicionarBotao(
     () -> editarVisibilidade()
 );
 
-scroll.addView(raiz);
+
+        adicionarBotao(
+                raiz,
+                "REMOVER CONTA DESTE DISPOSITIVO",
+                "Encerra a sessão neste aparelho sem excluir sua conta ou seus dados.",
+                () -> confirmarRemocaoConta()
+        );
+
+        scroll.addView(raiz);
 
         setContentView(scroll);
     }
@@ -1573,4 +1583,71 @@ private void escolherFoto() {
                         .density
         );
     }
+
+    private void confirmarRemocaoConta() {
+        new AlertDialog.Builder(this)
+                .setTitle("Remover conta deste dispositivo?")
+                .setMessage("Você sairá desta conta neste aparelho. Seu perfil, amigos, conversas e sua conta continuarão existindo. Outros dispositivos não serão alterados.")
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton("Remover conta", (dialog, which) ->
+                        removerContaDoDispositivo())
+                .show();
+    }
+
+    private void removerContaDoDispositivo() {
+        FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
+
+        if (usuario == null) {
+            finalizarRemocaoConta();
+            return;
+        }
+
+        String uid = usuario.getUid();
+
+        FirebaseMessaging.getInstance().getToken()
+                .addOnCompleteListener(tokenTask -> {
+                    if (isFinishing() || isDestroyed()) return;
+
+                    if (!tokenTask.isSuccessful()
+                            || tokenTask.getResult() == null
+                            || tokenTask.getResult().trim().isEmpty()) {
+                        Toast.makeText(this,
+                                "Não foi possível verificar as notificações. Tente novamente com internet.",
+                                Toast.LENGTH_LONG).show();
+                        return;
+                    }
+
+                    String token = tokenTask.getResult();
+
+                    FirebaseFirestore.getInstance()
+                            .collection("usuarios")
+                            .document(uid)
+                            .collection("dispositivos")
+                            .document(token)
+                            .delete()
+                            .addOnCompleteListener(deleteTask -> {
+                                if (isFinishing() || isDestroyed()) return;
+
+                                if (!deleteTask.isSuccessful()) {
+                                    Toast.makeText(this,
+                                            "Não foi possível remover o vínculo. Nenhuma sessão foi encerrada.",
+                                            Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+
+                                finalizarRemocaoConta();
+                            });
+                });
+    }
+
+    private void finalizarRemocaoConta() {
+        FirebaseAuth.getInstance().signOut();
+
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
 }

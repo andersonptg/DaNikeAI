@@ -1,5 +1,6 @@
 package com.danike.ai;
 
+import android.graphics.BitmapFactory;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -51,57 +52,171 @@ public class DaNikeFirebaseMessagingService extends FirebaseMessagingService {
     public void onMessageReceived(RemoteMessage mensagem) {
         super.onMessageReceived(mensagem);
 
-        String titulo = mensagem.getNotification() != null
-                ? mensagem.getNotification().getTitle()
-                : "DaNikeAI";
+        Map<String, String> dados = mensagem.getData();
 
-        String texto = mensagem.getNotification() != null
-                ? mensagem.getNotification().getBody()
-                : "Você recebeu uma nova notificação.";
+        String tipo = dados.get("tipo");
+        String titulo = dados.get("titulo");
+        String texto = dados.get("texto");
+        String remetenteUid = dados.get("remetenteUid");
 
-        mostrarNotificacao(titulo, texto);
+        if (titulo == null || titulo.trim().isEmpty()) {
+            if (mensagem.getNotification() != null) {
+                titulo = mensagem.getNotification().getTitle();
+            }
+        }
+
+        if (texto == null || texto.trim().isEmpty()) {
+            if (mensagem.getNotification() != null) {
+                texto = mensagem.getNotification().getBody();
+            }
+        }
+
+        if (titulo == null || titulo.trim().isEmpty()) {
+            titulo = "NEXO";
+        }
+
+        if (texto == null || texto.trim().isEmpty()) {
+            texto = "Você recebeu uma nova notificação.";
+        }
+
+        if (remetenteUid != null && !remetenteUid.trim().isEmpty()) {
+            buscarIdentidadeNotificacao(
+                    remetenteUid.trim(),
+                    tipo,
+                    titulo,
+                    texto
+            );
+        } else {
+            mostrarNotificacao(tipo, titulo, texto, remetenteUid);
+        }
     }
 
-    private void mostrarNotificacao(String titulo, String texto) {
+    private void buscarIdentidadeNotificacao(
+            String remetenteUid,
+            String tipo,
+            String titulo,
+            String texto
+    ) {
+        final String tituloOriginal = titulo;
+        final String textoFinal = texto;
+
+        FirebaseFirestore.getInstance()
+                .collection("perfis_publicos")
+                .document(remetenteUid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    String nome = doc.getString("nome");
+                    String tituloFinal = tituloOriginal;
+
+                    if (nome != null && !nome.trim().isEmpty()) {
+                        tituloFinal = nome.trim();
+                    }
+
+                    mostrarNotificacao(
+                            tipo,
+                            tituloFinal,
+                            textoFinal,
+                            remetenteUid
+                    );
+                })
+                .addOnFailureListener(e ->
+                        mostrarNotificacao(
+                                tipo,
+                                tituloOriginal,
+                                textoFinal,
+                                remetenteUid
+                        )
+                );
+    }
+
+    private void mostrarNotificacao(
+            String tipo,
+            String titulo,
+            String texto,
+            String remetenteUid
+    ) {
 
         NotificationManager manager =
-                (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                (NotificationManager) getSystemService(
+                        Context.NOTIFICATION_SERVICE
+                );
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
             NotificationChannel canal = new NotificationChannel(
                     CANAL_ID,
                     "Notificações DaNikeAI",
                     NotificationManager.IMPORTANCE_HIGH
             );
 
-            canal.setDescription("Notificações do DaNikeAI");
+            canal.setDescription(
+                    "Notificações do aplicativo DaNikeAI"
+            );
+
             manager.createNotificationChannel(canal);
         }
 
-        Intent intent = new Intent(this, MainActivity.class);
+        Intent intent;
+
+        if ("mensagem".equals(tipo)
+                && remetenteUid != null
+                && !remetenteUid.trim().isEmpty()) {
+
+            intent = new Intent(
+                    this,
+                    ChatIndividualActivity.class
+            );
+
+            intent.putExtra(
+                    "uid",
+                    remetenteUid.trim()
+            );
+
+        } else {
+
+            intent = new Intent(
+                    this,
+                    MainActivity.class
+            );
+
+            if (tipo != null && !tipo.trim().isEmpty()) {
+                intent.putExtra(
+                        "notificacao_tipo",
+                        tipo
+                );
+            }
+        }
+
         intent.addFlags(
                 Intent.FLAG_ACTIVITY_CLEAR_TOP |
                 Intent.FLAG_ACTIVITY_SINGLE_TOP
         );
 
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-                this,
-                1001,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT |
-                PendingIntent.FLAG_IMMUTABLE
-        );
+        PendingIntent pendingIntent =
+                PendingIntent.getActivity(
+                        this,
+                        (int) System.currentTimeMillis(),
+                        intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT |
+                                PendingIntent.FLAG_IMMUTABLE
+                );
 
         NotificationCompat.Builder notificacao =
-                new NotificationCompat.Builder(this, CANAL_ID)
-                        .setSmallIcon(android.R.drawable.ic_dialog_info)
-                        .setContentTitle(titulo)
+                new NotificationCompat.Builder(
+                        this,
+                        CANAL_ID
+                )
+                        .setSmallIcon(R.drawable.ic_stat_danike)
+        .setLargeIcon(BitmapFactory.decodeResource(getResources(), R.drawable.nexo_icon))
+                                        .setContentTitle(titulo)
                         .setContentText(texto)
                         .setStyle(
                                 new NotificationCompat.BigTextStyle()
                                         .bigText(texto)
                         )
-                        .setPriority(NotificationCompat.PRIORITY_HIGH)
+                        .setPriority(
+                                NotificationCompat.PRIORITY_HIGH
+                        )
                         .setAutoCancel(true)
                         .setContentIntent(pendingIntent);
 

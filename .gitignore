@@ -51,8 +51,10 @@ __pycache__/
 *.bak_*
 *.backup
 backup/
-functions/
 *.pyc
 convites.txt
 file_*.png
 SplashActivity.java.trabalho
+
+# Firebase Functions: manter código e dependências declaradas, ignorar instalados
+functions/node_modules/
