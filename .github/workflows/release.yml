@@ -34,6 +34,11 @@ jobs:
           KEY_PASSWORD: ${{ secrets.DANIKEAI_KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.DANIKEAI_KEY_ALIAS }}
         run: echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/danikeai-release.keystore" && mkdir -p "$HOME/.config" && printf "storeFile=%s\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n" "$RUNNER_TEMP/danikeai-release.keystore" "$STORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > "$HOME/.config/danikeai-signing.properties"
+      - name: Atualizar versão Android automaticamente
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          python3 -c '''import os,re; from pathlib import Path; p=Path("app/build.gradle"); s=p.read_text(); s,n1=re.subn(r"(?m)(versionCode\s+)\d+",lambda m:m.group(1)+os.environ["VERSION_CODE"],s,count=1); s,n2=re.subn(r"(?m)(versionName\s+[\x27\x22])[^\x27\x22]*([\x27\x22])",lambda m:m.group(1)+"v"+os.environ["VERSION_CODE"]+m.group(2),s,count=1); assert n1==1 and n2==1,"versionCode/versionName não encontrados"; p.write_text(s); print("Versão atualizada")'''
       - name: Gerar APK Release
         run: export GRADLE_OPTS="-Xmx6g -Dfile.encoding=UTF-8" && ./gradlew assembleRelease --stacktrace
       - name: Renomear APK
