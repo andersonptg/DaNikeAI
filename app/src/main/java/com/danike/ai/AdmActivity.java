@@ -198,7 +198,7 @@ private Button centralManutencaoBtn;
         raiz.addView(compartilhar);
         compartilhar.setOnClickListener(v -> AppDistribuicao.compartilhar(
                 this,
-                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk"
+                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk"
         ));
 
         Button atualizacao = botaoPremium("ATUALIZAÇÃO", "↑", AZUL, false);
@@ -1895,7 +1895,7 @@ private boolean salvarPerfilEquipeLocal(
                 "https://raw.githubusercontent.com/andersonptg/DaNikeAI/main/app/build.gradle";
 
         final String APK_URL =
-                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk";
+                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk";
 
         android.widget.LinearLayout layout =
                 new android.widget.LinearLayout(this);

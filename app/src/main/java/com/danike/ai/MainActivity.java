@@ -3364,7 +3364,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-                String link = "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk";
+                String link = "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk";
 
 
 
@@ -7858,7 +7858,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                         String link =
 
-                                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/DaNikeAI.apk";
+                                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk";
 
 
 
