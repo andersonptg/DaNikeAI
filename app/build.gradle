@@ -34,8 +34,8 @@ android {
         applicationId 'com.danike.ai'
         minSdk 23
         targetSdk 35
-        versionCode 45
-        versionName '1.9.7'
+        versionCode 47
+        versionName '1.9.9'
     }
 
     buildTypes {
