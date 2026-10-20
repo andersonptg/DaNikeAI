@@ -8797,6 +8797,8 @@ pessoa.put("instagramLink", instagramLink);
                                 int alturaImagem = Math.round(larguraCard * 9f / 16f);
 
                                 int alturaConteudoCard = dp(200);
+                                int alturaBotaoCard = dp(52);
+                                int alturaTextoCard = alturaConteudoCard - alturaBotaoCard;
 
                                 int alturaCard = alturaImagem + alturaConteudoCard;
 
@@ -8823,6 +8825,7 @@ pessoa.put("instagramLink", instagramLink);
 
 
                                     String imagemUrl = doc.getString("imagemUrl");
+                                    boolean anuncioVip = Boolean.TRUE.equals(doc.getBoolean("vip"));
 
 
 
@@ -8866,21 +8869,59 @@ pessoa.put("instagramLink", instagramLink);
 
 
 
-                                    card.addView(
+                                    android.widget.FrameLayout molduraImagem = new android.widget.FrameLayout(this);
 
+                                    android.graphics.drawable.GradientDrawable fundoMolduraVip =
+                                            new android.graphics.drawable.GradientDrawable();
+                                    fundoMolduraVip.setColor(Color.rgb(3, 6, 15));
+                                    fundoMolduraVip.setCornerRadius(dp(5));
+                                    fundoMolduraVip.setStroke(dp(1), Color.rgb(185, 198, 215));
+                                    molduraImagem.setBackground(fundoMolduraVip);
+                                    molduraImagem.setPadding(dp(1), dp(1), dp(1), dp(1));
+
+                                    molduraImagem.addView(
                                             banner,
-
-                                            new LinearLayout.LayoutParams(
-
+                                            new android.widget.FrameLayout.LayoutParams(
                                                     ViewGroup.LayoutParams.MATCH_PARENT,
-
-                                                    alturaImagem
-
+                                                    ViewGroup.LayoutParams.MATCH_PARENT
                                             )
-
                                     );
 
+                                    card.addView(
+                                            molduraImagem,
+                                            new LinearLayout.LayoutParams(
+                                                    ViewGroup.LayoutParams.MATCH_PARENT,
+                                                    alturaImagem
+                                            )
+                                    );
 
+                                    if (anuncioVip) {
+                                        TextView seloVip = new TextView(this);
+                                        seloVip.setText("♛ VIP");
+                                        seloVip.setTextColor(Color.rgb(45, 29, 0));
+                                        seloVip.setTextSize(12);
+                                        seloVip.setTypeface(
+                                                android.graphics.Typeface.DEFAULT,
+                                                android.graphics.Typeface.BOLD
+                                        );
+                                        seloVip.setPadding(dp(12), dp(5), dp(12), dp(5));
+
+                                        android.graphics.drawable.GradientDrawable fundoVip =
+                                                new android.graphics.drawable.GradientDrawable();
+                                        fundoVip.setColor(Color.rgb(255, 204, 70));
+                                        fundoVip.setCornerRadius(dp(5));
+                                        fundoVip.setStroke(dp(1), Color.rgb(255, 235, 160));
+                                        seloVip.setBackground(fundoVip);
+
+                                        android.widget.FrameLayout.LayoutParams seloParams =
+                                                new android.widget.FrameLayout.LayoutParams(
+                                                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                                                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                                                        Gravity.TOP | Gravity.CENTER_HORIZONTAL
+                                                );
+                                        seloParams.setMargins(0, dp(2), 0, 0);
+                                        molduraImagem.addView(seloVip, seloParams);
+                                    }
 
                                     carregarImagemAnuncioHome(banner, imagemUrl);
 
@@ -8980,7 +9021,7 @@ if ("divulgacao_nexo".equalsIgnoreCase(tipo)) {
 
                                                     ViewGroup.LayoutParams.MATCH_PARENT,
 
-                                                    alturaConteudoCard
+                                                    alturaTextoCard
 
                                             )
 
@@ -9220,13 +9261,13 @@ if ("divulgacao_nexo".equalsIgnoreCase(tipo)) {
 
                                                         ViewGroup.LayoutParams.MATCH_PARENT,
 
-                                                        ViewGroup.LayoutParams.WRAP_CONTENT
+                                                        dp(44)
 
                                                 );
 
-                                        botaoParams.topMargin = dp(8);
+                                        botaoParams.topMargin = dp(4);
 
-                                        conteudo.addView(botaoWhatsApp, botaoParams);
+                                        card.addView(botaoWhatsApp, botaoParams);
 
 
 

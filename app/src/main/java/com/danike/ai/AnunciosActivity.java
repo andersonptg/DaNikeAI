@@ -32,6 +32,7 @@ public class AnunciosActivity extends Activity {
     private EditText campoPreco;
     private EditText campoPromocional;
     private EditText campoWhatsApp;
+    private android.widget.CheckBox campoVip;
     private ImageView previaImagem;
     private Uri imagemSelecionada;
     private LinearLayout listaAnuncios;
@@ -198,6 +199,17 @@ public class AnunciosActivity extends Activity {
         aviso.setPadding(dp(4), 0, dp(4), dp(16));
         conteudo.addView(aviso);
 
+        campoVip = new android.widget.CheckBox(this);
+        campoVip.setText("⭐ ATIVAR ANÚNCIO VIP");
+        campoVip.setTextColor(Color.rgb(255, 205, 80));
+        campoVip.setButtonTintList(
+                android.content.res.ColorStateList.valueOf(
+                        Color.rgb(255, 195, 55)
+                )
+        );
+        campoVip.setPadding(dp(4), dp(8), dp(4), dp(12));
+        conteudo.addView(campoVip);
+
         TextView subtituloImagem = new TextView(this);
         subtituloImagem.setText("IMAGEM DE DIVULGAÇÃO");
         subtituloImagem.setTextColor(AZUL);
@@ -301,6 +313,7 @@ public class AnunciosActivity extends Activity {
                 dados.put("preco", preco);
                 dados.put("precoPromocional", promocional);
                 dados.put("whatsapp", whatsapp);
+                dados.put("vip", campoVip.isChecked());
                 dados.put("imagemUrl", urlImagem);
                 dados.put("atualizadoEm",
                         com.google.firebase.firestore.FieldValue.serverTimestamp());
@@ -458,6 +471,7 @@ public class AnunciosActivity extends Activity {
         campoPreco.setText("");
         campoPromocional.setText("");
         campoWhatsApp.setText("");
+        campoVip.setChecked(false);
         previaImagem.setImageResource(android.R.drawable.ic_menu_gallery);
         botaoSalvar.setEnabled(true);
         botaoSalvar.setText("SALVAR ANÚNCIO COMO RASCUNHO");
@@ -521,6 +535,7 @@ public class AnunciosActivity extends Activity {
                             campoPreco.setText(doc.getString("preco"));
                             campoPromocional.setText(doc.getString("precoPromocional"));
                             campoWhatsApp.setText(doc.getString("whatsapp"));
+                            campoVip.setChecked(Boolean.TRUE.equals(doc.getBoolean("vip")));
                             imagemUrlAtual = doc.getString("imagemUrl") == null
                                     ? "" : doc.getString("imagemUrl");
                             imagemSelecionada = null;
