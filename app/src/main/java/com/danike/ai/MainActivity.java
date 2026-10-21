@@ -4054,7 +4054,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                     String _ch = _o.getString("changelog");
 
-                    if (!BuildConfig.VERSION_NAME.equals(_vn)) {
+                    if (!BuildConfig.VERSION_NAME.equals(_vn) && _vn != null && !_vn.isEmpty()) {
 
                         runOnUiThread(() -> AtualizacaoTelefoneDialog.show(this, _vn, _apk, _ch));
 
