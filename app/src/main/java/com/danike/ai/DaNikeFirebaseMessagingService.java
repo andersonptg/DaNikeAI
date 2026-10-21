@@ -139,10 +139,12 @@ public class DaNikeFirebaseMessagingService extends FirebaseMessagingService {
                     "Notificações DaNikeAI",
                     NotificationManager.IMPORTANCE_HIGH
             );
-
-            canal.setDescription(
-                    "Notificações do aplicativo DaNikeAI"
-            );
+            canal.setDescription("Notificações instantâneas do DaNikeAI");
+            canal.enableVibration(true);
+            canal.setVibrationPattern(new long[]{0, 250, 100, 250});
+            canal.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
+            canal.setShowBadge(true);
+            // Configurações aplicadas para velocidade máxima
 
             manager.createNotificationChannel(canal);
         }
