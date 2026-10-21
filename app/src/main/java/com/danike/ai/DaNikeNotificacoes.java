@@ -105,8 +105,8 @@ public final class DaNikeNotificacoes {
                 URL url = new URL("https://danikeai-brain.onrender.com/notificar");
                 conexao = (HttpURLConnection) url.openConnection();
                 conexao.setRequestMethod("POST");
-                conexao.setConnectTimeout(15000);
-                conexao.setReadTimeout(15000);
+                conexao.setConnectTimeout(60000);
+                conexao.setReadTimeout(60000);
                 conexao.setDoOutput(true);
                 conexao.setRequestProperty("Content-Type", "application/json");
                 conexao.setRequestProperty("X-DaNikeAI-Secret", new String(
