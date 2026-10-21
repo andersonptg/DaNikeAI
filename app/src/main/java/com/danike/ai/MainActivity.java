@@ -1004,6 +1004,23 @@ public class MainActivity extends Activity {
 
     protected void onCreate(Bundle b) {
 
+        // Keep-Alive para aquecer backend no Render
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    java.net.URL url = new java.net.URL("https://danikeai-brain.onrender.com/status");
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("GET");
+                    conn.setConnectTimeout(3000);
+                    conn.setReadTimeout(3000);
+                    conn.getResponseCode();
+                    conn.disconnect();
+                } catch (Exception ignored) {}
+            }
+        }).start();
+
+
         super.onCreate(b);
 
 
