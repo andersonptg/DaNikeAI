@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: danikeai-gemini
+    name: danikeai-brain
     runtime: python
     buildCommand: ""
     startCommand: python gemini_server.py
