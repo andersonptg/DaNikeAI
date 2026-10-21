@@ -1,4 +1,5 @@
 plugins {
+    id 'org.jetbrains.kotlin.android'
     id 'com.android.application'
     id 'com.google.gms.google-services'
 }
@@ -34,7 +35,7 @@ android {
         applicationId 'com.danike.ai'
         minSdk 23
         targetSdk 35
-        versionCode 49
+        versionCode 50
         versionName '2.0.0'
     }
 
