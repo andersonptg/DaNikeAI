@@ -79,16 +79,7 @@ public class DaNikeFirebaseMessagingService extends FirebaseMessagingService {
             texto = "Você recebeu uma nova notificação.";
         }
 
-        if (remetenteUid != null && !remetenteUid.trim().isEmpty()) {
-            buscarIdentidadeNotificacao(
-                    remetenteUid.trim(),
-                    tipo,
-                    titulo,
-                    texto
-            );
-        } else {
-            mostrarNotificacao(tipo, titulo, texto, remetenteUid);
-        }
+        mostrarNotificacao(tipo, titulo, texto, remetenteUid);
     }
 
     private void buscarIdentidadeNotificacao(
