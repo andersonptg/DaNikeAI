@@ -24,10 +24,24 @@ async function enviarFCMParaUsuario(uid, dados) {
   for (let i = 0; i < tokens.length; i += 500) {
     const lote = tokens.slice(i, i + 500);
     const resposta = await admin.messaging().sendEachForMulticast({
-      tokens: lote,
-      data: dados,
-      android: { priority: "high" }
-    });
+          tokens: lote,
+          notification: {
+            title: String(dados.title || dados.titulo || "Nova Mensagem"),
+            body: String(dados.body || dados.texto || dados.mensagem || "")
+          },
+          data: dados,
+          android: {
+            priority: "high",
+            ttl: 0,
+            notification: {
+              channelId: "danike_high_priority_v2",
+              priority: "max",
+              visibility: "public",
+              defaultSound: true,
+              defaultVibrateTimings: true
+            }
+          }
+        });
 
     enviados += resposta.successCount;
     falhos += resposta.failureCount;
