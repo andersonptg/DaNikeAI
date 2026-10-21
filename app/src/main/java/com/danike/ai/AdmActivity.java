@@ -1892,7 +1892,7 @@ private boolean salvarPerfilEquipeLocal(
 
     private void mostrarAtualizacao() {
         final String GITHUB_BUILD_URL =
-                "https://raw.githubusercontent.com/andersonptg/DaNikeAI/main/app/build.gradle";
+                "https://raw.githubusercontent.com/andersonptg/DaNikeAI/main/app/build.gradle?cb=1792585808";
 
         final String APK_URL =
                 "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk";
