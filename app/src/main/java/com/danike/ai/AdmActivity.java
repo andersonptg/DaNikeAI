@@ -198,7 +198,7 @@ private Button centralManutencaoBtn;
         raiz.addView(compartilhar);
         compartilhar.setOnClickListener(v -> AppDistribuicao.compartilhar(
                 this,
-                "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk"
+                "https://github.com/andersonptg/DaNikeAI/releases/download/v47/NEXO.apk"
         ));
 
         Button atualizacao = botaoPremium("ATUALIZAÇÃO", "↑", AZUL, false);
@@ -2011,142 +2011,129 @@ private boolean salvarPerfilEquipeLocal(
                     );
 
             publicar.setEnabled(false);
-
             new Thread(() -> {
-
                 java.net.HttpURLConnection conexao = null;
-
+                java.net.HttpURLConnection releaseConexao = null;
                 try {
-                    java.net.URL url =
-                            new java.net.URL(GITHUB_BUILD_URL);
-
-                    conexao =
-                            (java.net.HttpURLConnection)
-                                    url.openConnection();
-
+                    java.net.URL url = new java.net.URL(GITHUB_BUILD_URL);
+                    conexao = (java.net.HttpURLConnection) url.openConnection();
                     conexao.setRequestMethod("GET");
-                    conexao.setConnectTimeout(10000);
-                    conexao.setReadTimeout(10000);
-                    conexao.setRequestProperty(
-                            "User-Agent",
-                            "DaNikeAI-ADM"
-                    );
+                    conexao.setConnectTimeout(15000);
+                    conexao.setReadTimeout(15000);
+                    conexao.setRequestProperty("User-Agent", "NEXO-ADM");
 
-                    int codigoHttp =
-                            conexao.getResponseCode();
-
+                    int codigoHttp = conexao.getResponseCode();
                     if (codigoHttp != 200) {
-                        throw new Exception(
-                                "GitHub respondeu HTTP " + codigoHttp
-                        );
+                        throw new Exception("Erro ao ler build.gradle: HTTP " + codigoHttp);
                     }
 
-                    java.io.BufferedReader leitor =
-                            new java.io.BufferedReader(
-                                    new java.io.InputStreamReader(
-                                            conexao.getInputStream(),
-                                            java.nio.charset.StandardCharsets.UTF_8
-                                    )
-                            );
-
-                    StringBuilder conteudo =
-                            new StringBuilder();
-
-                    String linha;
-
-                    while ((linha = leitor.readLine()) != null) {
-                        conteudo.append(linha).append("\n");
+                    StringBuilder conteudo = new StringBuilder();
+                    try (java.io.BufferedReader leitor = new java.io.BufferedReader(
+                            new java.io.InputStreamReader(
+                                    conexao.getInputStream(),
+                                    java.nio.charset.StandardCharsets.UTF_8))) {
+                        String linha;
+                        while ((linha = leitor.readLine()) != null) {
+                            conteudo.append(linha).append("\n");
+                        }
                     }
 
-                    leitor.close();
-
-                    String buildGradle =
-                            conteudo.toString();
-
+                    String buildGradle = conteudo.toString();
                     java.util.regex.Matcher matcherCodigo =
                             java.util.regex.Pattern.compile(
-                                    "versionCode\\s+(\\d+)"
-                            ).matcher(buildGradle);
-
+                                    "versionCode\\s+(\\d+)").matcher(buildGradle);
                     java.util.regex.Matcher matcherVersao =
                             java.util.regex.Pattern.compile(
-                                    "versionName\\s+['\\\"]([^'\\\"]+)['\\\"]"
-                            ).matcher(buildGradle);
+                                    "versionName\\s+['\\\"]([^'\\\"]+)['\\\"]")
+                                    .matcher(buildGradle);
 
-                    if (!matcherCodigo.find()) {
-                        throw new Exception(
-                                "versionCode não encontrado no GitHub."
-                        );
+                    if (!matcherCodigo.find() || !matcherVersao.find()) {
+                        throw new Exception("Não foi possível ler versionCode/versionName.");
                     }
 
-                    if (!matcherVersao.find()) {
-                        throw new Exception(
-                                "versionName não encontrado no GitHub."
-                        );
+                    String nomeVersao = matcherVersao.group(1);
+                    String textoCodigo = matcherCodigo.group(1);
+
+                    java.net.URL releaseUrl = new java.net.URL(
+                            "https://api.github.com/repos/andersonptg/DaNikeAI/releases/latest");
+                    releaseConexao = (java.net.HttpURLConnection) releaseUrl.openConnection();
+                    releaseConexao.setRequestMethod("GET");
+                    releaseConexao.setConnectTimeout(15000);
+                    releaseConexao.setReadTimeout(15000);
+                    releaseConexao.setRequestProperty("User-Agent", "NEXO-ADM");
+                    releaseConexao.setRequestProperty("Accept", "application/vnd.github+json");
+
+                    int releaseHttp = releaseConexao.getResponseCode();
+                    if (releaseHttp != 200) {
+                        throw new Exception("Erro ao consultar a última Release: HTTP "
+                                + releaseHttp);
                     }
 
-                    String nomeVersao =
-                            matcherVersao.group(1);
+                    StringBuilder releaseJson = new StringBuilder();
+                    try (java.io.BufferedReader leitor = new java.io.BufferedReader(
+                            new java.io.InputStreamReader(
+                                    releaseConexao.getInputStream(),
+                                    java.nio.charset.StandardCharsets.UTF_8))) {
+                        String linha;
+                        while ((linha = leitor.readLine()) != null) {
+                            releaseJson.append(linha);
+                        }
+                    }
 
-                    String textoCodigo =
-                            matcherCodigo.group(1);
+                    org.json.JSONObject release =
+                            new org.json.JSONObject(releaseJson.toString());
+                    org.json.JSONArray assets = release.getJSONArray("assets");
+                    String apkUrlRelease = null;
+
+                    for (int i = 0; i < assets.length(); i++) {
+                        org.json.JSONObject asset = assets.getJSONObject(i);
+                        if ("NEXO.apk".equalsIgnoreCase(asset.optString("name"))) {
+                            apkUrlRelease = asset.optString("browser_download_url", null);
+                            break;
+                        }
+                    }
+
+                    if (apkUrlRelease == null || apkUrlRelease.trim().isEmpty()) {
+                        throw new Exception(
+                                "A última Release do GitHub não contém o arquivo NEXO.apk.");
+                    }
+
+                    final String linkApkFinal = apkUrlRelease;
+                    final String tagRelease = release.optString("tag_name", "Release");
 
                     runOnUiThread(() -> {
-
                         versao.setText(nomeVersao);
                         codigo.setText(textoCodigo);
-                        link.setText(APK_URL);
-
+                        link.setText(linkApkFinal);
                         statusGithub.setText(
                                 "🟢 GitHub sincronizado\n"
-                                        + "Versão encontrada: v"
-                                        + nomeVersao
-                                        + "  •  Código "
-                                        + textoCodigo
-                        );
-
+                                + "Release: " + tagRelease + "\n"
+                                + "Versão: " + nomeVersao
+                                + " • Código " + textoCodigo);
                         publicar.setEnabled(true);
 
                         android.widget.Toast.makeText(
                                 this,
-                                "✅ Versão carregada automaticamente do GitHub.",
-                                android.widget.Toast.LENGTH_SHORT
-                        ).show();
+                                "Release e NEXO.apk carregados. Você já pode publicar.",
+                                android.widget.Toast.LENGTH_SHORT).show();
                     });
 
                 } catch (Exception e) {
-
                     runOnUiThread(() -> {
-
-                        statusGithub.setText(
-                                "🔴 Não foi possível consultar o GitHub."
-                        );
-
+                        statusGithub.setText("🔴 Falha ao sincronizar com o GitHub: "
+                                + e.getMessage());
                         statusGithub.setTextColor(
-                                android.graphics.Color.rgb(
-                                        255,
-                                        70,
-                                        100
-                                )
-                        );
-
+                                android.graphics.Color.rgb(255, 70, 100));
                         publicar.setEnabled(false);
-
                         android.widget.Toast.makeText(
                                 this,
-                                "❌ Erro ao consultar GitHub: "
-                                        + e.getMessage(),
-                                android.widget.Toast.LENGTH_LONG
-                        ).show();
+                                "Erro ao carregar atualização: " + e.getMessage(),
+                                android.widget.Toast.LENGTH_LONG).show();
                     });
-
                 } finally {
-
-                    if (conexao != null) {
-                        conexao.disconnect();
-                    }
+                    if (conexao != null) conexao.disconnect();
+                    if (releaseConexao != null) releaseConexao.disconnect();
                 }
-
             }).start();
 
             publicar.setOnClickListener(v -> {

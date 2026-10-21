@@ -1,0 +1,1872 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.widget.PopupMenu;
+import android.widget.GridLayout;
+import android.graphics.drawable.Drawable;
+import android.app.Dialog;
+import android.os.Bundle;
+import android.graphics.Color;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.BitmapShader;
+import android.graphics.Shader;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.view.View;
+import android.view.animation.AlphaAnimation;
+import android.view.animation.Animation;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.WindowInsets;
+import android.view.inputmethod.InputMethodManager;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.Toast;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import android.app.AlertDialog;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.SetOptions;
+
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Locale;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class ChatIndividualActivity extends Activity {
+
+    private FrameLayout raiz;
+    private LinearLayout listaMensagens;
+    private EditText campoMensagem;
+    private ScrollView scroll;
+    private FirebaseFirestore db;
+    private ListenerRegistration listenerMensagens;
+    private ListenerRegistration listenerDigitando;
+
+    private String meuUid = "";
+    private String outroUid = "";
+    private String nomeOutro = "Usuário";
+private ImageView fotoTopo;
+private TextView statusTopo;
+private boolean euEstouDigitando = false;
+    private boolean outroEstaDigitando = false;
+    private boolean outroEstaOnline = false;
+
+    private Dialog dialogFundo;
+    private TextView previewFundo;
+    private String fundoTemporario;
+private View indicadorDigitando;
+private TextView pontosDigitando;
+    private String ultimaDataExibida = "";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        db = FirebaseFirestore.getInstance();
+
+        getWindow().setSoftInputMode(
+                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+        );
+
+        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+            meuUid = FirebaseAuth.getInstance()
+                    .getCurrentUser()
+                    .getUid();
+        }
+
+        outroUid = getIntent().getStringExtra("uid");
+
+        if (outroUid == null || outroUid.trim().isEmpty()) {
+            Toast.makeText(
+                    this,
+                    "Conexão inválida.",
+                    Toast.LENGTH_SHORT
+            ).show();
+            finish();
+            return;
+        }
+
+        montarInterface();
+        carregarPerfil();
+        iniciarPresencaOutroUsuario();
+        prepararConversa();
+    }
+
+    @Override
+    protected void onActivityResult(
+            int requestCode,
+            int resultCode,
+            Intent data
+    ) {
+        super.onActivityResult(
+                requestCode,
+                resultCode,
+                data
+        );
+
+        if (requestCode != 8001 ||
+                resultCode != RESULT_OK ||
+                data == null ||
+                data.getData() == null) {
+            return;
+        }
+
+        Uri uri = data.getData();
+
+        try {
+            getContentResolver().takePersistableUriPermission(
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+            );
+        } catch (Exception ignored) {
+        }
+
+        fundoTemporario = "uri:" + uri.toString();
+
+        if (previewFundo != null) {
+
+            Drawable fundo =
+                    FundoConversaHelper.criar(
+                            this,
+                            fundoTemporario
+                    );
+
+            if (fundo != null) {
+                previewFundo.setBackground(fundo);
+                previewFundo.setText(
+                        "PRÉVIA  •  IMAGEM DA GALERIA"
+                );
+            }
+        }
+    }
+
+    private void abrirSeletorFundo() {
+
+        final Dialog dialog = new Dialog(this);
+        dialogFundo = dialog;
+
+        LinearLayout raiz = new LinearLayout(this);
+        raiz.setOrientation(LinearLayout.VERTICAL);
+        raiz.setPadding(dp(14), dp(10), dp(14), dp(10));
+        raiz.setBackgroundColor(Color.rgb(3, 7, 14));
+
+        LinearLayout topoFundo = new LinearLayout(this);
+        topoFundo.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView titulo = new TextView(this);
+        titulo.setText("FUNDO DA CONVERSA");
+        titulo.setTextSize(18);
+        titulo.setTextColor(Color.WHITE);
+        titulo.setTypeface(Typeface.DEFAULT_BOLD);
+
+        topoFundo.addView(titulo,
+                new LinearLayout.LayoutParams(0, dp(55), 1));
+
+        TextView fechar = new TextView(this);
+        fechar.setText("✕");
+        fechar.setTextSize(25);
+        fechar.setTextColor(Color.WHITE);
+        fechar.setGravity(Gravity.CENTER);
+
+        topoFundo.addView(fechar,
+                new LinearLayout.LayoutParams(dp(50), dp(55)));
+
+        raiz.addView(topoFundo);
+
+        TextView preview = new TextView(this);
+        previewFundo = preview;
+        preview.setText("PRÉVIA DO FUNDO");
+        preview.setTextSize(14);
+        preview.setTextColor(Color.WHITE);
+        preview.setGravity(Gravity.CENTER);
+        preview.setTypeface(Typeface.DEFAULT_BOLD);
+
+        Drawable inicial = FundoConversaHelper.criar(
+                this,
+                FundoConversaHelper.obter(this)
+        );
+
+        if (inicial != null) {
+            preview.setBackground(inicial);
+        }
+
+        raiz.addView(preview,
+                new LinearLayout.LayoutParams(-1, dp(170)));
+
+        ScrollView scrollFundos = new ScrollView(this);
+
+        GridLayout grade = new GridLayout(this);
+        grade.setColumnCount(3);
+
+        fundoTemporario =
+                FundoConversaHelper.obter(this);
+
+        for (int i = 0; i < FundoConversaHelper.CHAVES.length; i++) {
+
+            final String chave = FundoConversaHelper.CHAVES[i];
+            final String nome = FundoConversaHelper.NOMES[i];
+
+            TextView item = new TextView(this);
+            item.setText(nome);
+            item.setTextSize(11);
+            item.setTextColor(Color.WHITE);
+            item.setGravity(Gravity.CENTER);
+            item.setTypeface(Typeface.DEFAULT_BOLD);
+
+            Drawable fundoItem =
+                    FundoConversaHelper.criar(this, chave);
+
+            if (fundoItem != null) {
+                item.setBackground(fundoItem);
+            }
+
+            GridLayout.LayoutParams lp =
+                    new GridLayout.LayoutParams();
+
+            lp.width = dp(105);
+            lp.height = dp(70);
+            lp.setMargins(dp(4), dp(4), dp(4), dp(4));
+
+            grade.addView(item, lp);
+
+            item.setOnClickListener(v -> {
+                fundoTemporario = chave;
+
+                Drawable fundo =
+                        FundoConversaHelper.criar(this, chave);
+
+                if (fundo != null) {
+                    preview.setBackground(fundo);
+                }
+
+                preview.setText("PRÉVIA  •  " + nome);
+            });
+        }
+
+        scrollFundos.addView(grade);
+
+        raiz.addView(scrollFundos,
+                new LinearLayout.LayoutParams(-1, 0, 1));
+
+        TextView galeria = new TextView(this);
+        galeria.setText("🖼  ESCOLHER DA GALERIA");
+        galeria.setTextSize(14);
+        galeria.setTextColor(Color.WHITE);
+        galeria.setGravity(Gravity.CENTER);
+
+        GradientDrawable fundoGaleria =
+                new GradientDrawable();
+
+        fundoGaleria.setColor(Color.rgb(15, 25, 40));
+        fundoGaleria.setCornerRadius(dp(14));
+        fundoGaleria.setStroke(
+                dp(1),
+                Color.rgb(45, 130, 220)
+        );
+
+        galeria.setBackground(fundoGaleria);
+
+        raiz.addView(
+                galeria,
+                new LinearLayout.LayoutParams(-1, dp(50))
+        );
+
+        LinearLayout botoes = new LinearLayout(this);
+        botoes.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView cancelar = new TextView(this);
+        cancelar.setText("✕  CANCELAR");
+        cancelar.setTextSize(14);
+        cancelar.setTextColor(Color.WHITE);
+        cancelar.setGravity(Gravity.CENTER);
+
+        TextView salvar = new TextView(this);
+        salvar.setText("✓  SALVAR");
+        salvar.setTextSize(14);
+        salvar.setTextColor(Color.WHITE);
+        salvar.setGravity(Gravity.CENTER);
+
+        botoes.addView(
+                cancelar,
+                new LinearLayout.LayoutParams(0, dp(52), 1)
+        );
+
+        botoes.addView(
+                salvar,
+                new LinearLayout.LayoutParams(0, dp(52), 1)
+        );
+
+        raiz.addView(
+                botoes,
+                new LinearLayout.LayoutParams(-1, dp(58))
+        );
+
+        fechar.setOnClickListener(v -> dialog.dismiss());
+        cancelar.setOnClickListener(v -> dialog.dismiss());
+
+        galeria.setOnClickListener(v -> {
+
+            Intent intent =
+                    new Intent(Intent.ACTION_OPEN_DOCUMENT);
+
+            intent.addCategory(
+                    Intent.CATEGORY_OPENABLE
+            );
+
+            intent.setType("image/*");
+
+            startActivityForResult(intent, 8001);
+        });
+
+        salvar.setOnClickListener(v -> {
+
+            FundoConversaHelper.salvar(
+                    this,
+                    fundoTemporario
+            );
+
+            FundoConversaHelper.aplicar(
+                    this,
+                    listaMensagens
+            );
+
+            Toast.makeText(
+                    this,
+                    "Fundo salvo para suas conversas.",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            dialog.dismiss();
+        });
+
+        dialog.setContentView(raiz);
+
+        Window janela = dialog.getWindow();
+
+        if (janela != null) {
+            janela.setBackgroundDrawableResource(
+                    android.R.color.transparent
+            );
+        }
+
+        dialog.show();
+
+        janela = dialog.getWindow();
+
+        if (janela != null) {
+            janela.setLayout(-1, -1);
+        }
+    }
+
+    private void montarInterface() {
+
+        raiz = new FrameLayout(this);
+        raiz.setBackgroundColor(
+                Color.rgb(2, 3, 8)
+        );
+
+        LinearLayout principal =
+                new LinearLayout(this);
+
+        principal.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        raiz.addView(
+                principal,
+                new FrameLayout.LayoutParams(
+                        -1,
+                        -1
+                )
+        );
+
+            LinearLayout topo =
+                new LinearLayout(this);
+
+        topo.setOrientation(LinearLayout.HORIZONTAL);
+        topo.setGravity(Gravity.CENTER_VERTICAL);
+        topo.setPadding(
+                dp(10),
+                dp(8),
+                dp(8),
+                dp(8)
+        );
+
+        GradientDrawable fundoTopo =
+                new GradientDrawable();
+
+        fundoTopo.setColor(Color.rgb(7, 13, 24));
+        fundoTopo.setCornerRadius(dp(22));
+        fundoTopo.setStroke(
+                dp(1),
+                Color.rgb(40, 125, 205)
+        );
+
+        topo.setBackground(fundoTopo);
+
+        TextView voltar = new TextView(this);
+        voltar.setText("‹");
+        voltar.setTextSize(34);
+        voltar.setTextColor(
+                Color.rgb(95, 205, 255)
+        );
+        voltar.setGravity(Gravity.CENTER);
+
+        LinearLayout.LayoutParams lpVoltar =
+                new LinearLayout.LayoutParams(
+                        dp(42),
+                        dp(54)
+                );
+
+        topo.addView(voltar, lpVoltar);
+
+        voltar.setOnClickListener(
+                v -> finish()
+        );
+
+        fotoTopo = new ImageView(this);
+
+        GradientDrawable fundoFoto =
+                new GradientDrawable();
+
+        fundoFoto.setShape(
+                GradientDrawable.OVAL
+        );
+
+        fundoFoto.setColor(
+                Color.rgb(15, 27, 45)
+        );
+
+        fundoFoto.setStroke(
+                dp(2),
+                Color.rgb(55, 175, 245)
+        );
+
+        fotoTopo.setBackground(fundoFoto);
+        fotoTopo.setPadding(
+                dp(4),
+                dp(4),
+                dp(4),
+                dp(4)
+        );
+
+        LinearLayout.LayoutParams lpFoto =
+                new LinearLayout.LayoutParams(
+                        dp(46),
+                        dp(46)
+                );
+
+        lpFoto.rightMargin = dp(8);
+
+        topo.addView(fotoTopo, lpFoto);
+
+        LinearLayout blocoNome =
+                new LinearLayout(this);
+
+        blocoNome.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        blocoNome.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+        TextView nome =
+                texto(
+                        nomeOutro,
+                        16,
+                        Color.WHITE
+                );
+
+        nome.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        statusTopo =
+                texto(
+                        "● OFFLINE",
+                        12,
+                        Color.rgb(255, 55, 80)
+                );
+
+        blocoNome.addView(
+                nome,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(27)
+                )
+        );
+
+        blocoNome.addView(
+                statusTopo,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(20)
+                )
+        );
+
+        topo.addView(
+                blocoNome,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -1,
+                        1
+                )
+        );
+
+        TextView menu =
+                new TextView(this);
+
+        menu.setText("⋮");
+        menu.setTextSize(30);
+        menu.setTextColor(Color.WHITE);
+        menu.setGravity(Gravity.CENTER);
+
+        LinearLayout.LayoutParams lpMenu =
+                new LinearLayout.LayoutParams(
+                        dp(44),
+                        dp(54)
+                );
+
+        topo.addView(menu, lpMenu);
+
+        menu.setOnClickListener(v -> {
+            PopupMenu popup =
+                    new PopupMenu(this, menu);
+
+            popup.getMenu().add("SILENCIAR");
+            popup.getMenu().add("PESQUISAR");
+            popup.getMenu().add("FUNDO DA CONVERSA");
+
+            popup.setOnMenuItemClickListener(item -> {
+                String opcao =
+                        item.getTitle().toString();
+
+                if ("FUNDO DA CONVERSA".equals(opcao)) {
+                    abrirSeletorFundo();
+                    return true;
+                }
+
+                if ("SILENCIAR".equals(opcao)) {
+                    Toast.makeText(
+                            this,
+                            "Silenciar será configurado aqui.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return true;
+                }
+
+                if ("PESQUISAR".equals(opcao)) {
+                    Toast.makeText(
+                            this,
+                            "Pesquisa da conversa será aberta aqui.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return true;
+                }
+
+                return false;
+            });
+
+            popup.show();
+        });
+
+        LinearLayout.LayoutParams lpTopo =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(70)
+                );
+
+        lpTopo.setMargins(
+                dp(8),
+                dp(10),
+                dp(8),
+                dp(6)
+        );
+
+        principal.addView(topo, lpTopo);
+
+        scroll = new ScrollView(this);
+
+        scroll.setFillViewport(true);
+
+        listaMensagens =
+                new LinearLayout(this);
+
+        listaMensagens.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        listaMensagens.setPadding(
+                dp(12),
+                dp(14),
+                dp(12),
+                dp(14)
+        );
+
+        FundoConversaHelper.aplicar(
+                this,
+                listaMensagens
+        );
+
+        scroll.addView(listaMensagens);
+
+        principal.addView(
+                scroll,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        0,
+                        1
+                )
+        );
+
+        LinearLayout barra =
+                new LinearLayout(this);
+
+        barra.setOrientation(LinearLayout.HORIZONTAL);
+        barra.setGravity(Gravity.CENTER_VERTICAL);
+        barra.setPadding(dp(8), dp(7), dp(8), dp(7));
+
+        GradientDrawable fundoBarra = new GradientDrawable();
+        fundoBarra.setColor(Color.rgb(5, 10, 19));
+        fundoBarra.setCornerRadius(dp(24));
+        fundoBarra.setStroke(dp(1), Color.rgb(35, 95, 155));
+        barra.setBackground(fundoBarra);
+
+        TextView emoji = new TextView(this);
+        emoji.setText("🙂");
+        emoji.setTextSize(22);
+        emoji.setGravity(Gravity.CENTER);
+        emoji.setTextColor(Color.WHITE);
+
+        barra.addView(
+                emoji,
+                new LinearLayout.LayoutParams(
+                        dp(42),
+                        dp(52)
+                )
+        );
+
+        campoMensagem = new EditText(this);
+
+        campoMensagem.setHint("Digite uma mensagem...");
+        campoMensagem.setHintTextColor(Color.rgb(100, 115, 140));
+        campoMensagem.setTextColor(Color.WHITE);
+        campoMensagem.setTextSize(15);
+        campoMensagem.setSingleLine(false);
+        campoMensagem.setMaxLines(4);
+        campoMensagem.setPadding(
+                dp(13),
+                dp(9),
+                dp(13),
+                dp(9)
+        );
+
+        GradientDrawable fundoCampo = new GradientDrawable();
+        fundoCampo.setColor(Color.rgb(12, 20, 34));
+        fundoCampo.setCornerRadius(dp(22));
+        fundoCampo.setStroke(dp(1), Color.rgb(35, 85, 135));
+        campoMensagem.setBackground(fundoCampo);
+
+        campoMensagem.addTextChangedListener(
+                new TextWatcher() {
+                    @Override
+                    public void beforeTextChanged(
+                            CharSequence s,
+                            int start,
+                            int count,
+                            int after
+                    ) {
+                    }
+
+                    @Override
+                    public void onTextChanged(
+                            CharSequence s,
+                            int start,
+                            int before,
+                            int count
+                    ) {
+                        boolean digitando =
+                                s != null
+                                        && s.toString().trim().length() > 0;
+
+                        if (euEstouDigitando != digitando) {
+                            euEstouDigitando = digitando;
+                            atualizarEstadoDigitando(digitando);
+                        }
+                    }
+
+                    @Override
+                    public void afterTextChanged(Editable s) {
+                    }
+                }
+        );
+
+        barra.addView(
+                campoMensagem,
+                new LinearLayout.LayoutParams(
+                        0,
+                        dp(52),
+                        1
+                )
+        );
+
+        TextView enviar = new TextView(this);
+        enviar.setText("➤");
+        enviar.setTextSize(23);
+        enviar.setTextColor(Color.rgb(80, 190, 255));
+        enviar.setGravity(Gravity.CENTER);
+
+        GradientDrawable fundoEnviar = new GradientDrawable();
+        fundoEnviar.setColor(Color.rgb(9, 30, 50));
+        fundoEnviar.setShape(GradientDrawable.OVAL);
+        fundoEnviar.setStroke(
+                dp(1),
+                Color.rgb(55, 160, 235)
+        );
+        enviar.setBackground(fundoEnviar);
+
+        LinearLayout.LayoutParams lpEnviar =
+                new LinearLayout.LayoutParams(
+                        dp(48),
+                        dp(48)
+                );
+
+        lpEnviar.leftMargin = dp(7);
+
+        barra.addView(enviar, lpEnviar);
+
+        enviar.setOnClickListener(
+                v -> enviarMensagem()
+        );
+
+        LinearLayout.LayoutParams lpBarra =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(66)
+                );
+
+        lpBarra.setMargins(
+                dp(8),
+                dp(6),
+                dp(8),
+                dp(8)
+        );
+
+        principal.addView(barra, lpBarra);
+
+        raiz.setOnApplyWindowInsetsListener((v, insets) -> {
+            int teclado = insets.getInsets(
+                    WindowInsets.Type.ime()
+            ).bottom;
+
+            barra.setTranslationY(-teclado);
+
+            return insets;
+        });
+
+        setContentView(raiz);
+    }
+
+    private void carregarPerfil() {
+        db.collection("perfis_publicos")
+                .document(outroUid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (!doc.exists()) {
+                        return;
+                    }
+
+                    String nome = doc.getString("nome");
+                    String fotoUrl = doc.getString("fotoUrl");
+
+                    if (nome != null && !nome.trim().isEmpty()) {
+                        nomeOutro = nome;
+                    }
+
+                    if (fotoTopo != null
+                            && fotoUrl != null
+                            && !fotoUrl.trim().isEmpty()) {
+                        carregarImagemUrl(fotoTopo, fotoUrl.trim());
+                    }
+
+                    if (raiz != null) {
+                        atualizarNomeTopo();
+                    }
+                });
+    }
+
+    private void atualizarNomeTopo() {
+
+        if (raiz == null) {
+            return;
+        }
+
+        TextView nome = encontrarNomeTopo();
+
+        if (nome != null) {
+            nome.setText(nomeOutro);
+        }
+    }
+
+    private TextView encontrarNomeTopo() {
+
+        if (!(raiz.getChildAt(0)
+                instanceof LinearLayout)) {
+            return null;
+        }
+
+        LinearLayout principal =
+                (LinearLayout) raiz.getChildAt(0);
+
+        if (principal.getChildCount() == 0) {
+            return null;
+        }
+
+        View topo = principal.getChildAt(0);
+
+        if (!(topo instanceof LinearLayout)) {
+            return null;
+        }
+
+        LinearLayout barra =
+                (LinearLayout) topo;
+
+        if (barra.getChildCount() < 3) {
+            return null;
+        }
+
+        View bloco = barra.getChildAt(2);
+
+        if (!(bloco instanceof LinearLayout)) {
+            return null;
+        }
+
+        LinearLayout nomes =
+                (LinearLayout) bloco;
+
+        if (nomes.getChildCount() == 0) {
+            return null;
+        }
+
+        View primeiro =
+                nomes.getChildAt(0);
+
+        if (primeiro instanceof TextView) {
+            return (TextView) primeiro;
+        }
+
+        return null;
+    }
+
+    private void iniciarPresencaOutroUsuario() {
+        if (outroUid == null || outroUid.trim().isEmpty()) return;
+
+        db.collection("usuarios")
+                .document(outroUid)
+                .addSnapshotListener((doc, error) -> {
+                    if (error != null || doc == null || !doc.exists()) {
+                        atualizarStatusTopo(false);
+                        return;
+                    }
+
+                    Boolean online = doc.getBoolean("online");
+
+                boolean estaOnline = Boolean.TRUE.equals(online);
+
+                atualizarStatusTopo(estaOnline);
+                });
+    }
+
+    private void atualizarStatusTopo(boolean online) {
+        if (statusTopo == null) return;
+
+        if (online) {
+            statusTopo.setText("● ONLINE");
+            statusTopo.setTextColor(
+                    Color.rgb(50, 255, 145)
+            );
+        } else {
+            statusTopo.setText("● OFFLINE");
+            statusTopo.setTextColor(
+                    Color.rgb(255, 55, 80)
+            );
+        }
+    }
+
+    private void atualizarEstadoDigitando(boolean digitando) {
+        if (meuUid == null || meuUid.trim().isEmpty()) {
+            return;
+        }
+
+        PerfilFirebase.atualizarStatusDigitando(digitando);
+
+        String conversaId = gerarIdConversa();
+
+        if (digitando) {
+            db.collection("chats")
+                    .document(conversaId)
+                    .set(
+                            new HashMap<String, Object>() {{
+                                put(
+                                        "digitandoPor",
+                                        FieldValue.arrayUnion(meuUid)
+                                );
+                            }},
+                            SetOptions.merge()
+                    );
+        } else {
+            db.collection("chats")
+                    .document(conversaId)
+                    .set(
+                            new HashMap<String, Object>() {{
+                                put(
+                                        "digitandoPor",
+                                        FieldValue.arrayRemove(meuUid)
+                                );
+                            }},
+                            SetOptions.merge()
+                    );
+        }
+    }
+
+    private String gerarIdConversa() {
+
+        if (meuUid.compareTo(outroUid) < 0) {
+            return meuUid + "_" + outroUid;
+        }
+
+        return outroUid + "_" + meuUid;
+    }
+
+
+    private void carregarImagemUrl(
+            ImageView imageView,
+            String url
+    ) {
+        new Thread(() -> {
+            android.graphics.Bitmap bitmap = null;
+            HttpURLConnection conexao = null;
+            InputStream entrada = null;
+
+            try {
+                URL endereco = new URL(url);
+                conexao = (HttpURLConnection)
+                        endereco.openConnection();
+
+                conexao.setConnectTimeout(8000);
+                conexao.setReadTimeout(8000);
+                conexao.setInstanceFollowRedirects(true);
+                conexao.connect();
+
+                if (conexao.getResponseCode()
+                        == HttpURLConnection.HTTP_OK) {
+
+                    entrada = conexao.getInputStream();
+
+                    bitmap =
+                            android.graphics.BitmapFactory
+                                    .decodeStream(entrada);
+                }
+
+            } catch (Exception ignored) {
+
+            } finally {
+                try {
+                    if (entrada != null) {
+                        entrada.close();
+                    }
+                } catch (Exception ignored) {
+                }
+
+                if (conexao != null) {
+                    conexao.disconnect();
+                }
+            }
+
+            final android.graphics.Bitmap resultado = bitmap;
+
+            runOnUiThread(() -> {
+                if (resultado != null
+                        && !isFinishing()
+                        && !isDestroyed()
+                        && imageView != null) {
+
+                    imageView.setImageBitmap(
+                            criarBitmapCircular(resultado)
+                    );
+                }
+            });
+        }).start();
+    }
+
+    private Bitmap criarBitmapCircular(Bitmap original) {
+        if (original == null) {
+            return null;
+        }
+
+        int tamanho = Math.min(
+                original.getWidth(),
+                original.getHeight()
+        );
+
+        int esquerda =
+                (original.getWidth() - tamanho) / 2;
+
+        int topo =
+                (original.getHeight() - tamanho) / 2;
+
+        Bitmap quadrado = Bitmap.createBitmap(
+                original,
+                esquerda,
+                topo,
+                tamanho,
+                tamanho
+        );
+
+        Bitmap circular = Bitmap.createBitmap(
+                tamanho,
+                tamanho,
+                Bitmap.Config.ARGB_8888
+        );
+
+        Canvas canvas = new Canvas(circular);
+
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setShader(
+                new BitmapShader(
+                        quadrado,
+                        Shader.TileMode.CLAMP,
+                        Shader.TileMode.CLAMP
+                )
+        );
+
+        float raio = tamanho / 2f;
+
+        canvas.drawCircle(
+                raio,
+                raio,
+                raio,
+                paint
+        );
+
+        return circular;
+    }
+
+    private void iniciarListenerDigitando() {
+        String conversaId = gerarIdConversa();
+
+        listenerDigitando =
+                db.collection("chats")
+                        .document(conversaId)
+                        .addSnapshotListener((doc, error) -> {
+
+                            if (error != null
+                                    || doc == null
+                                    || !doc.exists()) {
+                                return;
+                            }
+
+                            Object valor =
+                                    doc.get("digitandoPor");
+
+                            boolean outroDigitando = false;
+
+                            if (valor instanceof List) {
+                                outroDigitando =
+                                        ((List<?>) valor)
+                                                .contains(outroUid);
+                            }
+
+                            atualizarIndicadorDigitandoOutro(
+                                    outroDigitando
+                            );
+                        });
+    }
+
+    private void atualizarIndicadorDigitandoOutro(
+            boolean digitando
+    ) {
+        outroEstaDigitando = digitando;
+
+        mostrarIndicadorDigitando(digitando);
+
+        if (statusTopo == null) {
+            return;
+        }
+
+        if (digitando) {
+            statusTopo.setText("● DIGITANDO...");
+            statusTopo.setTextColor(
+                    Color.rgb(70, 210, 255)
+            );
+        } else {
+            atualizarStatusTopo(outroEstaOnline);
+        }
+    }
+
+    private void prepararConversa() {
+        if (meuUid == null || meuUid.trim().isEmpty()
+                || outroUid == null || outroUid.trim().isEmpty()
+                || meuUid.equals(outroUid)) {
+            Toast.makeText(
+                    this,
+                    "Não foi possível identificar os participantes.",
+                    Toast.LENGTH_LONG
+            ).show();
+            finish();
+            return;
+        }
+
+        String conversaId = gerarIdConversa();
+        List<String> participantes = new ArrayList<>();
+
+        if (meuUid.compareTo(outroUid) < 0) {
+            participantes.add(meuUid);
+            participantes.add(outroUid);
+        } else {
+            participantes.add(outroUid);
+            participantes.add(meuUid);
+        }
+
+        com.google.firebase.firestore.DocumentReference ref =
+                db.collection("chats").document(conversaId);
+
+        // Primeiro verifica se a conversa já existe.
+        // Não tenta regravar um documento existente ao abrir o chat.
+        ref.get()
+                .addOnSuccessListener(documento -> {
+                    if (isFinishing() || isDestroyed()) return;
+
+                    if (documento.exists()) {
+                        Object valor = documento.get("participantes");
+
+                        if (valor instanceof List
+                                && participantes.equals(valor)
+                                && participantes.contains(meuUid)) {
+                            db.collection("chats")
+                                    .document(conversaId)
+                                    .update("naoLidas_" + meuUid, 0)
+                                    .addOnCompleteListener(resultado -> iniciarMensagens());
+                        } else {
+                            Toast.makeText(
+                                    this,
+                                    "A conversa existente tem dados incompatíveis. "
+                                            + "Ela não foi alterada.",
+                                    Toast.LENGTH_LONG
+                            ).show();
+                        }
+                        return;
+                    }
+
+                    Map<String, Object> dadosConversa = new HashMap<>();
+                    dadosConversa.put("participantes", participantes);
+
+                    // Criação apenas quando o documento ainda não existe.
+                    ref.set(dadosConversa)
+                            .addOnSuccessListener(v -> {
+                                if (!isFinishing() && !isDestroyed()) {
+                                    db.collection("chats")
+                                    .document(conversaId)
+                                    .update("naoLidas_" + meuUid, 0)
+                                    .addOnCompleteListener(resultado -> iniciarMensagens());
+                                }
+                            })
+                            .addOnFailureListener(e -> {
+                                android.util.Log.e(
+                                        "DaNikeAI",
+                                        "Falha ao criar conversa " + conversaId,
+                                        e
+                                );
+                                Toast.makeText(
+                                        this,
+                                        "Não foi possível criar a conversa. "
+                                                + "Verifique se os dois usuários "
+                                                + "estão conectados.",
+                                        Toast.LENGTH_LONG
+                                ).show();
+                            });
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.e(
+                            "DaNikeAI",
+                            "Falha ao consultar conversa " + conversaId,
+                            e
+                    );
+                    Toast.makeText(
+                            this,
+                            "Não foi possível verificar a conversa. "
+                                    + "Confira sua conexão e permissões.",
+                            Toast.LENGTH_LONG
+                    ).show();
+                });
+    }
+
+    private void iniciarMensagens() {
+        iniciarListenerDigitando();
+
+        String conversaId =
+                gerarIdConversa();
+
+        listenerMensagens =
+                db.collection("chats")
+                        .document(conversaId)
+                        .collection("mensagens")
+                        .orderBy(
+                                "criadoEm",
+                                Query.Direction.ASCENDING
+                        )
+                        .addSnapshotListener(
+                                (snapshot, error) -> {
+
+                            if (error != null ||
+                                    snapshot == null) {
+                                return;
+                            }
+
+                            listaMensagens.removeAllViews();
+                            ultimaDataExibida = "";
+
+                            indicadorDigitando = null;
+                            pontosDigitando = null;
+
+                            for (DocumentSnapshot doc :
+                                    snapshot.getDocuments()) {
+
+                                String remetente =
+                                        doc.getString(
+                                                "remetenteUid"
+                                        );
+
+                                String texto =
+                                        doc.getString("texto");
+
+                                if (texto == null) {
+                                    texto = "";
+                                }
+
+                                adicionarMensagem(
+                                        doc,
+                                        texto,
+                                        meuUid.equals(remetente)
+                                );
+                            }
+
+                            if (outroEstaDigitando) {
+                                mostrarIndicadorDigitando(true);
+                            }
+
+                            scroll.post(() ->
+                                    scroll.fullScroll(
+                                            View.FOCUS_DOWN
+                                    )
+                            );
+                        }
+                        );
+    }
+
+    private View criarIndicadorDigitando() {
+        LinearLayout bolha = new LinearLayout(this);
+        bolha.setGravity(Gravity.CENTER);
+        bolha.setPadding(
+                dp(14),
+                dp(7),
+                dp(14),
+                dp(7)
+        );
+
+        GradientDrawable fundo =
+                new GradientDrawable();
+
+        fundo.setColor(
+                Color.rgb(8, 20, 34)
+        );
+
+        fundo.setCornerRadius(
+                dp(18)
+        );
+
+        fundo.setStroke(
+                dp(1),
+                Color.rgb(45, 190, 255)
+        );
+
+        bolha.setBackground(fundo);
+
+        TextView pontos = texto(
+                "• • •",
+                18,
+                Color.rgb(70, 210, 255)
+        );
+
+        pontos.setGravity(Gravity.CENTER);
+        bolha.addView(
+                pontos,
+                new LinearLayout.LayoutParams(
+                        -2,
+                        dp(28)
+                )
+        );
+
+        pontosDigitando = pontos;
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(
+                        -2,
+                        dp(42)
+                );
+
+        params.gravity = Gravity.LEFT;
+
+        params.setMargins(
+                dp(8),
+                dp(4),
+                dp(8),
+                dp(4)
+        );
+
+        bolha.setVisibility(View.GONE);
+
+        listaMensagens.addView(
+                bolha,
+                params
+        );
+
+        indicadorDigitando = bolha;
+
+        return bolha;
+    }
+
+    private void animarPontosDigitando() {
+        if (pontosDigitando == null) {
+            return;
+        }
+
+        AlphaAnimation animacao =
+                new AlphaAnimation(0.25f, 1.0f);
+
+        animacao.setDuration(550);
+        animacao.setRepeatMode(
+                Animation.REVERSE
+        );
+        animacao.setRepeatCount(
+                Animation.INFINITE
+        );
+
+        pontosDigitando.startAnimation(animacao);
+    }
+
+    private void mostrarIndicadorDigitando(boolean mostrar) {
+        if (listaMensagens == null) {
+            return;
+        }
+
+        if (mostrar) {
+            if (indicadorDigitando == null
+                    || indicadorDigitando.getParent() == null) {
+                criarIndicadorDigitando();
+            }
+
+            indicadorDigitando.setVisibility(View.VISIBLE);
+
+            if (pontosDigitando != null) {
+                pontosDigitando.clearAnimation();
+                animarPontosDigitando();
+            }
+
+            if (scroll != null) {
+                scroll.post(() ->
+                        scroll.fullScroll(View.FOCUS_DOWN)
+                );
+            }
+        } else {
+            if (pontosDigitando != null) {
+                pontosDigitando.clearAnimation();
+            }
+
+            if (indicadorDigitando != null) {
+                indicadorDigitando.setVisibility(View.GONE);
+            }
+        }
+    }
+
+    private void adicionarMensagem(
+            DocumentSnapshot doc,
+            String textoMensagem,
+            boolean minha
+    ) {
+        Object apagadoParaObj = doc.get("apagadoPara");
+
+        if (apagadoParaObj instanceof List
+                && ((List<?>) apagadoParaObj).contains(meuUid)) {
+            return;
+        }
+
+        LinearLayout linha = new LinearLayout(this);
+        linha.setOrientation(LinearLayout.HORIZONTAL);
+        linha.setGravity(minha ? Gravity.RIGHT : Gravity.LEFT);
+
+        LinearLayout bolha = new LinearLayout(this);
+        bolha.setOrientation(LinearLayout.VERTICAL);
+        bolha.setPadding(dp(14), dp(9), dp(10), dp(7));
+
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setCornerRadius(dp(18));
+
+        if (minha) {
+            fundo.setColor(Color.rgb(20, 65, 105));
+            fundo.setStroke(dp(1), Color.rgb(55, 160, 235));
+        } else {
+            fundo.setColor(Color.rgb(24, 27, 38));
+            fundo.setStroke(dp(1), Color.rgb(75, 85, 110));
+        }
+
+        bolha.setBackground(fundo);
+
+        TextView mensagem = texto(
+                textoMensagem,
+                15,
+                Color.WHITE
+        );
+
+        mensagem.setPadding(0, 0, 0, dp(3));
+
+        bolha.addView(
+                mensagem,
+                new LinearLayout.LayoutParams(
+                        -2,
+                        -2
+                )
+        );
+
+        com.google.firebase.Timestamp criadoEm =
+                doc.getTimestamp("criadoEm");
+
+        if (criadoEm != null) {
+            String separadorData = obterSeparadorData(criadoEm);
+
+            if (!separadorData.equals(ultimaDataExibida)) {
+                TextView separador = texto(
+                        separadorData,
+                        11,
+                        Color.rgb(120, 190, 235)
+                );
+
+                separador.setGravity(Gravity.CENTER);
+                separador.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                separador.setPadding(
+                        dp(10),
+                        dp(8),
+                        dp(10),
+                        dp(8)
+                );
+
+                listaMensagens.addView(
+                        separador,
+                        new LinearLayout.LayoutParams(
+                                -1,
+                                -2
+                        )
+                );
+
+                ultimaDataExibida = separadorData;
+            }
+        }
+
+        TextView horario = texto("", 10, Color.rgb(175, 205, 225));
+        horario.setGravity(Gravity.RIGHT);
+
+        if (criadoEm != null) {
+            String hora = new SimpleDateFormat(
+                    "HH:mm",
+                    Locale.getDefault()
+            ).format(criadoEm.toDate());
+
+            horario.setText(hora);
+        }
+
+        bolha.addView(
+                horario,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(16)
+                )
+        );
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-2, -2);
+
+        params.setMargins(
+                dp(4),
+                dp(4),
+                dp(4),
+                dp(4)
+        );
+
+        linha.addView(bolha, params);
+
+        bolha.setOnLongClickListener(v -> {
+            mostrarAcoesMensagem(
+                    doc,
+                    textoMensagem,
+                    minha
+            );
+            return true;
+        });
+
+        listaMensagens.addView(
+                linha,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
+    }
+
+    private String obterSeparadorData(com.google.firebase.Timestamp timestamp) {
+        if (timestamp == null) {
+            return "";
+        }
+
+        Calendar dataMensagem = Calendar.getInstance();
+        dataMensagem.setTime(timestamp.toDate());
+
+        Calendar hoje = Calendar.getInstance();
+
+        if (mesmoDia(dataMensagem, hoje)) {
+            return "HOJE";
+        }
+
+        Calendar ontem = (Calendar) hoje.clone();
+        ontem.add(Calendar.DAY_OF_YEAR, -1);
+
+        if (mesmoDia(dataMensagem, ontem)) {
+            return "ONTEM";
+        }
+
+        Calendar amanha = (Calendar) hoje.clone();
+        amanha.add(Calendar.DAY_OF_YEAR, 1);
+
+        if (mesmoDia(dataMensagem, amanha)) {
+            return "AMANHÃ";
+        }
+
+        return new SimpleDateFormat(
+                "dd/MM/yyyy",
+                Locale.getDefault()
+        ).format(timestamp.toDate());
+    }
+
+    private boolean mesmoDia(Calendar a, Calendar b) {
+        return a.get(Calendar.YEAR) == b.get(Calendar.YEAR)
+                && a.get(Calendar.DAY_OF_YEAR) == b.get(Calendar.DAY_OF_YEAR);
+    }
+
+    private void mostrarAcoesMensagem(
+            DocumentSnapshot doc,
+            String textoMensagem,
+            boolean minha
+    ) {
+        List<String> opcoes = new ArrayList<>();
+
+        opcoes.add("📋 Copiar");
+        opcoes.add("🗑️ Apagar para mim");
+
+        if (minha) {
+            opcoes.add("🗑️ Apagar para todos");
+        }
+
+        opcoes.add("📌 Marcar mensagem");
+
+        new AlertDialog.Builder(this)
+                .setTitle("Ações da mensagem")
+                .setItems(
+                        opcoes.toArray(new String[0]),
+                        (dialog, which) -> {
+                            String acao = opcoes.get(which);
+
+                            if (acao.contains("Copiar")) {
+                                copiarMensagem(textoMensagem);
+                            } else if (acao.contains("Apagar para mim")) {
+                                apagarParaMim(doc);
+                            } else if (acao.contains("Apagar para todos")) {
+                                apagarParaTodos(doc, minha);
+                            } else if (acao.contains("Marcar mensagem")) {
+                                marcarMensagem(doc);
+                            }
+                        }
+                )
+                .show();
+    }
+
+    private void copiarMensagem(String textoMensagem) {
+        ClipboardManager clipboard =
+                (ClipboardManager) getSystemService(
+                        Context.CLIPBOARD_SERVICE
+                );
+
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(
+                    ClipData.newPlainText(
+                            "Mensagem",
+                            textoMensagem
+                    )
+            );
+
+            Toast.makeText(
+                    this,
+                    "Mensagem copiada.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
+    }
+
+    private void apagarParaMim(DocumentSnapshot doc) {
+        doc.getReference()
+                .update(
+                        "apagadoPara",
+                        FieldValue.arrayUnion(meuUid)
+                )
+                .addOnSuccessListener(v ->
+                        Toast.makeText(
+                                this,
+                                "Mensagem apagada para você.",
+                                Toast.LENGTH_SHORT
+                        ).show()
+                )
+                .addOnFailureListener(e ->
+                        Toast.makeText(
+                                this,
+                                "Não foi possível apagar a mensagem.",
+                                Toast.LENGTH_SHORT
+                        ).show()
+                );
+    }
+
+    private void apagarParaTodos(
+            DocumentSnapshot doc,
+            boolean minha
+    ) {
+        if (!minha) {
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Apagar para todos?")
+                .setMessage(
+                        "Esta mensagem será removida para os participantes."
+                )
+                .setNegativeButton("Cancelar", null)
+                .setPositiveButton(
+                        "Apagar",
+                        (dialog, which) ->
+                                doc.getReference()
+                                        .delete()
+                                        .addOnSuccessListener(v ->
+                                                Toast.makeText(
+                                                        this,
+                                                        "Mensagem apagada para todos.",
+                                                        Toast.LENGTH_SHORT
+                                                ).show()
+                                        )
+                                        .addOnFailureListener(e ->
+                                                Toast.makeText(
+                                                        this,
+                                                        "Não foi possível apagar.",
+                                                        Toast.LENGTH_SHORT
+                                                ).show()
+                                        )
+                )
+                .show();
+    }
+
+    private void marcarMensagem(DocumentSnapshot doc) {
+        boolean atual = Boolean.TRUE.equals(
+                doc.getBoolean("fixada")
+        );
+
+        doc.getReference()
+                .update("fixada", !atual)
+                .addOnSuccessListener(v ->
+                        Toast.makeText(
+                                this,
+                                atual
+                                        ? "Mensagem desmarcada."
+                                        : "Mensagem marcada.",
+                                Toast.LENGTH_SHORT
+                        ).show()
+                )
+                .addOnFailureListener(e ->
+                        Toast.makeText(
+                                this,
+                                "Não foi possível marcar a mensagem.",
+                                Toast.LENGTH_SHORT
+                        ).show()
+                );
+    }
+
+    private void enviarMensagem() {
+
+        String textoMensagem =
+                campoMensagem
+                        .getText()
+                        .toString()
+                        .trim();
+
+        if (textoMensagem.isEmpty()) {
+            return;
+        }
+
+        if (meuUid.isEmpty()) {
+
+            Toast.makeText(
+                    this,
+                    "Faça login para enviar mensagens.",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+            return;
+        }
+
+        String conversaId =
+                gerarIdConversa();
+
+        Map<String, Object> dados =
+                new HashMap<>();
+
+        dados.put(
+                "remetenteUid",
+                meuUid
+        );
+
+        dados.put(
+                "destinatarioUid",
+                outroUid
+        );
+
+        dados.put(
+                "texto",
+                textoMensagem
+        );
+
+        dados.put(
+                "tipo",
+                "texto"
+        );
+
+        dados.put(
+                "criadoEm",
+                FieldValue.serverTimestamp()
+        );
+
+        atualizarEstadoDigitando(false);
+
+        db.collection("chats")
+                .document(conversaId)
+                .collection("mensagens")
+                .add(dados)
+                .addOnSuccessListener(v -> {
+
+                    db.collection("chats")
+                            .document(conversaId)
+                            .update(
+                                    "naoLidas_" + outroUid,
+                                    FieldValue.increment(1)
+                            );
+
+                    campoMensagem.setText("");
+
+                    campoMensagem.clearFocus();
+
+                    InputMethodManager imm =
+                            (InputMethodManager)
+                                    getSystemService(
+                                            Context.INPUT_METHOD_SERVICE
+                                    );
+
+                    if (imm != null) {
+                        imm.hideSoftInputFromWindow(
+                                campoMensagem.getWindowToken(),
+                                0
+                        );
+                    }
+                })
+                .addOnFailureListener(e ->
+                        Toast.makeText(
+                                this,
+                                "Não foi possível enviar a mensagem.",
+                                Toast.LENGTH_SHORT
+                        ).show()
+                );
+    }
+
+    private TextView texto(
+            String texto,
+            float tamanho,
+            int cor
+    ) {
+
+        TextView t =
+                new TextView(this);
+
+        t.setText(texto);
+        t.setTextSize(tamanho);
+        t.setTextColor(cor);
+
+        return t;
+    }
+
+    private int dp(int valor) {
+
+        return (int) (
+                valor *
+                getResources()
+                        .getDisplayMetrics()
+                        .density
+                        + 0.5f
+        );
+    }
+
+    @Override
+    protected void onDestroy() {
+
+        if (listenerMensagens != null) {
+            listenerMensagens.remove();
+        }
+
+        if (listenerDigitando != null) {
+            listenerDigitando.remove();
+        }
+
+        if (euEstouDigitando) {
+            atualizarEstadoDigitando(false);
+            euEstouDigitando = false;
+        }
+
+        super.onDestroy();
+    }
+}

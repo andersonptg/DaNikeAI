@@ -1,0 +1,672 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.content.Intent;
+import android.net.Uri;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+public class AnunciosActivity extends Activity {
+
+    private final int AZUL = Color.rgb(0, 190, 255);
+    private final int FUNDO = Color.rgb(3, 7, 18);
+    private final int PAINEL = Color.rgb(8, 15, 32);
+
+    private EditText campoTitulo;
+    private android.widget.RadioGroup seletorTipoAnuncio;
+    private int idTipoDivulgacao;
+    private int idTipoVenda;
+    private EditText campoDescricao;
+    private EditText campoPreco;
+    private EditText campoPromocional;
+    private EditText campoWhatsApp;
+    private ImageView previaImagem;
+    private Uri imagemSelecionada;
+    private LinearLayout listaAnuncios;
+    private Button botaoSalvar;
+    private com.google.firebase.firestore.FirebaseFirestore db;
+    private String anuncioEditandoId = null;
+    private String imagemUrlAtual = "";
+    private static final String CLOUD_NAME = "pmxz8swv";
+    private static final String UPLOAD_PRESET = "danike_perfil";
+
+    private int dp(float valor) {
+        return (int) (valor * getResources()
+                .getDisplayMetrics().density + 0.5f);
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        com.google.firebase.auth.FirebaseUser usuario =
+                com.google.firebase.auth.FirebaseAuth.getInstance()
+                        .getCurrentUser();
+
+        if (usuario == null
+                || usuario.getEmail() == null
+                || !"lipesanderson@gmail.com".equalsIgnoreCase(
+                        usuario.getEmail())
+                || !"nd9zWE3GF2hOJDg4BfgTtaSy3H33".equals(
+                        usuario.getUid())) {
+            Toast.makeText(
+                    this,
+                    "Acesso exclusivo do proprietário.",
+                    Toast.LENGTH_LONG
+            ).show();
+            finish();
+            return;
+        }
+
+        getWindow().setStatusBarColor(FUNDO);
+        getWindow().setNavigationBarColor(FUNDO);
+        db = com.google.firebase.firestore.FirebaseFirestore.getInstance();
+
+        LinearLayout fundo = new LinearLayout(this);
+        fundo.setOrientation(LinearLayout.VERTICAL);
+        fundo.setPadding(dp(16), dp(16), dp(16), dp(16));
+        fundo.setBackgroundColor(FUNDO);
+
+        ScrollView rolagem = new ScrollView(this);
+        rolagem.setFillViewport(true);
+
+        LinearLayout conteudo = new LinearLayout(this);
+        conteudo.setOrientation(LinearLayout.VERTICAL);
+
+        TextView titulo = new TextView(this);
+        titulo.setText("📢  GERENCIAR ANÚNCIOS");
+        titulo.setTextColor(Color.WHITE);
+        titulo.setTextSize(23);
+        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        titulo.setGravity(Gravity.CENTER);
+        titulo.setPadding(dp(8), dp(18), dp(8), dp(18));
+
+        GradientDrawable fundoTitulo = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.rgb(8, 22, 48), Color.rgb(35, 8, 55)}
+        );
+        fundoTitulo.setCornerRadius(dp(20));
+        fundoTitulo.setStroke(dp(2), AZUL);
+        titulo.setBackground(fundoTitulo);
+
+        conteudo.addView(titulo, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(80)));
+
+        TextView descricao = new TextView(this);
+        descricao.setText(
+                "Cadastre as informações do anúncio que poderá aparecer na Home do NEXO."
+        );
+        descricao.setTextColor(Color.rgb(165, 185, 210));
+        descricao.setTextSize(14);
+        descricao.setGravity(Gravity.CENTER);
+        descricao.setPadding(dp(8), dp(16), dp(8), dp(18));
+        conteudo.addView(descricao);
+
+        TextView subtitulo = new TextView(this);
+        subtitulo.setText("INFORMAÇÕES DO ANÚNCIO");
+        subtitulo.setTextColor(AZUL);
+        subtitulo.setTextSize(16);
+        subtitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        subtitulo.setPadding(dp(4), dp(8), 0, dp(12));
+        conteudo.addView(subtitulo);
+
+        TextView subtituloTipo = new TextView(this);
+        subtituloTipo.setText("TIPO DE ANÚNCIO");
+        subtituloTipo.setTextColor(AZUL);
+        subtituloTipo.setTextSize(16);
+        subtituloTipo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        subtituloTipo.setPadding(dp(4), dp(8), 0, dp(10));
+        conteudo.addView(subtituloTipo);
+
+        seletorTipoAnuncio =
+                new android.widget.RadioGroup(this);
+        seletorTipoAnuncio.setOrientation(
+                android.widget.RadioGroup.VERTICAL
+        );
+
+        android.widget.RadioButton opcaoDivulgacao =
+                new android.widget.RadioButton(this);
+        opcaoDivulgacao.setText("Divulgação do NEXO — somente imagem");
+        opcaoDivulgacao.setTextColor(Color.WHITE);
+        opcaoDivulgacao.setButtonTintList(
+                android.content.res.ColorStateList.valueOf(AZUL)
+        );
+        idTipoDivulgacao = View.generateViewId();
+        opcaoDivulgacao.setId(idTipoDivulgacao);
+        seletorTipoAnuncio.addView(opcaoDivulgacao);
+
+        android.widget.RadioButton opcaoVenda =
+                new android.widget.RadioButton(this);
+        opcaoVenda.setText("Venda de produto/serviço");
+        opcaoVenda.setTextColor(Color.WHITE);
+        opcaoVenda.setButtonTintList(
+                android.content.res.ColorStateList.valueOf(AZUL)
+        );
+        idTipoVenda = View.generateViewId();
+        opcaoVenda.setId(idTipoVenda);
+        seletorTipoAnuncio.addView(opcaoVenda);
+
+        opcaoDivulgacao.setChecked(true);
+        conteudo.addView(seletorTipoAnuncio);
+
+        campoTitulo = criarCampo("Título do anúncio");
+        conteudo.addView(campoTitulo);
+
+        campoDescricao = criarCampo("Descrição do produto ou serviço");
+        campoDescricao.setMinLines(3);
+        campoDescricao.setGravity(Gravity.TOP | Gravity.START);
+        conteudo.addView(campoDescricao);
+
+        campoPreco = criarCampo("Preço normal (ex.: 99,90)");
+        campoPreco.setInputType(
+                android.text.InputType.TYPE_CLASS_NUMBER
+                | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        );
+        conteudo.addView(campoPreco);
+
+        campoPromocional = criarCampo("Preço promocional (opcional)");
+        campoPromocional.setInputType(
+                android.text.InputType.TYPE_CLASS_NUMBER
+                | android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+        );
+        conteudo.addView(campoPromocional);
+
+        campoWhatsApp = criarCampo("WhatsApp com DDD (ex.: 5524999999999)");
+        campoWhatsApp.setInputType(
+                android.text.InputType.TYPE_CLASS_PHONE
+        );
+        conteudo.addView(campoWhatsApp);
+
+        TextView aviso = new TextView(this);
+        aviso.setText(
+                "Informe o número com código do país e DDD, somente números."
+        );
+        aviso.setTextColor(Color.rgb(150, 170, 195));
+        aviso.setTextSize(12);
+        aviso.setPadding(dp(4), 0, dp(4), dp(16));
+        conteudo.addView(aviso);
+
+        TextView subtituloImagem = new TextView(this);
+        subtituloImagem.setText("IMAGEM DE DIVULGAÇÃO");
+        subtituloImagem.setTextColor(AZUL);
+        subtituloImagem.setTextSize(16);
+        subtituloImagem.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        subtituloImagem.setPadding(dp(4), dp(8), 0, dp(12));
+        conteudo.addView(subtituloImagem);
+
+        previaImagem = new ImageView(this);
+        previaImagem.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        previaImagem.setAdjustViewBounds(true);
+        previaImagem.setBackground(fundoBorda());
+        previaImagem.setPadding(dp(6), dp(6), dp(6), dp(6));
+        previaImagem.setImageResource(android.R.drawable.ic_menu_gallery);
+
+        LinearLayout.LayoutParams imagemParams = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(210));
+        imagemParams.bottomMargin = dp(12);
+        conteudo.addView(previaImagem, imagemParams);
+
+        Button selecionar = criarBotao("🖼  ESCOLHER IMAGEM");
+        conteudo.addView(selecionar);
+        selecionar.setOnClickListener(v -> escolherImagem());
+
+        TextView observacao = new TextView(this);
+        observacao.setText(
+                "Formato recomendado: imagem horizontal 16:9, como 1920 × 1080. " +
+                "Prefira deixar textos e logotipos afastados das bordas."
+        );
+        observacao.setTextColor(Color.rgb(165, 185, 210));
+        observacao.setTextSize(13);
+        observacao.setPadding(dp(4), dp(12), dp(4), dp(20));
+        conteudo.addView(observacao);
+
+        botaoSalvar = criarBotao("SALVAR ANÚNCIO COMO RASCUNHO");
+        conteudo.addView(botaoSalvar);
+        botaoSalvar.setOnClickListener(v -> salvarAnuncio());
+
+        TextView subtituloLista = new TextView(this);
+        subtituloLista.setText("📋  ANÚNCIOS CADASTRADOS");
+        subtituloLista.setTextColor(AZUL);
+        subtituloLista.setTextSize(17);
+        subtituloLista.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        subtituloLista.setPadding(dp(4), dp(18), dp(4), dp(12));
+        conteudo.addView(subtituloLista);
+
+        listaAnuncios = new LinearLayout(this);
+        listaAnuncios.setOrientation(LinearLayout.VERTICAL);
+        conteudo.addView(listaAnuncios);
+
+        rolagem.addView(conteudo);
+        fundo.addView(rolagem, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        setContentView(fundo);
+        carregarAnuncios();
+    }
+
+    private void salvarAnuncio() {
+        String titulo = campoTitulo.getText().toString().trim();
+        String descricao = campoDescricao.getText().toString().trim();
+        String preco = campoPreco.getText().toString().trim();
+        String promocional = campoPromocional.getText().toString().trim();
+        String whatsapp = campoWhatsApp.getText().toString()
+                .replaceAll("[^0-9]", "");
+        String tipoAnuncio = seletorTipoAnuncio.getCheckedRadioButtonId()
+                == idTipoVenda ? "venda" : "divulgacao_nexo";
+
+        if ("venda".equals(tipoAnuncio)
+                && (titulo.isEmpty() || descricao.isEmpty() || whatsapp.isEmpty())) {
+            Toast.makeText(this,
+                    "Preencha título, descrição e WhatsApp.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        if (imagemSelecionada == null && imagemUrlAtual.isEmpty()) {
+            Toast.makeText(this,
+                    "Escolha uma imagem para o anúncio.",
+                    Toast.LENGTH_LONG).show();
+            return;
+        }
+
+        botaoSalvar.setEnabled(false);
+        botaoSalvar.setText("SALVANDO...");
+
+        new Thread(() -> {
+            try {
+                String urlImagem = imagemUrlAtual;
+                if (imagemSelecionada != null) {
+                    runOnUiThread(() ->
+                            botaoSalvar.setText("ENVIANDO IMAGEM..."));
+                    urlImagem = enviarImagemCloudinary(imagemSelecionada);
+                }
+
+                java.util.Map<String, Object> dados =
+                        new java.util.HashMap<>();
+                dados.put("tipo", tipoAnuncio);
+                dados.put("titulo", titulo);
+                dados.put("descricao", descricao);
+                dados.put("preco", preco);
+                dados.put("precoPromocional", promocional);
+                dados.put("whatsapp", whatsapp);
+                dados.put("imagemUrl", urlImagem);
+                dados.put("atualizadoEm",
+                        com.google.firebase.firestore.FieldValue.serverTimestamp());
+
+                if (anuncioEditandoId == null) {
+                    dados.put("publicado", false);
+                    dados.put("status", "rascunho");
+                    dados.put("criadoEm",
+                            com.google.firebase.firestore.FieldValue.serverTimestamp());
+
+                    db.collection("anuncios").add(dados)
+                            .addOnSuccessListener(ref -> runOnUiThread(() -> {
+                                Toast.makeText(this,
+                                        "Anúncio salvo como rascunho!",
+                                        Toast.LENGTH_LONG).show();
+                                limparFormulario();
+                                carregarAnuncios();
+                            }))
+                            .addOnFailureListener(e -> mostrarErroSalvar(e));
+                } else {
+                    db.collection("anuncios").document(anuncioEditandoId)
+                            .update(dados)
+                            .addOnSuccessListener(v -> runOnUiThread(() -> {
+                                Toast.makeText(this,
+                                        "Anúncio atualizado!",
+                                        Toast.LENGTH_SHORT).show();
+                                limparFormulario();
+                                carregarAnuncios();
+                            }))
+                            .addOnFailureListener(e -> mostrarErroSalvar(e));
+                }
+            } catch (Exception e) {
+                android.util.Log.e("NEXO_ANUNCIOS", "Falha no envio da imagem", e);
+                runOnUiThread(() -> {
+                    botaoSalvar.setEnabled(true);
+                    botaoSalvar.setText(anuncioEditandoId == null
+                            ? "SALVAR ANÚNCIO COMO RASCUNHO"
+                            : "SALVAR ALTERAÇÕES");
+                    Toast.makeText(this,
+                            "Falha no upload: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
+            }
+        }).start();
+    }
+
+    private String enviarImagemCloudinary(Uri uriImagem) throws Exception {
+        java.net.HttpURLConnection conexao = null;
+        String boundary = "----NEXOAnuncio" + System.currentTimeMillis();
+
+        try {
+            java.net.URL url = new java.net.URL(
+                    "https://api.cloudinary.com/v1_1/"
+                            + CLOUD_NAME + "/image/upload");
+            conexao = (java.net.HttpURLConnection) url.openConnection();
+            conexao.setRequestMethod("POST");
+            conexao.setDoOutput(true);
+            conexao.setConnectTimeout(20000);
+            conexao.setReadTimeout(30000);
+            conexao.setRequestProperty("Content-Type",
+                    "multipart/form-data; boundary=" + boundary);
+
+            try (java.io.OutputStream saida = conexao.getOutputStream();
+                 java.io.PrintWriter writer = new java.io.PrintWriter(
+                         new java.io.OutputStreamWriter(saida,
+                                 java.nio.charset.StandardCharsets.UTF_8), true)) {
+
+                writer.append("--").append(boundary).append("\r\n")
+                        .append("Content-Disposition: form-data; name=\"upload_preset\"\r\n\r\n")
+                        .append(UPLOAD_PRESET).append("\r\n");
+
+                writer.append("--").append(boundary).append("\r\n")
+                        .append("Content-Disposition: form-data; name=\"folder\"\r\n\r\n")
+                        .append("anuncios").append("\r\n");
+
+                writer.append("--").append(boundary).append("\r\n")
+                        .append("Content-Disposition: form-data; name=\"file\"; filename=\"anuncio.jpg\"\r\n")
+                        .append("Content-Type: application/octet-stream\r\n\r\n");
+                writer.flush();
+
+                try (java.io.InputStream entrada =
+                             getContentResolver().openInputStream(uriImagem)) {
+                    if (entrada == null) {
+                        throw new Exception("Não foi possível ler a imagem escolhida.");
+                    }
+                    byte[] buffer = new byte[8192];
+                    int lidos;
+                    while ((lidos = entrada.read(buffer)) != -1) {
+                        saida.write(buffer, 0, lidos);
+                    }
+                    saida.flush();
+                }
+
+                writer.append("\r\n").append("--").append(boundary)
+                        .append("--\r\n");
+                writer.flush();
+            }
+
+            int codigo = conexao.getResponseCode();
+            java.io.InputStream respostaStream =
+                    codigo >= 200 && codigo < 300
+                            ? conexao.getInputStream()
+                            : conexao.getErrorStream();
+
+            StringBuilder resposta = new StringBuilder();
+            if (respostaStream != null) {
+                try (java.io.BufferedReader leitor =
+                             new java.io.BufferedReader(
+                                     new java.io.InputStreamReader(respostaStream))) {
+                    String linha;
+                    while ((linha = leitor.readLine()) != null) {
+                        resposta.append(linha);
+                    }
+                }
+            }
+
+            org.json.JSONObject json = new org.json.JSONObject(resposta.toString());
+            if (codigo < 200 || codigo >= 300) {
+                org.json.JSONObject erro = json.optJSONObject("error");
+                String detalhe = erro == null
+                        ? resposta.toString()
+                        : erro.optString("message", resposta.toString());
+                throw new Exception("Cloudinary HTTP " + codigo + ": " + detalhe);
+            }
+
+            String secureUrl = json.optString("secure_url", "");
+            if (secureUrl.isEmpty()) {
+                throw new Exception("Cloudinary não retornou a URL da imagem.");
+            }
+            return secureUrl;
+        } finally {
+            if (conexao != null) conexao.disconnect();
+        }
+    }
+
+    private void mostrarErroSalvar(Exception erro) {
+        runOnUiThread(() -> {
+            botaoSalvar.setEnabled(true);
+            botaoSalvar.setText(anuncioEditandoId == null
+                    ? "SALVAR ANÚNCIO COMO RASCUNHO"
+                    : "SALVAR ALTERAÇÕES");
+            Toast.makeText(this,
+                    "Não foi possível salvar: " + erro.getMessage(),
+                    Toast.LENGTH_LONG).show();
+        });
+    }
+
+    private void limparFormulario() {
+        anuncioEditandoId = null;
+        seletorTipoAnuncio.check(idTipoDivulgacao);
+        imagemUrlAtual = "";
+        imagemSelecionada = null;
+        campoTitulo.setText("");
+        campoDescricao.setText("");
+        campoPreco.setText("");
+        campoPromocional.setText("");
+        campoWhatsApp.setText("");
+        previaImagem.setImageResource(android.R.drawable.ic_menu_gallery);
+        botaoSalvar.setEnabled(true);
+        botaoSalvar.setText("SALVAR ANÚNCIO COMO RASCUNHO");
+    }
+
+    private void carregarAnuncios() {
+        if (listaAnuncios == null || db == null) return;
+        listaAnuncios.removeAllViews();
+
+        db.collection("anuncios").get()
+                .addOnSuccessListener(resultado -> {
+                    if (resultado.isEmpty()) {
+                        TextView vazio = new TextView(this);
+                        vazio.setText("Nenhum anúncio cadastrado ainda.");
+                        vazio.setTextColor(Color.LTGRAY);
+                        vazio.setPadding(dp(8), dp(12), dp(8), dp(12));
+                        listaAnuncios.addView(vazio);
+                        return;
+                    }
+
+                    for (com.google.firebase.firestore.DocumentSnapshot doc
+                            : resultado.getDocuments()) {
+                        LinearLayout card = new LinearLayout(this);
+                        card.setOrientation(LinearLayout.VERTICAL);
+                        card.setPadding(dp(12), dp(12), dp(12), dp(12));
+                        card.setBackground(fundoBorda());
+
+                        TextView nome = new TextView(this);
+                        nome.setText(doc.getString("titulo") == null
+                                ? "Anúncio sem título" : doc.getString("titulo"));
+                        nome.setTextColor(Color.WHITE);
+                        nome.setTextSize(16);
+                        nome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+                        card.addView(nome);
+
+                        boolean publicado = Boolean.TRUE.equals(doc.getBoolean("publicado"));
+                        TextView estado = new TextView(this);
+                        estado.setText(publicado ? "STATUS: PUBLICADO" : "STATUS: RASCUNHO/PAUSADO");
+                        estado.setTextColor(publicado
+                                ? Color.rgb(40, 255, 145) : Color.LTGRAY);
+                        estado.setPadding(0, dp(6), 0, dp(8));
+                        card.addView(estado);
+
+                        Button editar = criarBotao("EDITAR");
+                        Button publicar = criarBotao(publicado ? "PAUSAR" : "PUBLICAR");
+                        Button excluir = criarBotao("EXCLUIR");
+                        card.addView(editar);
+                        card.addView(publicar);
+                        card.addView(excluir);
+
+                        editar.setOnClickListener(v -> {
+                            anuncioEditandoId = doc.getId();
+                            String tipoSalvo = doc.getString("tipo");
+                            seletorTipoAnuncio.check(
+                                    "venda".equalsIgnoreCase(tipoSalvo)
+                                            ? idTipoVenda
+                                            : idTipoDivulgacao
+                            );
+                            campoTitulo.setText(doc.getString("titulo"));
+                            campoDescricao.setText(doc.getString("descricao"));
+                            campoPreco.setText(doc.getString("preco"));
+                            campoPromocional.setText(doc.getString("precoPromocional"));
+                            campoWhatsApp.setText(doc.getString("whatsapp"));
+                            imagemUrlAtual = doc.getString("imagemUrl") == null
+                                    ? "" : doc.getString("imagemUrl");
+                            imagemSelecionada = null;
+                            botaoSalvar.setText("SALVAR ALTERAÇÕES");
+                            previaImagem.setImageResource(android.R.drawable.ic_menu_gallery);
+                            Toast.makeText(this,
+                                    "Edite os campos e salve as alterações. Escolha outra imagem se quiser trocá-la.",
+                                    Toast.LENGTH_LONG).show();
+                        });
+
+                        publicar.setOnClickListener(v -> {
+                            boolean novoEstado = !publicado;
+                            java.util.Map<String, Object> atualizacao =
+                                    new java.util.HashMap<>();
+                            atualizacao.put("publicado", novoEstado);
+                            atualizacao.put("status", novoEstado ? "publicado" : "pausado");
+                            atualizacao.put("atualizadoEm",
+                                    com.google.firebase.firestore.FieldValue.serverTimestamp());
+                            doc.getReference().update(atualizacao)
+                                    .addOnSuccessListener(x -> {
+                                        Toast.makeText(this,
+                                                novoEstado ? "Anúncio publicado!" : "Anúncio pausado!",
+                                                Toast.LENGTH_SHORT).show();
+                                        carregarAnuncios();
+                                    })
+                                    .addOnFailureListener(e -> Toast.makeText(this,
+                                            "Erro ao atualizar: " + e.getMessage(),
+                                            Toast.LENGTH_LONG).show());
+                        });
+
+                        excluir.setOnClickListener(v ->
+                                new android.app.AlertDialog.Builder(this)
+                                        .setTitle("Excluir anúncio")
+                                        .setMessage("Deseja excluir este anúncio?")
+                                        .setNegativeButton("Cancelar", null)
+                                        .setPositiveButton("Excluir", (dialog, which) ->
+                                                doc.getReference().delete()
+                                                        .addOnSuccessListener(x -> {
+                                                            Toast.makeText(this,
+                                                                    "Anúncio excluído.",
+                                                                    Toast.LENGTH_SHORT).show();
+                                                            carregarAnuncios();
+                                                        })
+                                                        .addOnFailureListener(e ->
+                                                                Toast.makeText(this,
+                                                                        "Erro ao excluir: " + e.getMessage(),
+                                                                        Toast.LENGTH_LONG).show()))
+                                        .show());
+
+                        LinearLayout.LayoutParams params =
+                                new LinearLayout.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                        params.bottomMargin = dp(12);
+                        listaAnuncios.addView(card, params);
+                    }
+                })
+                .addOnFailureListener(e -> Toast.makeText(this,
+                        "Erro ao carregar anúncios: " + e.getMessage(),
+                        Toast.LENGTH_LONG).show());
+    }
+
+    private EditText criarCampo(String dica) {
+        EditText campo = new EditText(this);
+        campo.setHint(dica);
+        campo.setHintTextColor(Color.rgb(135, 155, 180));
+        campo.setTextColor(Color.WHITE);
+        campo.setTextSize(15);
+        campo.setSingleLine(dica.startsWith("Título")
+                || dica.startsWith("Preço")
+                || dica.startsWith("WhatsApp"));
+
+        campo.setPadding(dp(14), dp(12), dp(14), dp(12));
+        campo.setBackground(fundoBorda());
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+        );
+        params.bottomMargin = dp(12);
+        campo.setLayoutParams(params);
+
+        return campo;
+    }
+
+    private GradientDrawable fundoBorda() {
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setColor(PAINEL);
+        fundo.setCornerRadius(dp(14));
+        fundo.setStroke(dp(1), Color.rgb(55, 90, 135));
+        return fundo;
+    }
+
+    private Button criarBotao(String texto) {
+        Button botao = new Button(this);
+        botao.setText(texto);
+        botao.setTextColor(Color.WHITE);
+        botao.setTextSize(14);
+        botao.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        botao.setAllCaps(false);
+
+        GradientDrawable fundoBotao = new GradientDrawable(
+                GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{Color.rgb(8, 45, 85), Color.rgb(40, 12, 70)}
+        );
+        fundoBotao.setCornerRadius(dp(14));
+        fundoBotao.setStroke(dp(1), AZUL);
+        botao.setBackground(fundoBotao);
+
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(54));
+        params.bottomMargin = dp(12);
+        botao.setLayoutParams(params);
+
+        return botao;
+    }
+
+    private void escolherImagem() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.setType("image/*");
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        startActivityForResult(intent, 9200);
+    }
+
+    @Override
+    protected void onActivityResult(
+            int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == 9200 && resultCode == RESULT_OK
+                && data != null && data.getData() != null) {
+            imagemSelecionada = data.getData();
+
+            try {
+                getContentResolver().takePersistableUriPermission(
+                        imagemSelecionada,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                );
+            } catch (Exception ignored) {
+            }
+
+            previaImagem.setImageURI(imagemSelecionada);
+            Toast.makeText(
+                    this, "Imagem selecionada!",
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
+    }
+}

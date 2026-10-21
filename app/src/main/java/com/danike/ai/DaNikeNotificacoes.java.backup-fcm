@@ -1,0 +1,59 @@
+package com.danike.ai;
+
+import android.content.Context;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.messaging.FirebaseMessaging;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public final class DaNikeNotificacoes {
+
+    private DaNikeNotificacoes() {
+    }
+
+    public static void registrarTokenFCM(Context context) {
+
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            return;
+        }
+
+        FirebaseMessaging.getInstance()
+                .getToken()
+                .addOnSuccessListener(token -> {
+
+                    if (token == null || token.trim().isEmpty()) {
+                        return;
+                    }
+
+                    salvarToken(token);
+                });
+    }
+
+    private static void salvarToken(String token) {
+
+        if (FirebaseAuth.getInstance().getCurrentUser() == null) {
+            return;
+        }
+
+        String uid = FirebaseAuth.getInstance()
+                .getCurrentUser()
+                .getUid();
+
+        Map<String, Object> dados = new HashMap<>();
+
+        dados.put("token", token);
+        dados.put("plataforma", "android");
+        dados.put("atualizadoEm", FieldValue.serverTimestamp());
+
+        FirebaseFirestore.getInstance()
+                .collection("usuarios")
+                .document(uid)
+                .collection("dispositivos")
+                .document(token)
+                .set(dados);
+    }
+}

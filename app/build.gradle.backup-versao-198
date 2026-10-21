@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
+
+def signingPropertiesFile = file(System.getProperty("user.home") + "/.config/danikeai-signing.properties")
+def signingProperties = new Properties()
+
+if (signingPropertiesFile.exists()) {
+    signingPropertiesFile.withInputStream { signingProperties.load(it) }
+}
+
+android {
+    namespace 'com.danike.ai'
+    compileSdk 35
+
+    signingConfigs {
+        release {
+            if (signingPropertiesFile.exists()) {
+                storeFile file(signingProperties["storeFile"])
+                storePassword signingProperties["storePassword"]
+                keyAlias signingProperties["keyAlias"]
+                keyPassword signingProperties["keyPassword"]
+            }
+        }
+    }
+
+    defaultConfig {
+        def youtubeKeyFile = file(System.getProperty("user.home") + "/.config/danikeai_youtube_key")
+        def youtubeKey = youtubeKeyFile.exists() ? youtubeKeyFile.text.trim() : ""
+
+        buildConfigField "String", "YOUTUBE_API_KEY", "\"${youtubeKey}\""
+
+        applicationId 'com.danike.ai'
+        minSdk 23
+        targetSdk 35
+        versionCode 45
+        versionName '1.9.7'
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    buildFeatures {
+        buildConfig true
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+    implementation platform('com.google.firebase:firebase-bom:34.19.0')
+    implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-functions'
+    implementation 'com.google.firebase:firebase-messaging:24.1.2'
+    implementation 'com.google.firebase:firebase-storage'
+}

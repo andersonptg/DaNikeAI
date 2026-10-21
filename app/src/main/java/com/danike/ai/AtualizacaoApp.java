@@ -96,11 +96,7 @@ public final class AtualizacaoApp {
                             "Confira as melhorias da nova versão."
                     );
 
-                    String apkUrl = obterTexto(
-                            dados,
-                            "apkUrl",
-                            ""
-                    );
+                    String apkUrl = normalizarUrlApk(obterTexto(dados, "apkUrl", ""));
 
                     Object mandatoryObj = dados.get("mandatory");
 
@@ -131,6 +127,16 @@ public final class AtualizacaoApp {
         String texto = String.valueOf(valor).trim();
 
         return texto.isEmpty() ? padrao : texto;
+    }
+
+    private static String normalizarUrlApk(String url) {
+        String limpa = url == null ? "" : url.trim();
+        String base = "https://github.com/andersonptg/DaNikeAI/releases/latest";
+        if (limpa.isEmpty() || limpa.equalsIgnoreCase(base)
+                || limpa.equalsIgnoreCase(base + "/")) {
+            return base + "/download/NEXO.apk";
+        }
+        return limpa;
     }
 
     private static GradientDrawable arredondado(
@@ -188,6 +194,10 @@ public final class AtualizacaoApp {
 
         // Camada escura atrás da janela.
         LinearLayout root = new LinearLayout(activity);
+        root.setLayoutParams(new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+        ));
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER);
         root.setPadding(
@@ -480,6 +490,17 @@ public final class AtualizacaoApp {
             btnDepois.setOnClickListener(v -> dialog.dismiss());
         }
 
+        // Layout responsivo: limita a altura do cartão em telas pequenas.
+        int alturaTela = activity.getResources()
+                .getDisplayMetrics().heightPixels;
+        int alturaMaximaCard = Math.max(
+                dp(activity, 360),
+                Math.min(dp(activity, 620), alturaTela - dp(activity, 64))
+        );
+
+        card.setMinimumWidth(dp(activity, 250));
+        card.setMinimumHeight(0);
+
         int larguraTela = activity.getResources()
                 .getDisplayMetrics().widthPixels;
 
@@ -490,13 +511,12 @@ public final class AtualizacaoApp {
                 larguraDisponivel
         );
 
-        root.addView(
-                card,
-                new LinearLayout.LayoutParams(
-                        Math.max(dp(activity, 250), larguraCard),
-                        ViewGroup.LayoutParams.WRAP_CONTENT
-                )
+        LinearLayout.LayoutParams pCard = new LinearLayout.LayoutParams(
+                Math.max(dp(activity, 250), larguraCard),
+                ViewGroup.LayoutParams.WRAP_CONTENT
         );
+        pCard.gravity = Gravity.CENTER;
+        root.addView(card, pCard);
 
         root.setOnClickListener(v -> {
             if (!obrigatoria) dialog.dismiss();
@@ -518,15 +538,7 @@ public final class AtualizacaoApp {
 
             AppDistribuicao.baixarApk(activity, apkUrl);
 
-            // Evita deixar o botão travado caso o download falhe.
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (dialog.isShowing()
-                        && btnAtualizar.getParent() != null) {
-                    btnAtualizar.setText("TENTAR ATUALIZAR NOVAMENTE  →");
-                    btnAtualizar.setEnabled(true);
-                }
-            }, 4000);
-        });
+});
 
         dialog.setView(root);
         dialog.setCanceledOnTouchOutside(!obrigatoria);
@@ -537,7 +549,27 @@ public final class AtualizacaoApp {
 
         dialog.show();
 
+        // A janela ocupa a tela inteira para centralizar o overlay de verdade.
+        android.view.Window janela = dialog.getWindow();
+        if (janela != null) {
+            janela.setBackgroundDrawableResource(android.R.color.transparent);
+            janela.setLayout(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT
+            );
+            janela.setGravity(Gravity.CENTER);
+            janela.addFlags(
+                    android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND
+            );
+            android.view.WindowManager.LayoutParams atributos =
+                    janela.getAttributes();
+            atributos.dimAmount = 0.68f;
+            atributos.gravity = Gravity.CENTER;
+            janela.setAttributes(atributos);
+        }
+
         if (dialog.getWindow() != null) {
+            dialog.getWindow().setGravity(Gravity.CENTER);
             dialog.getWindow().setBackgroundDrawable(
                     new ColorDrawable(Color.TRANSPARENT)
             );

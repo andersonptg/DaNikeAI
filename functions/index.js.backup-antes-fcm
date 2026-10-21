@@ -1,0 +1,230 @@
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { defineSecret } = require("firebase-functions/params");
+const admin = require("firebase-admin");
+
+admin.initializeApp();
+
+const CLOUDINARY_CLOUD_NAME = defineSecret("CLOUDINARY_CLOUD_NAME");
+const CLOUDINARY_API_KEY = defineSecret("CLOUDINARY_API_KEY");
+const CLOUDINARY_API_SECRET = defineSecret("CLOUDINARY_API_SECRET");
+
+exports.excluirFotoEquipe = onCall(
+  {
+    secrets: [
+      CLOUDINARY_CLOUD_NAME,
+      CLOUDINARY_API_KEY,
+      CLOUDINARY_API_SECRET
+    ]
+  },
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError(
+        "unauthenticated",
+        "Usuário não autenticado."
+      );
+    }
+
+    const email =
+      request.auth.token.email || "";
+
+    if (email.toLowerCase() !== "lipesanderson@gmail.com") {
+      throw new HttpsError(
+        "permission-denied",
+        "Somente o administrador pode excluir fotos da equipe."
+      );
+    }
+
+    const publicId =
+      String(request.data?.publicId || "").trim();
+
+    const idEquipe =
+      String(request.data?.idEquipe || "").trim();
+
+    if (!publicId || !idEquipe) {
+      throw new HttpsError(
+        "invalid-argument",
+        "publicId e idEquipe são obrigatórios."
+      );
+    }
+
+    const timestamp =
+      Math.floor(Date.now() / 1000);
+
+    const crypto =
+      require("crypto");
+
+    const signatureBase =
+      `public_id=${publicId}&timestamp=${timestamp}` +
+      CLOUDINARY_API_SECRET.value();
+
+    const signature =
+      crypto
+        .createHash("sha1")
+        .update(signatureBase)
+        .digest("hex");
+
+    const body =
+      new URLSearchParams({
+        public_id: publicId,
+        timestamp: String(timestamp),
+        api_key: CLOUDINARY_API_KEY.value(),
+        signature
+      });
+
+    const resposta =
+      await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME.value()}/image/destroy`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded"
+          },
+          body
+        }
+      );
+
+    const resultado =
+      await resposta.json();
+
+    if (!resposta.ok ||
+        resultado.result !== "ok" &&
+        resultado.result !== "not found") {
+      console.error(
+        "Erro Cloudinary:",
+        resultado
+      );
+
+      throw new HttpsError(
+        "internal",
+        "Não foi possível excluir a foto do Cloudinary."
+      );
+    }
+
+    await admin
+      .firestore()
+      .collection("equipe")
+      .doc(idEquipe)
+      .delete();
+
+    return {
+      sucesso: true,
+      cloudinary: resultado.result
+    };
+  }
+);
+
+
+// Upload da foto pessoal do usuário autenticado.
+// Mantém separado o fluxo de fotos exclusivas da equipe.
+exports.uploadFotoPerfil = onRequest(
+  {
+    secrets: [
+      CLOUDINARY_CLOUD_NAME,
+      CLOUDINARY_API_KEY,
+      CLOUDINARY_API_SECRET
+    ],
+    maxInstances: 5
+  },
+  async (req, res) => {
+    res.set("Cache-Control", "no-store");
+
+    if (req.method !== "POST") {
+      res.set("Allow", "POST");
+      return res.status(405).json({ erro: "Use POST para enviar a foto." });
+    }
+
+    try {
+      const authorization = String(req.headers.authorization || "");
+      const match = authorization.match(/^Bearer\s+(.+)$/i);
+
+      if (!match) {
+        return res.status(401).json({ erro: "Usuário não autenticado." });
+      }
+
+      await admin.auth().verifyIdToken(match[1]);
+
+      const tipo = String(req.headers["content-type"] || "")
+        .split(";")[0].trim().toLowerCase();
+
+      const extensoes = {
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "image/webp": "webp"
+      };
+
+      if (!extensoes[tipo]) {
+        return res.status(415).json({
+          erro: "Envie uma imagem JPEG, PNG ou WebP."
+        });
+      }
+
+      const imagem = req.rawBody;
+      if (!imagem || !imagem.length || imagem.length > 8 * 1024 * 1024) {
+        return res.status(400).json({
+          erro: "A foto está vazia ou ultrapassa 8 MB."
+        });
+      }
+
+      const cloud = CLOUDINARY_CLOUD_NAME.value();
+      const apiKey = CLOUDINARY_API_KEY.value();
+      const secret = CLOUDINARY_API_SECRET.value();
+      const timestamp = Math.floor(Date.now() / 1000);
+      const folder = "danikeai/perfis";
+
+      const crypto = require("crypto");
+      const assinaturaBase =
+        `folder=${folder}&timestamp=${timestamp}${secret}`;
+      const signature = crypto
+        .createHash("sha1")
+        .update(assinaturaBase)
+        .digest("hex");
+
+      const formulario = new FormData();
+      formulario.append(
+        "file",
+        new Blob([imagem], { type: tipo }),
+        `foto.${extensoes[tipo]}`
+      );
+      formulario.append("api_key", apiKey);
+      formulario.append("timestamp", String(timestamp));
+      formulario.append("folder", folder);
+      formulario.append("signature", signature);
+
+      const resposta = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloud}/image/upload`,
+        { method: "POST", body: formulario }
+      );
+
+      const resultado = await resposta.json();
+
+      if (!resposta.ok || !resultado.secure_url ||
+          !resultado.secure_url.startsWith("https://")) {
+        console.error("Falha no upload da foto pessoal:", {
+          status: resposta.status,
+          error: resultado.error?.message || "Resposta inválida"
+        });
+        return res.status(502).json({
+          erro: "Não foi possível enviar a foto ao serviço de imagens."
+        });
+      }
+
+      return res.status(200).json({
+        ok: true,
+        secure_url: resultado.secure_url,
+        public_id: resultado.public_id
+      });
+    } catch (e) {
+      console.error("Erro em uploadFotoPerfil:", e.message);
+      const status = e.code === "auth/id-token-expired" ||
+                     e.code === "auth/argument-error" ||
+                     e.code === "auth/invalid-id-token"
+        ? 401 : 500;
+      return res.status(status).json({
+        erro: status === 401
+          ? "Sessão inválida. Entre novamente no aplicativo."
+          : "Não foi possível enviar a foto. Tente novamente."
+      });
+    }
+  }
+);

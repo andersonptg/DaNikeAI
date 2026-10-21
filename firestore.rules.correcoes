@@ -1,0 +1,36 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function usuarioAutenticado() {
+      return request.auth != null;
+    }
+
+    function ehProprietario() {
+      return usuarioAutenticado()
+        && request.auth.uid == 'nd9zWE3GF2hOJDg4BfgTtaSy3H33';
+    }
+
+    // Configurações do aplicativo
+    match /config/app {
+      allow read: if usuarioAutenticado();
+      allow write: if ehProprietario();
+    }
+
+    match /config/areas {
+      allow read: if usuarioAutenticado();
+      allow write: if ehProprietario();
+    }
+
+    match /config/update {
+      allow read: if usuarioAutenticado();
+      allow write: if ehProprietario();
+    }
+
+    // Bloqueia documentos sem uma regra específica.
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}

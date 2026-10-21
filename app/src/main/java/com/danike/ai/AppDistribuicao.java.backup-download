@@ -1,0 +1,272 @@
+package com.danike.ai;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Environment;
+import android.provider.Settings;
+import android.widget.Toast;
+
+import androidx.core.content.FileProvider;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+public final class AppDistribuicao {
+    private static final String TAG = "NEXOUpdater";
+
+    private AppDistribuicao() {}
+
+    public static void compartilhar(Context context, String link) {
+        Intent compartilhar = new Intent(Intent.ACTION_SEND);
+        compartilhar.setType("text/plain");
+        compartilhar.putExtra(
+                Intent.EXTRA_TEXT,
+                "🚀 Conheça o NEXO!\n\nBaixe o aplicativo:\n" + link
+        );
+        context.startActivity(
+                Intent.createChooser(compartilhar, "Compartilhar NEXO")
+        );
+    }
+
+    public static void abrirLink(Context context, String link) {
+        try {
+            context.startActivity(
+                    new Intent(Intent.ACTION_VIEW, Uri.parse(link))
+            );
+        } catch (Exception e) {
+            Toast.makeText(
+                    context,
+                    "Não foi possível abrir o endereço.",
+                    Toast.LENGTH_LONG
+            ).show();
+        }
+    }
+
+    public static void baixarApk(Context context, String apkUrl) {
+        if (context == null || apkUrl == null || apkUrl.trim().isEmpty()) {
+            return;
+        }
+
+        final Context appContext = context.getApplicationContext();
+
+        Toast.makeText(
+                context,
+                "Baixando atualização do NEXO...",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        new Thread(() -> {
+            HttpURLConnection conexao = null;
+            File parcial = null;
+
+            try {
+                File pasta = appContext.getExternalFilesDir(
+                        Environment.DIRECTORY_DOWNLOADS
+                );
+
+                if (pasta == null && appContext.getExternalFilesDir(null) != null) {
+                    pasta = new File(
+                            appContext.getExternalFilesDir(null),
+                            "downloads"
+                    );
+                }
+
+                if (pasta == null || (!pasta.exists() && !pasta.mkdirs())) {
+                    throw new Exception(
+                            "Não foi possível acessar a pasta de download."
+                    );
+                }
+
+                File apkFinal = new File(pasta, "NEXO-atualizacao.apk");
+                parcial = new File(pasta, "NEXO-atualizacao.apk.part");
+
+                URL url = new URL(apkUrl.trim());
+                conexao = (HttpURLConnection) url.openConnection();
+                conexao.setInstanceFollowRedirects(true);
+                conexao.setConnectTimeout(30000);
+                conexao.setReadTimeout(60000);
+                conexao.setRequestMethod("GET");
+                conexao.setRequestProperty(
+                        "User-Agent",
+                        "NEXO-Android-Updater"
+                );
+                conexao.setRequestProperty(
+                        "Accept",
+                        "application/vnd.android.package-archive,application/octet-stream,*/*"
+                );
+                conexao.connect();
+
+                int codigo = conexao.getResponseCode();
+                if (codigo < 200 || codigo >= 300) {
+                    throw new Exception("Erro HTTP " + codigo + " no download.");
+                }
+
+                long tamanho = conexao.getContentLengthLong();
+                long total = 0;
+
+                try (
+                        InputStream entrada = new BufferedInputStream(
+                                conexao.getInputStream()
+                        );
+                        FileOutputStream saida = new FileOutputStream(parcial)
+                ) {
+                    byte[] buffer = new byte[16384];
+                    int lidos;
+
+                    while ((lidos = entrada.read(buffer)) != -1) {
+                        saida.write(buffer, 0, lidos);
+                        total += lidos;
+                    }
+
+                    saida.flush();
+                    saida.getFD().sync();
+                }
+
+                if (tamanho > 0 && total != tamanho) {
+                    throw new Exception(
+                            "Download incompleto: " + total
+                                    + " de " + tamanho + " bytes."
+                    );
+                }
+
+                if (!parcial.isFile() || total < 1024 * 1024) {
+                    throw new Exception(
+                            "O arquivo recebido está vazio ou incompleto."
+                    );
+                }
+
+                PackageManager pm = appContext.getPackageManager();
+                PackageInfo info = pm.getPackageArchiveInfo(
+                        parcial.getAbsolutePath(), 0
+                );
+
+                if (info == null || info.packageName == null) {
+                    throw new Exception(
+                            "O arquivo baixado não é um APK Android válido."
+                    );
+                }
+
+                if (!appContext.getPackageName().equals(info.packageName)) {
+                    throw new Exception(
+                            "O APK pertence a outro aplicativo: "
+                                    + info.packageName
+                    );
+                }
+
+                if (apkFinal.exists() && !apkFinal.delete()) {
+                    throw new Exception(
+                            "Não foi possível substituir o APK anterior."
+                    );
+                }
+
+                if (!parcial.renameTo(apkFinal)) {
+                    throw new Exception(
+                            "Não foi possível finalizar o arquivo baixado."
+                    );
+                }
+
+                new android.os.Handler(appContext.getMainLooper()).post(
+                        () -> abrirInstalador(context, apkFinal)
+                );
+
+            } catch (Exception e) {
+                android.util.Log.e(TAG, "Falha na atualização", e);
+
+                if (parcial != null && parcial.exists()) {
+                    // Apaga apenas o arquivo temporário incompleto.
+                    // O APK anterior não é usado como resultado do download.
+                    //noinspection ResultOfMethodCallIgnored
+                    parcial.delete();
+                }
+
+                String detalhe = e.getMessage();
+                if (detalhe == null || detalhe.trim().isEmpty()) {
+                    detalhe = e.getClass().getSimpleName();
+                }
+
+                final String mensagem = detalhe;
+                new android.os.Handler(appContext.getMainLooper()).post(
+                        () -> Toast.makeText(
+                                context,
+                                "Falha na atualização: " + mensagem,
+                                Toast.LENGTH_LONG
+                        ).show()
+                );
+
+            } finally {
+                if (conexao != null) {
+                    conexao.disconnect();
+                }
+            }
+        }, "NEXO-APK-Download").start();
+    }
+
+    private static void abrirInstalador(Context context, File arquivo) {
+        try {
+            if (!arquivo.isFile() || arquivo.length() < 1024 * 1024) {
+                throw new Exception("O APK não está disponível ou está incompleto.");
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    && !context.getPackageManager().canRequestPackageInstalls()) {
+
+                Toast.makeText(
+                        context,
+                        "Autorize a instalação de aplicativos para o NEXO e tente novamente.",
+                        Toast.LENGTH_LONG
+                ).show();
+
+                Intent configuracoes = new Intent(
+                        Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                        Uri.parse("package:" + context.getPackageName())
+                );
+
+                if (!(context instanceof Activity)) {
+                    configuracoes.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                }
+
+                context.startActivity(configuracoes);
+                return;
+            }
+
+            Uri apkUri = FileProvider.getUriForFile(
+                    context,
+                    context.getPackageName() + ".fileprovider",
+                    arquivo
+            );
+
+            Intent instalar = new Intent(Intent.ACTION_VIEW);
+            instalar.setDataAndType(
+                    apkUri,
+                    "application/vnd.android.package-archive"
+            );
+            instalar.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            instalar.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+            context.startActivity(instalar);
+
+        } catch (Exception e) {
+            android.util.Log.e(TAG, "Não foi possível abrir o instalador", e);
+
+            String detalhe = e.getMessage();
+            if (detalhe == null || detalhe.trim().isEmpty()) {
+                detalhe = e.getClass().getSimpleName();
+            }
+
+            Toast.makeText(
+                    context,
+                    "Não foi possível abrir o instalador: " + detalhe,
+                    Toast.LENGTH_LONG
+            ).show();
+        }
+    }
+}
