@@ -116,6 +116,27 @@ def carregar_chave():
     return os.getenv("GEMINI_API_KEY", "").strip()
 
 
+def carregar_token_base44():
+    """
+    Lê o token administrativo do Base44 somente do ambiente do servidor.
+    Nunca deve ser colocado no APK.
+    """
+    token = os.getenv("BASE44_ADMIN_TOKEN", "").strip()
+    if token:
+        return token
+
+    try:
+        with open(ENV, "r", encoding="utf-8") as f:
+            for linha in f:
+                linha = linha.strip()
+                if linha.startswith("BASE44_ADMIN_TOKEN="):
+                    return linha.split("=", 1)[1].strip()
+    except Exception:
+        pass
+
+    return ""
+
+
 def extrair_texto(resultado):
     try:
         candidatos = resultado.get("candidates", [])
@@ -575,6 +596,59 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             self.enviar_json(502, {"erro": "Não foi possível enviar a foto. Tente novamente."})
 
+    def do_nexo_publicar_filme(self):
+        autorizacao = self.headers.get("Authorization", "").strip()
+
+        if not autorizacao.startswith("Bearer "):
+            self.enviar_json(
+                401,
+                {"sucesso": False, "erro": "Token Firebase não enviado."}
+            )
+            return
+
+        token = autorizacao[7:].strip()
+
+        if not token:
+            self.enviar_json(
+                401,
+                {"sucesso": False, "erro": "Token Firebase vazio."}
+            )
+            return
+
+        try:
+            if not usuario_e_proprietario(token):
+                self.enviar_json(
+                    403,
+                    {"sucesso": False, "erro": "Apenas o proprietário pode publicar filmes."}
+                )
+                return
+        except Exception:
+            self.enviar_json(
+                401,
+                {"sucesso": False, "erro": "Token Firebase inválido ou expirado."}
+            )
+            return
+
+        token_base44 = carregar_token_base44()
+
+        if not token_base44:
+            self.enviar_json(
+                500,
+                {
+                    "sucesso": False,
+                    "erro": "BASE44_ADMIN_TOKEN não configurado no servidor."
+                }
+            )
+            return
+
+        self.enviar_json(
+            200,
+            {
+                "sucesso": True,
+                "mensagem": "Autenticação do proprietário validada. Ponte Base44 pronta."
+            }
+        )
+
     def do_POST(self):
         if self.path == "/profile/delete-photo":
             self.do_delete_profile_photo()
@@ -585,6 +659,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/equipe/delete-photo":
             self.do_delete_team_photo()
             return
+        if self.path == "/nexo/publicar-filme":
+            self.do_nexo_publicar_filme()
+            return
+
         if self.path != "/ask":
             self.enviar_json(
                 404,
