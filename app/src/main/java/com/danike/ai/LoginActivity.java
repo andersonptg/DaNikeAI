@@ -1,5 +1,7 @@
 package com.danike.ai;
 
+import com.danike.ai.NexoAppObserver;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;

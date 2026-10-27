@@ -1,10 +1,17 @@
 package com.danike.ai;
 
+import com.danike.ai.NexoAppObserver;
+
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
@@ -40,8 +47,214 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Locale;
 import java.util.UUID;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.PlaybackException;
+import androidx.media3.common.Player;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.ui.PlayerView;
+import android.widget.MediaController;
+
 
 public class HaveHomeActivity extends Activity {
+
+    /**
+     * Fundo decorativo de Halloween da HAVE.
+     * Elementos de baixa opacidade para preservar a leitura do catálogo.
+     */
+    private class HalloweenHaveBackground extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        HalloweenHaveBackground() {
+            super(HaveHomeActivity.this);
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+            setClickable(false);
+            setFocusable(false);
+        }
+
+        private void cor(Canvas c, int cor, float alpha) {
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(cor);
+            paint.setAlpha((int)(alpha * 255));
+        }
+
+        private void linha(Canvas c, float x1, float y1,
+                           float x2, float y2, int cor, float alpha,
+                           float largura) {
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(largura));
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setColor(cor);
+            paint.setAlpha((int)(alpha * 255));
+            c.drawLine(x1, y1, x2, y2, paint);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+
+            float w = getWidth();
+            float h = getHeight();
+            if (w <= 0 || h <= 0) return;
+
+            // Névoa fria e suave nas laterais.
+            paint.setStyle(Paint.Style.FILL);
+            paint.setShader(new RadialGradient(
+                    w * 0.12f, h * 0.23f, w * 0.55f,
+                    new int[] {
+                            Color.argb(19, 80, 100, 150),
+                            Color.argb(8, 60, 70, 120),
+                            Color.TRANSPARENT
+                    },
+                    null, Shader.TileMode.CLAMP
+            ));
+            canvas.drawRect(0, 0, w, h, paint);
+            paint.setShader(null);
+
+            paint.setShader(new RadialGradient(
+                    w * 0.88f, h * 0.57f, w * 0.43f,
+                    new int[] {
+                            Color.argb(13, 125, 65, 35),
+                            Color.argb(5, 100, 45, 25),
+                            Color.TRANSPARENT
+                    },
+                    null, Shader.TileMode.CLAMP
+            ));
+            canvas.drawRect(0, 0, w, h, paint);
+            paint.setShader(null);
+
+            // Abóbora fantasmagórica, discreta, no fundo superior direito.
+            float cx = w * 0.83f;
+            float cy = h * 0.17f;
+            float r = Math.min(w * 0.105f, dp(43));
+
+            cor(canvas, Color.rgb(100, 48, 25), 0.12f);
+            canvas.drawOval(cx - r, cy - r * 0.77f,
+                    cx + r, cy + r * 0.78f, paint);
+
+            cor(canvas, Color.rgb(160, 75, 28), 0.10f);
+            canvas.drawOval(cx - r * 0.72f, cy - r * 0.86f,
+                    cx - r * 0.18f, cy + r * 0.75f, paint);
+            canvas.drawOval(cx - r * 0.12f, cy - r * 0.86f,
+                    cx + r * 0.48f, cy + r * 0.75f, paint);
+
+            // Cabo da abóbora.
+            linha(canvas, cx, cy - r * 0.72f,
+                    cx + r * 0.12f, cy - r * 1.02f,
+                    Color.rgb(70, 100, 58), 0.16f, 3);
+
+            // Olhos inclinados e expressão irritada.
+            Path olhoE = new Path();
+            olhoE.moveTo(cx - r * 0.72f, cy - r * 0.20f);
+            olhoE.lineTo(cx - r * 0.18f, cy - r * 0.05f);
+            olhoE.lineTo(cx - r * 0.35f, cy + r * 0.20f);
+            olhoE.close();
+
+            Path olhoD = new Path();
+            olhoD.moveTo(cx + r * 0.20f, cy - r * 0.05f);
+            olhoD.lineTo(cx + r * 0.72f, cy - r * 0.22f);
+            olhoD.lineTo(cx + r * 0.40f, cy + r * 0.20f);
+            olhoD.close();
+
+            cor(canvas, Color.rgb(255, 145, 45), 0.20f);
+            canvas.drawPath(olhoE, paint);
+            canvas.drawPath(olhoD, paint);
+
+            // Brilho muito fraco dos olhos.
+            paint.setShader(new RadialGradient(
+                    cx, cy + r * 0.02f, r * 0.85f,
+                    new int[] {
+                            Color.argb(16, 255, 115, 25),
+                            Color.TRANSPARENT
+                    }, null, Shader.TileMode.CLAMP
+            ));
+            canvas.drawCircle(cx, cy, r * 0.85f, paint);
+            paint.setShader(null);
+
+            // Boca angular quase invisível.
+            Path boca = new Path();
+            boca.moveTo(cx - r * 0.43f, cy + r * 0.39f);
+            boca.lineTo(cx - r * 0.20f, cy + r * 0.52f);
+            boca.lineTo(cx, cy + r * 0.42f);
+            boca.lineTo(cx + r * 0.20f, cy + r * 0.52f);
+            boca.lineTo(cx + r * 0.43f, cy + r * 0.34f);
+            linha(canvas, cx - r * 0.43f, cy + r * 0.39f,
+                    cx + r * 0.43f, cy + r * 0.34f,
+                    Color.rgb(190, 100, 48), 0.12f, 1.3f);
+            paint.setShader(null);
+
+            // Teias finas nos cantos superiores.
+            float tw = w * 0.22f;
+            float th = h * 0.10f;
+            for (int i = 1; i <= 5; i++) {
+                float x = tw * i / 5f;
+                linha(canvas, 0, 0, x, th, Color.rgb(165, 180, 205),
+                        0.12f, 0.65f);
+                linha(canvas, 0, 0, th * i / 5f, th,
+                        Color.rgb(165, 180, 205), 0.09f, 0.65f);
+            }
+            for (int arco = 1; arco <= 4; arco++) {
+                Path teia = new Path();
+                teia.moveTo(tw * arco / 5f, th);
+                teia.quadTo(tw * arco / 5f, th * arco / 5f,
+                        th * arco / 5f, th);
+                paint.setShader(null);
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(dp(0.6f));
+                paint.setColor(Color.rgb(165, 180, 205));
+                paint.setAlpha(20);
+                canvas.drawPath(teia, paint);
+            }
+
+            // Algumas aranhas pequenas, suspensas nas laterais.
+            desenharAranha(canvas, w * 0.12f, h * 0.31f, dp(5));
+            desenharAranha(canvas, w * 0.91f, h * 0.38f, dp(4));
+            desenharAranha(canvas, w * 0.08f, h * 0.70f, dp(3.5f));
+
+            // Fios verticais quase imperceptíveis.
+            linha(canvas, w * 0.12f, 0, w * 0.12f, h * 0.31f,
+                    Color.rgb(160, 175, 195), 0.10f, 0.6f);
+            linha(canvas, w * 0.91f, 0, w * 0.91f, h * 0.38f,
+                    Color.rgb(160, 175, 195), 0.09f, 0.6f);
+
+            // Névoa baixa: faixas suaves, sem animação pesada.
+            for (int i = 0; i < 3; i++) {
+                float fy = h * (0.78f + i * 0.055f);
+                paint.setShader(new RadialGradient(
+                        w * (0.25f + i * 0.25f), fy, w * 0.48f,
+                        new int[] {
+                                Color.argb(9, 150, 160, 185),
+                                Color.TRANSPARENT
+                        }, null, Shader.TileMode.CLAMP
+                ));
+                canvas.drawRect(0, fy - dp(25), w, fy + dp(25), paint);
+            }
+            paint.setShader(null);
+            paint.setStyle(Paint.Style.FILL);
+        }
+
+        private void desenharAranha(Canvas c, float x, float y, float r) {
+            linha(c, x, 0, x, y - r, Color.rgb(175, 185, 205),
+                    0.14f, 0.6f);
+
+            cor(c, Color.rgb(155, 165, 185), 0.22f);
+            c.drawCircle(x, y, r, paint);
+            c.drawCircle(x, y - r * 0.85f, r * 0.55f, paint);
+
+            for (int lado = -1; lado <= 1; lado += 2) {
+                for (int perna = 0; perna < 4; perna++) {
+                    float yy = y - r * 0.55f + perna * r * 0.38f;
+                    float x2 = x + lado * r * (1.8f + (perna % 2) * 0.5f);
+                    float y2 = yy + (perna - 1.5f) * r * 0.7f;
+                    linha(c, x, yy, x2, y2,
+                            Color.rgb(155, 165, 185), 0.20f, 0.65f);
+                }
+            }
+        }
+    }
+
+
     private boolean modoConviteHave = false;
     private String salaConviteId = "";
     private String salaConviteNome = "";
@@ -58,6 +271,8 @@ public class HaveHomeActivity extends Activity {
     private TextView descricaoHeroHave;
     private LinearLayout indicadoresHeroHave;
     private JSONArray catalogoHeroHave;
+    private JSONArray catalogoNexoHave;
+    private LinearLayout areaNexoFilmes;
     private EditText campoLinkUniversalHave;
     private int indiceHeroHave = 0;
     private final Handler handlerHeroHave =
@@ -267,23 +482,126 @@ public class HaveHomeActivity extends Activity {
     void montarHome() {
         telaAmigosAberta = false;
 
-        LinearLayout raiz = new LinearLayout(this);
-        raiz.setOrientation(LinearLayout.VERTICAL);
-        raiz.setBackgroundColor(Color.rgb(3, 4, 15));
+        FrameLayout raizHalloween = new FrameLayout(this);
+        raizHalloween.setBackgroundColor(Color.rgb(3, 4, 15));
+
+        HalloweenHaveBackground decoracaoHalloween =
+                new HalloweenHaveBackground();
+        raizHalloween.addView(
+                decoracaoHalloween,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(Color.TRANSPARENT);
+        scroll.setClipToPadding(false);
+        scroll.setFillViewport(true);
 
         LinearLayout conteudo = new LinearLayout(this);
         conteudo.setOrientation(LinearLayout.VERTICAL);
-        conteudo.setPadding(dp(12), dp(12), dp(12), dp(12));
+        conteudo.setPadding(dp(12), dp(12), dp(12), dp(30));
 
-        raiz.addView(conteudo, new LinearLayout.LayoutParams(
-                -1, -1));
+        scroll.addView(
+                conteudo,
+                new ScrollView.LayoutParams(-1, -2)
+        );
 
-        setContentView(raiz);
+        raizHalloween.addView(
+                scroll,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+        setContentView(raizHalloween);
 
         criarHero(conteudo);
+
+        // =========================================================
+        // PESQUISA DE FILMES — ABAIXO DO CARROSSEL HAVE
+        // =========================================================
+        EditText campoPesquisaFilmes = new EditText(this);
+        campoPesquisaFilmes.setSingleLine(true);
+        campoPesquisaFilmes.setHint("🔎  Pesquisar filmes...");
+        campoPesquisaFilmes.setHintTextColor(Color.rgb(145, 160, 190));
+        campoPesquisaFilmes.setTextColor(Color.WHITE);
+        campoPesquisaFilmes.setTextSize(15);
+        campoPesquisaFilmes.setSingleLine(true);
+        campoPesquisaFilmes.setGravity(Gravity.CENTER_VERTICAL);
+        campoPesquisaFilmes.setPadding(
+                dp(18),
+                0,
+                dp(18),
+                0
+        );
+
+        GradientDrawable fundoPesquisa = new GradientDrawable();
+        fundoPesquisa.setColor(Color.rgb(7, 11, 26));
+        fundoPesquisa.setCornerRadius(dp(26));
+        fundoPesquisa.setStroke(
+                dp(2),
+                Color.rgb(95, 55, 235)
+        );
+        campoPesquisaFilmes.setBackground(fundoPesquisa);
+        campoPesquisaFilmes.setElevation(dp(5));
+
+        LinearLayout.LayoutParams pesquisaParams =
+                new LinearLayout.LayoutParams(-1, dp(56));
+
+        pesquisaParams.setMargins(
+                dp(4),
+                dp(10),
+                dp(4),
+                dp(16)
+        );
+
+        conteudo.addView(
+                campoPesquisaFilmes,
+                pesquisaParams
+        );
+
+        campoPesquisaFilmes.addTextChangedListener(
+                new android.text.TextWatcher() {
+                    @Override
+                    public void beforeTextChanged(
+                            CharSequence s,
+                            int start,
+                            int count,
+                            int after
+                    ) {
+                    }
+
+                    @Override
+                    public void onTextChanged(
+                            CharSequence s,
+                            int start,
+                            int before,
+                            int count
+                    ) {
+                        filtrarCatalogoNexoHave(
+                                s == null ? "" : s.toString()
+                        );
+                    }
+
+                    @Override
+                    public void afterTextChanged(
+                            android.text.Editable s
+                    ) {
+                    }
+                }
+        );
+
+        areaNexoFilmes = new LinearLayout(this);
+        areaNexoFilmes.setOrientation(LinearLayout.VERTICAL);
+        areaNexoFilmes.setPadding(0, dp(5), 0, dp(20));
+
+        conteudo.addView(
+                areaNexoFilmes,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
+
+        carregarCatalogoNexoHave();
     }
 
-  void mostrarCentralApps() {
+    void mostrarCentralApps() {
       startActivity(new Intent(this, HaveConnectActivity.class));
   }
 
@@ -452,22 +770,50 @@ public class HaveHomeActivity extends Activity {
         return t;
     }
 
-    private void carregarCatalogoHave() {
+    private String urlNexoArquivo(String rota, String chave) {
+        if (chave == null || chave.trim().isEmpty()) {
+            return "";
+        }
+
+        String valor = chave.trim();
+        if (valor.startsWith("https://") || valor.startsWith("http://")) {
+            return valor;
+        }
+
+        return "https://delicate-sunset-c8b5.lipesanderson.workers.dev/"
+                + rota + "?key=" + android.net.Uri.encode(valor);
+    }
+
+    private void carregarCatalogoNexoHave() {
         new Thread(() -> {
+            HttpURLConnection conexao = null;
+
             try {
                 URL url = new URL(
-                        "https://danikeai.onrender.com/have/catalog"
+                        "https://delicate-sunset-c8b5.lipesanderson.workers.dev/file?key=dados%2Fcatalogo.json"
                 );
 
-                HttpURLConnection conexao =
-                        (HttpURLConnection) url.openConnection();
-
+                conexao = (HttpURLConnection) url.openConnection();
                 conexao.setRequestMethod("GET");
                 conexao.setConnectTimeout(15000);
                 conexao.setReadTimeout(20000);
+                conexao.setRequestProperty(
+                        "Accept",
+                        "application/json"
+                );
+
+                int codigo = conexao.getResponseCode();
 
                 InputStream entrada =
-                        conexao.getInputStream();
+                        codigo >= 200 && codigo < 300
+                                ? conexao.getInputStream()
+                                : conexao.getErrorStream();
+
+                if (entrada == null) {
+                    throw new Exception(
+                            "Resposta vazia da Nuvem NEXO"
+                    );
+                }
 
                 java.io.ByteArrayOutputStream buffer =
                         new java.io.ByteArrayOutputStream();
@@ -475,28 +821,1054 @@ public class HaveHomeActivity extends Activity {
                 byte[] dados = new byte[4096];
                 int quantidade;
 
-                while ((quantidade =
-                        entrada.read(dados)) != -1) {
+                while ((quantidade = entrada.read(dados)) != -1) {
                     buffer.write(dados, 0, quantidade);
                 }
 
                 entrada.close();
-                conexao.disconnect();
 
                 JSONObject resposta =
-                        new JSONObject(
-                                buffer.toString("UTF-8")
-                        );
+                        new JSONObject(buffer.toString("UTF-8"));
 
-                JSONArray filmes =
-                        resposta.optJSONArray("results");
+                if (!resposta.optBoolean("sucesso", false) && !resposta.has("filmes") && !resposta.has("conteudos")) {
+                    throw new Exception(
+                            resposta.optString(
+                                    "erro",
+                                    "Falha ao carregar Nuvem NEXO"
+                            )
+                    );
+                }
 
-                if (filmes == null ||
-                        filmes.length() == 0) {
+                // HAVE_NEXO_SERIES_PATCH_V1
+                // Combina filmes e séries do catálogo remoto.
+                JSONArray origem = new JSONArray();
+                JSONArray filmesOrigem = resposta.optJSONArray("filmes");
+                JSONArray seriesOrigem = resposta.optJSONArray("series");
+
+                if (filmesOrigem == null) {
+                    filmesOrigem = resposta.optJSONArray("conteudos");
+                }
+
+                if (filmesOrigem != null) {
+                    for (int i = 0; i < filmesOrigem.length(); i++) {
+                        JSONObject original = filmesOrigem.optJSONObject(i);
+                        if (original != null) {
+                            JSONObject copia = new JSONObject(original.toString());
+                            copia.put("_haveTipoCatalogo", "filme");
+                            origem.put(copia);
+                        }
+                    }
+                }
+
+                if (seriesOrigem != null) {
+                    for (int i = 0; i < seriesOrigem.length(); i++) {
+                        JSONObject original = seriesOrigem.optJSONObject(i);
+                        if (original != null) {
+                            JSONObject copia = new JSONObject(original.toString());
+                            copia.put("_haveTipoCatalogo", "serie");
+                            origem.put(copia);
+                        }
+                    }
+                }
+
+                JSONArray itens = new JSONArray();
+
+                for (int i = 0; i < origem.length(); i++) {
+
+                    JSONObject item =
+                            origem.optJSONObject(i);
+
+                    if (item == null) {
+                        continue;
+                    }
+
+                    JSONObject filme =
+                            new JSONObject();
+
+                    filme.put(
+                            "id",
+                            item.optString("id", "")
+                    );
+
+                    filme.put(
+                            "titulo",
+                            item.optString("titulo", "Sem título")
+                    );
+
+                    filme.put(
+                            "title",
+                            item.optString("titulo", "Sem título")
+                    );
+
+                    filme.put(
+                            "descricao",
+                            item.optString("descricao", item.optString("sinopse", ""))
+                    );
+
+                    filme.put(
+                            "description",
+                            item.optString("descricao", item.optString("sinopse", ""))
+                    );
+
+                    filme.put(
+                            "ano",
+                            item.optInt("ano", 0)
+                    );
+
+                    filme.put(
+                            "categoria",
+                            item.optString("categoria", "")
+                    );
+
+                    filme.put(
+                            "tipo",
+                            item.optString(
+                                    "tipo",
+                                    item.optString("_haveTipoCatalogo", "filme")
+                            )
+                    );
+
+                    filme.put("estado", item.optString("estado", ""));
+                    if (item.has("temporadas")) {
+                        filme.put("temporadas", item.getJSONArray("temporadas"));
+                    }
+                    if (item.has("episodios")) {
+                        filme.put("episodios", item.getJSONArray("episodios"));
+                    }
+
+                    filme.put(
+                            "destaque",
+                            item.optBoolean("destaque", false)
+                    );
+
+                    filme.put(
+                            "duracao",
+                            item.optLong("duracao", 0)
+                    );
+
+                    filme.put(
+                            "capa",
+                            urlNexoArquivo("file", item.optString("capa_url", item.optString("capa", "")))
+                    );
+
+                    filme.put(
+                            "poster_url",
+                            urlNexoArquivo("file", item.optString("capa_url", item.optString("capa", "")))
+                    );
+
+                    filme.put(
+                            "poster",
+                            urlNexoArquivo("file", item.optString("capa_url", item.optString("capa", "")))
+                    );
+
+                    filme.put(
+                            "banner",
+                            urlNexoArquivo("file", item.optString("banner_url", item.optString("banner", "")))
+                    );
+
+                    filme.put(
+                            "banner_url",
+                            urlNexoArquivo("file", item.optString("banner_url", item.optString("banner", "")))
+                    );
+
+                    filme.put(
+                            "backdrop",
+                            urlNexoArquivo("file", item.optString("banner_url", item.optString("banner", "")))
+                    );
+
+                    filme.put(
+                            "video_url",
+                            urlNexoArquivo("file", (item.optString("video_url", "").trim().isEmpty() ? item.optString("videoKey", "") : item.optString("video_url", "")))
+                    );
+
+                    itens.put(filme);
+                }
+
+                catalogoNexoHave = itens;
+
+                final JSONArray itensFinais = itens;
+
+                runOnUiThread(() ->
+                        montarCatalogoNexoHave(itensFinais)
+                );
+
+            } catch (Exception e) {
+
+                catalogoNexoHave =
+                        new JSONArray();
+
+                runOnUiThread(() -> {
+
+                    if (areaNexoFilmes != null) {
+                        areaNexoFilmes.removeAllViews();
+                    }
+                });
+
+            } finally {
+
+                if (conexao != null) {
+                    conexao.disconnect();
+                }
+            }
+        }).start();
+    }
+
+    private void filtrarCatalogoNexoHave(String busca) {
+
+        if (catalogoNexoHave == null) {
+            return;
+        }
+
+        String termo = busca == null
+                ? ""
+                : busca.trim().toLowerCase(java.util.Locale.ROOT);
+
+        if (termo.isEmpty()) {
+            montarCatalogoNexoHave(catalogoNexoHave);
+            return;
+        }
+
+        JSONArray resultados = new JSONArray();
+
+        for (int i = 0; i < catalogoNexoHave.length(); i++) {
+
+            JSONObject filme =
+                    catalogoNexoHave.optJSONObject(i);
+
+            if (filme == null) {
+                continue;
+            }
+
+            String titulo =
+                    filme.optString("titulo",
+                            filme.optString("title", ""));
+
+            String descricao =
+                    filme.optString("descricao",
+                            filme.optString("overview", ""));
+
+            String categoria =
+                    filme.optString("categoria", "");
+
+            String textoBusca =
+                    (titulo + " " + descricao + " " + categoria)
+                            .toLowerCase(java.util.Locale.ROOT);
+
+            if (textoBusca.contains(termo)) {
+                resultados.put(filme);
+            }
+        }
+
+        montarCatalogoNexoHave(resultados);
+    }
+
+    private void montarCatalogoNexoHave(JSONArray itens) {
+        if (areaNexoFilmes == null) return;
+
+        areaNexoFilmes.removeAllViews();
+
+        TextView tituloPrincipal = texto("NEXO FILMES", 25, Color.WHITE);
+        tituloPrincipal.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        tituloPrincipal.setPadding(0, dp(8), 0, dp(3));
+        areaNexoFilmes.addView(tituloPrincipal,
+                new LinearLayout.LayoutParams(-1, -2));
+
+        TextView subtitulo = texto(
+                "Filmes e séries disponíveis para assistir",
+                13, Color.rgb(145, 155, 185));
+        subtitulo.setPadding(0, 0, 0, dp(12));
+        areaNexoFilmes.addView(subtitulo,
+                new LinearLayout.LayoutParams(-1, -2));
+
+        if (itens == null || itens.length() == 0) {
+            TextView vazio = texto(
+                    "Nenhum título publicado ainda.",
+                    14, Color.rgb(170, 180, 205));
+            vazio.setPadding(dp(4), dp(10), 0, dp(20));
+            areaNexoFilmes.addView(vazio);
+            return;
+        }
+
+        adicionarSecaoNexo("DESTAQUES", itens, true);
+
+        JSONArray filmes = new JSONArray();
+        JSONArray series = new JSONArray();
+
+        for (int i = 0; i < itens.length(); i++) {
+            JSONObject item = itens.optJSONObject(i);
+            if (item == null || item.optBoolean("destaque", false)) continue;
+
+            String tipo = item.optString("_haveTipoCatalogo", "").trim();
+            if (tipo.isEmpty()) tipo = item.optString("tipo", "filme").trim();
+
+            boolean ehSerie =
+                    "serie".equalsIgnoreCase(tipo)
+                    || "série".equalsIgnoreCase(tipo)
+                    || "series".equalsIgnoreCase(tipo)
+                    || "séries".equalsIgnoreCase(tipo);
+
+            if (ehSerie) series.put(item);
+            else filmes.put(item);
+        }
+
+        adicionarSecaoNexo("FILMES", filmes, false);
+        adicionarSecaoNexo("SÉRIES", series, false);
+    }
+
+    private void adicionarSecaoNexo(
+            String nome,
+            JSONArray filmes,
+            boolean somenteDestaques
+    ) {
+
+        JSONArray lista = new JSONArray();
+
+        for (int i = 0; i < filmes.length(); i++) {
+
+            JSONObject filme = filmes.optJSONObject(i);
+
+            if (filme == null) {
+                continue;
+            }
+
+            if (somenteDestaques &&
+                    !filme.optBoolean("destaque", false)) {
+                continue;
+            }
+
+            lista.put(filme);
+        }
+
+        if (lista.length() == 0) {
+            return;
+        }
+
+        TextView titulo = texto(
+                nome,
+                19,
+                Color.WHITE
+        );
+
+        titulo.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        titulo.setPadding(
+                0,
+                dp(14),
+                0,
+                dp(8)
+        );
+
+        areaNexoFilmes.addView(
+                titulo,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
+
+        HorizontalScrollView horizontal =
+                new HorizontalScrollView(this);
+
+        horizontal.setHorizontalScrollBarEnabled(false);
+        horizontal.setClipToPadding(false);
+        horizontal.setPadding(0, 0, 0, dp(5));
+
+        LinearLayout linha =
+                new LinearLayout(this);
+
+        linha.setOrientation(
+                LinearLayout.HORIZONTAL
+        );
+
+        horizontal.addView(
+                linha,
+                new HorizontalScrollView.LayoutParams(
+                        -2,
+                        -2
+                )
+        );
+
+        for (int i = 0; i < lista.length(); i++) {
+
+            JSONObject filme =
+                    lista.optJSONObject(i);
+
+            if (filme == null) {
+                continue;
+            }
+
+            View card = criarCardNexo(filme);
+
+            LinearLayout.LayoutParams cp =
+                    new LinearLayout.LayoutParams(
+                            dp(158),
+                            dp(300)
+                    );
+
+            cp.setMargins(
+                    0,
+                    0,
+                    dp(10),
+                    dp(5)
+            );
+
+            linha.addView(card, cp);
+        }
+
+        areaNexoFilmes.addView(
+                horizontal,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        -2
+                )
+        );
+    }
+
+
+
+    void criarHero(LinearLayout pai) {
+    
+            heroHave = new LinearLayout(this);
+            heroHave.setOrientation(LinearLayout.VERTICAL);
+            heroHave.setPadding(dp(0), dp(0), dp(0), dp(0));
+            heroHave.setClipToOutline(true);
+    
+            GradientDrawable fundoHero = new GradientDrawable(
+                    GradientDrawable.Orientation.TL_BR,
+                    new int[]{
+                            Color.rgb(32, 7, 58),
+                            Color.rgb(7, 13, 35),
+                            Color.rgb(3, 25, 45)
+                    }
+            );
+            fundoHero.setCornerRadius(dp(28));
+            fundoHero.setStroke(dp(1), Color.rgb(105, 45, 220));
+            heroHave.setBackground(fundoHero);
+            heroHave.setElevation(dp(8));
+    
+            FrameLayout imagemArea = new FrameLayout(this);
+    
+            imagemHeroHave = new ImageView(this);
+            imagemHeroHave.setScaleType(ImageView.ScaleType.CENTER_CROP);
+    
+            imagemArea.addView(
+                    imagemHeroHave,
+                    new FrameLayout.LayoutParams(-1, dp(245))
+            );
+    
+            GradientDrawable degradado = new GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{
+                            Color.TRANSPARENT,
+                            Color.argb(225, 5, 8, 20)
+                    }
+            );
+    
+            View camada = new View(this);
+            camada.setBackground(degradado);
+    
+            imagemArea.addView(
+                    camada,
+                    new FrameLayout.LayoutParams(-1, dp(245))
+            );
+    
+            provedorHeroHave = texto(
+                    "HAVE",
+                    12,
+                    Color.WHITE
+            );
+            provedorHeroHave.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            provedorHeroHave.setGravity(Gravity.CENTER);
+            provedorHeroHave.setPadding(dp(12), dp(5), dp(12), dp(5));
+    
+            GradientDrawable fundoProvedor = new GradientDrawable();
+            fundoProvedor.setColor(Color.argb(210, 0, 0, 0));
+            fundoProvedor.setCornerRadius(dp(20));
+            provedorHeroHave.setBackground(fundoProvedor);
+    
+            FrameLayout.LayoutParams provedorParams =
+                    new FrameLayout.LayoutParams(
+                            -2,
+                            dp(34),
+                            Gravity.TOP | Gravity.START
+                    );
+            provedorParams.setMargins(dp(15), dp(15), 0, 0);
+    
+            imagemArea.addView(provedorHeroHave, provedorParams);
+    
+            heroHave.addView(
+                    imagemArea,
+                    new LinearLayout.LayoutParams(-1, dp(245))
+            );
+    
+            LinearLayout informacoes = new LinearLayout(this);
+            informacoes.setOrientation(LinearLayout.VERTICAL);
+            informacoes.setPadding(
+                    dp(20),
+                    dp(14),
+                    dp(20),
+                    dp(20)
+            );
+    
+            TextView etiqueta = texto(
+                    "EM DESTAQUE",
+                    11,
+                    Color.rgb(190, 105, 255)
+            );
+            etiqueta.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+    
+            tituloHeroHave = texto(
+                    "Filmes, séries e muita resenha.",
+                    25,
+                    Color.WHITE
+            );
+            tituloHeroHave.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            tituloHeroHave.setPadding(0, dp(5), 0, dp(6));
+    
+            descricaoHeroHave = texto(
+                    "Descobrindo novidades para assistir juntos.",
+                    14,
+                    Color.rgb(190, 205, 235)
+            );
+            descricaoHeroHave.setMaxLines(3);
+            descricaoHeroHave.setEllipsize(
+                    android.text.TextUtils.TruncateAt.END
+            );
+    
+            informacoes.addView(etiqueta);
+            informacoes.addView(tituloHeroHave);
+            informacoes.addView(descricaoHeroHave);
+    
+            indicadoresHeroHave = new LinearLayout(this);
+            indicadoresHeroHave.setOrientation(LinearLayout.HORIZONTAL);
+            indicadoresHeroHave.setGravity(Gravity.CENTER_VERTICAL);
+            indicadoresHeroHave.setPadding(0, dp(5), 0, dp(8));
+            informacoes.addView(
+                    indicadoresHeroHave,
+                    new LinearLayout.LayoutParams(-1, dp(20))
+            );
+            heroHave.addView(informacoes);
+    
+            LinearLayout.LayoutParams hp =
+                    new LinearLayout.LayoutParams(-1, -2);
+    
+            hp.setMargins(0, dp(20), 0, dp(15));
+    
+            pai.addView(heroHave, hp);
+    
+            carregarCatalogoHave();
+        }
+
+    void abrirAplicativo(String pacote, String site) {
+    
+            try {
+    
+                Intent intent =
+                        getPackageManager()
+                                .getLaunchIntentForPackage(pacote);
+    
+                if (intent != null) {
+                    startActivity(intent);
+                    return;
+                }
+    
+            } catch (Exception ignored) {}
+    
+            try {
+    
+                startActivity(new Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse(site)
+                ));
+    
+            } catch (Exception e) {
+    
+                Toast.makeText(
+                        this,
+                        "Não foi possível abrir o serviço.",
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        }
+
+    void abrirBuscaHave() {
+            final LinearLayout raiz = new LinearLayout(this);
+            raiz.setOrientation(LinearLayout.VERTICAL);
+            raiz.setPadding(dp(20), dp(24), dp(20), dp(24));
+            raiz.setBackgroundColor(Color.rgb(3, 4, 15));
+    
+            TextView titulo = texto("⌕ BUSCAR NO HAVE", 24, Color.WHITE);
+            titulo.setTypeface(Typeface.DEFAULT_BOLD);
+    
+            TextView subtitulo = texto(
+                    "Encontre pessoas pelo ID HAVE",
+                    14,
+                    Color.rgb(150, 165, 190)
+            );
+            subtitulo.setPadding(0, dp(6), 0, dp(22));
+    
+            EditText campo = new EditText(this);
+            campo.setHint("Ex.: HAVE-AVN4SX12");
+            campo.setHintTextColor(Color.rgb(100, 115, 140));
+            campo.setTextColor(Color.WHITE);
+            campo.setSingleLine(true);
+            campo.setTextSize(15);
+            campo.setPadding(dp(16), 0, dp(16), 0);
+    
+            GradientDrawable fundoCampo = fundo(
+                    Color.rgb(10, 14, 32),
+                    16
+            );
+            fundoCampo.setStroke(
+                    dp(1),
+                    Color.rgb(0, 210, 255)
+            );
+            campo.setBackground(fundoCampo);
+    
+            raiz.addView(titulo);
+            raiz.addView(subtitulo);
+            raiz.addView(
+                    campo,
+                    new LinearLayout.LayoutParams(-1, dp(54))
+            );
+    
+            Button pesquisar = new Button(this);
+            pesquisar.setText("🔎 PESQUISAR");
+            pesquisar.setTextColor(Color.WHITE);
+            pesquisar.setTextSize(14);
+            pesquisar.setAllCaps(false);
+    
+            GradientDrawable fundoBotao = fundo(
+                    Color.rgb(35, 18, 65),
+                    16
+            );
+            fundoBotao.setStroke(
+                    dp(1),
+                    Color.rgb(145, 45, 255)
+            );
+            pesquisar.setBackground(fundoBotao);
+    
+            LinearLayout.LayoutParams botaoParams =
+                    new LinearLayout.LayoutParams(-1, dp(54));
+            botaoParams.topMargin = dp(14);
+            raiz.addView(pesquisar, botaoParams);
+    
+            LinearLayout resultadoArea = new LinearLayout(this);
+            resultadoArea.setOrientation(LinearLayout.VERTICAL);
+            resultadoArea.setPadding(dp(16), dp(18), dp(16), dp(18));
+            resultadoArea.setVisibility(View.GONE);
+    
+            GradientDrawable resultadoBg = fundo(
+                    Color.rgb(8, 12, 28),
+                    18
+            );
+            resultadoBg.setStroke(
+                    dp(1),
+                    Color.rgb(55, 75, 110)
+            );
+            resultadoArea.setBackground(resultadoBg);
+    
+            LinearLayout.LayoutParams resultadoParams =
+                    new LinearLayout.LayoutParams(-1, -2);
+            resultadoParams.topMargin = dp(18);
+    
+            TextView resultado = texto(
+                    "",
+                    15,
+                    Color.rgb(220, 225, 240)
+            );
+    
+            resultadoArea.addView(resultado);
+    
+            Button adicionar = new Button(this);
+            adicionar.setText("➕ ADICIONAR AMIGO");
+            adicionar.setTextColor(Color.WHITE);
+            adicionar.setTextSize(14);
+            adicionar.setAllCaps(false);
+            adicionar.setVisibility(View.GONE);
+    
+            GradientDrawable adicionarBg = fundo(
+                    Color.rgb(25, 55, 70),
+                    16
+            );
+            adicionarBg.setStroke(
+                    dp(1),
+                    Color.rgb(40, 255, 145)
+            );
+            adicionar.setBackground(adicionarBg);
+    
+            LinearLayout.LayoutParams adicionarParams =
+                    new LinearLayout.LayoutParams(-1, dp(52));
+            adicionarParams.topMargin = dp(14);
+    
+            resultadoArea.addView(adicionar, adicionarParams);
+            raiz.addView(resultadoArea, resultadoParams);
+    
+            TextView fechar = texto(
+                    "← VOLTAR",
+                    14,
+                    Color.rgb(0, 210, 255)
+            );
+            fechar.setGravity(Gravity.CENTER);
+            fechar.setPadding(0, dp(18), 0, dp(10));
+    
+            raiz.addView(
+                    fechar,
+                    new LinearLayout.LayoutParams(-1, dp(54))
+            );
+    
+            setContentView(raiz);
+    
+            final String[] uidEncontrado = {""};
+            final String[] nomeEncontrado = {""};
+            final String[] haveIdEncontrado = {""};
+    
+            pesquisar.setOnClickListener(v -> {
+                String id = campo.getText()
+                        .toString()
+                        .trim()
+                        .toUpperCase(Locale.US);
+    
+                if (id.isEmpty()) {
+                    campo.setError("Digite um ID HAVE");
+                    campo.requestFocus();
+                    return;
+                }
+    
+                resultadoArea.setVisibility(View.VISIBLE);
+                adicionar.setVisibility(View.GONE);
+    
+                resultado.setText("🔎 Procurando " + id + "...");
+    
+                FirebaseFirestore.getInstance()
+                        .collection("have_perfis_publicos")
+                        .whereEqualTo("haveId", id)
+                        .limit(1)
+                        .get()
+                        .addOnSuccessListener(snapshot -> {
+    
+                            if (snapshot.isEmpty()) {
+                                uidEncontrado[0] = "";
+                                resultado.setText(
+                                        "❌ Usuário não encontrado.\n\n" +
+                                        "Confira o ID HAVE e tente novamente."
+                                );
+                                return;
+                            }
+    
+                            com.google.firebase.firestore.DocumentSnapshot doc =
+                                    snapshot.getDocuments().get(0);
+    
+                            String uid = doc.getId();
+                            String nome = doc.getString("nome");
+                            String haveId = doc.getString("haveId");
+                            String status = doc.getString("status");
+    
+                            if (nome == null || nome.isEmpty()) {
+                                nome = "Usuário HAVE";
+                            }
+    
+                            if (haveId == null || haveId.isEmpty()) {
+                                haveId = id;
+                            }
+    
+                            if (status == null || status.isEmpty()) {
+                                status = "offline";
+                            }
+    
+                            uidEncontrado[0] = uid;
+                            nomeEncontrado[0] = nome;
+                            haveIdEncontrado[0] = haveId;
+    
+                            FirebaseUser atual =
+                                    FirebaseAuth.getInstance().getCurrentUser();
+    
+                            if (atual != null &&
+                                    atual.getUid().equals(uid)) {
+    
+                                resultado.setText(
+                                        "🟣 ESTE É SEU PERFIL\n\n" +
+                                        "👤 " + nome + "\n" +
+                                        "🆔 " + haveId + "\n" +
+                                        "● " + status.toUpperCase(Locale.US)
+                                );
+    
+                                adicionar.setVisibility(View.GONE);
+                                return;
+                            }
+    
+                            resultado.setText(
+                                    "● PERFIL ENCONTRADO\n\n" +
+                                    "👤 " + nome + "\n" +
+                                    "🆔 " + haveId + "\n" +
+                                    "● " + status.toUpperCase(Locale.US)
+                            );
+    
+                            adicionar.setVisibility(View.VISIBLE);
+                        })
+                        .addOnFailureListener(e -> {
+                            uidEncontrado[0] = "";
+    
+                            resultado.setText(
+                                    "⚠️ Não foi possível realizar a busca.\n\n" +
+                                    "Verifique sua conexão e tente novamente."
+                            );
+                        });
+            });
+    
+            adicionar.setOnClickListener(v -> {
+    
+                if (uidEncontrado[0].isEmpty()) {
+                    Toast.makeText(
+                            this,
+                            "Pesquise um usuário HAVE primeiro.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                    return;
+                }
+    
+                Toast.makeText(
+                        this,
+                        "Usuário encontrado. Próximo passo: criar amizade HAVE.",
+                        Toast.LENGTH_SHORT
+                ).show();
+            });
+    
+            fechar.setOnClickListener(v -> montarHome());
+        }
+
+    void abrirPerfilHave() {
+            FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
+    
+            if (usuario == null) {
+                Toast.makeText(this, "Faça login no HAVE primeiro.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+    
+            FirebaseFirestore db = FirebaseFirestore.getInstance();
+            String uid = usuario.getUid();
+    
+            db.collection("have_usuarios")
+                    .document(uid)
+                    .get()
+                    .addOnSuccessListener(doc -> {
+                        if (doc.exists()) {
+                            exibirPerfilHave(
+                                    doc.getString("nome"),
+                                    doc.getString("haveId"),
+                                    usuario.getEmail()
+                            );
+                            sincronizarPerfilPublico(
+                                    uid,
+                                    doc.getString("nome"),
+                                    doc.getString("haveId")
+                            );
+                            return;
+                        }
+    
+                        String email = usuario.getEmail();
+                        String nome = usuario.getDisplayName();
+    
+                        if (nome == null || nome.trim().isEmpty()) {
+                            nome = "Usuário HAVE";
+                        }
+    
+                        String haveId = "HAVE-" +
+                                UUID.randomUUID()
+                                        .toString()
+                                        .replace("-", "")
+                                        .substring(0, 8)
+                                        .toUpperCase(Locale.US);
+    
+                        Map<String, Object> dados = new HashMap<>();
+                        dados.put("nome", nome);
+                        dados.put("email", email == null ? "" : email);
+                        dados.put("haveId", haveId);
+                        dados.put("criadoEm", FieldValue.serverTimestamp());
+    
+                        final String nomeFinal = nome;
+                        final String haveIdFinal = haveId;
+                        final String emailFinal = email == null ? "" : email;
+    
+                        db.collection("have_usuarios")
+                                .document(uid)
+                                .set(dados)
+                                .addOnSuccessListener(v -> {
+                                    sincronizarPerfilPublico(
+                                            uid,
+                                            nomeFinal,
+                                            haveIdFinal
+                                    );
+    
+                                    Toast.makeText(
+                                            this,
+                                            "Perfil HAVE recuperado com sucesso.",
+                                            Toast.LENGTH_SHORT
+                                    ).show();
+    
+                                    exibirPerfilHave(
+                                            nomeFinal,
+                                            haveIdFinal,
+                                            emailFinal
+                                    );
+                                })
+                                .addOnFailureListener(e ->
+                                        Toast.makeText(
+                                                this,
+                                                "Não foi possível criar seu perfil: "
+                                                        + e.getLocalizedMessage(),
+                                                Toast.LENGTH_LONG
+                                        ).show()
+                                );
+                    })
+                    .addOnFailureListener(e ->
+                            Toast.makeText(
+                                    this,
+                                    "Erro ao carregar perfil: "
+                                            + e.getLocalizedMessage(),
+                                    Toast.LENGTH_LONG
+                            ).show()
+                    );
+        }
+
+
+
+private void carregarCatalogoHave() {
+        new Thread(() -> {
+            HttpURLConnection conexao = null;
+
+            try {
+                URL url = new URL(
+                        "https://delicate-sunset-c8b5.lipesanderson.workers.dev/file?key=dados%2Fcatalogo.json"
+                );
+
+                conexao = (HttpURLConnection) url.openConnection();
+                conexao.setRequestMethod("GET");
+                conexao.setConnectTimeout(15000);
+                conexao.setReadTimeout(20000);
+                conexao.setRequestProperty(
+                        "Accept",
+                        "application/json"
+                );
+
+                int codigo = conexao.getResponseCode();
+
+                InputStream entrada =
+                        codigo >= 200 && codigo < 300
+                                ? conexao.getInputStream()
+                                : conexao.getErrorStream();
+
+                if (entrada == null) {
+                    throw new Exception("Resposta vazia da Nuvem NEXO");
+                }
+
+                java.io.ByteArrayOutputStream buffer =
+                        new java.io.ByteArrayOutputStream();
+
+                byte[] dados = new byte[4096];
+                int quantidade;
+
+                while ((quantidade = entrada.read(dados)) != -1) {
+                    buffer.write(dados, 0, quantidade);
+                }
+
+                entrada.close();
+
+                JSONObject resposta =
+                        new JSONObject(buffer.toString("UTF-8"));
+
+                if (!resposta.optBoolean("sucesso", false) && !resposta.has("filmes") && !resposta.has("conteudos")) {
+                    throw new Exception(
+                            resposta.optString(
+                                    "erro",
+                                    "Falha ao carregar Nuvem NEXO"
+                            )
+                    );
+                }
+
+                JSONArray origem =
+                        resposta.optJSONArray("filmes");
+
+                if (origem == null) {
+                    origem = resposta.optJSONArray("conteudos");
+                }
+
+                if (origem == null) {
+                    origem = new JSONArray();
+                }
+
+                JSONArray destaques = new JSONArray();
+
+                for (int i = 0; i < origem.length(); i++) {
+                    JSONObject item =
+                            origem.optJSONObject(i);
+
+                    if (item == null) {
+                        continue;
+                    }
+
+                    if (!item.optBoolean("destaque", false)) {
+                        continue;
+                    }
+
+                    String banner =
+                            urlNexoArquivo("file", item.optString("banner_url", item.optString("banner", ""))).trim();
+
+                    if (banner.isEmpty()) {
+                        continue;
+                    }
+
+                    JSONObject filme =
+                            new JSONObject();
+
+                    filme.put(
+                            "title",
+                            item.optString("titulo", "Filme em destaque")
+                    );
+
+                    filme.put(
+                            "name",
+                            item.optString("titulo", "Filme em destaque")
+                    );
+
+                    filme.put(
+                            "descricao",
+                            item.optString("descricao", item.optString("sinopse", ""))
+                    );
+
+                    filme.put(
+                            "overview",
+                            item.optString("descricao", item.optString("sinopse", ""))
+                    );
+
+                    filme.put(
+                            "banner",
+                            urlNexoArquivo("file", item.optString("banner_url", item.optString("banner", "")))
+                    );
+
+                    filme.put(
+                            "backdrop",
+                            urlNexoArquivo("file", item.optString("banner_url", item.optString("banner", "")))
+                    );
+
+                    filme.put(
+                            "capa",
+                            urlNexoArquivo("file", item.optString("capa_url", item.optString("capa", "")))
+                    );
+
+                    filme.put(
+                            "have_provider",
+                            "Nuvem NEXO"
+                    );
+
+                    destaques.put(filme);
+                }
+
+                if (destaques.length() == 0) {
                     return;
                 }
 
-                catalogoHeroHave = filmes;
+                catalogoHeroHave = destaques;
                 indiceHeroHave = 0;
 
                 runOnUiThread(() -> {
@@ -513,330 +1885,11 @@ public class HaveHomeActivity extends Activity {
                 runOnUiThread(() ->
                         Toast.makeText(
                                 this,
-                                "Catálogo temporariamente indisponível",
+                                "Destaques Nuvem NEXO temporariamente indisponíveis",
                                 Toast.LENGTH_SHORT
                         ).show()
                 );
-            }
-        }).start();
-    }
-
-
-    void criarHero(LinearLayout pai) {
-
-        heroHave = new LinearLayout(this);
-        heroHave.setOrientation(LinearLayout.VERTICAL);
-        heroHave.setPadding(dp(0), dp(0), dp(0), dp(0));
-        heroHave.setClipToOutline(true);
-
-        GradientDrawable fundoHero = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{
-                        Color.rgb(32, 7, 58),
-                        Color.rgb(7, 13, 35),
-                        Color.rgb(3, 25, 45)
-                }
-        );
-        fundoHero.setCornerRadius(dp(28));
-        fundoHero.setStroke(dp(1), Color.rgb(105, 45, 220));
-        heroHave.setBackground(fundoHero);
-        heroHave.setElevation(dp(8));
-
-        FrameLayout imagemArea = new FrameLayout(this);
-
-        imagemHeroHave = new ImageView(this);
-        imagemHeroHave.setScaleType(ImageView.ScaleType.CENTER_CROP);
-
-        imagemArea.addView(
-                imagemHeroHave,
-                new FrameLayout.LayoutParams(-1, dp(245))
-        );
-
-        GradientDrawable degradado = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{
-                        Color.TRANSPARENT,
-                        Color.argb(225, 5, 8, 20)
-                }
-        );
-
-        View camada = new View(this);
-        camada.setBackground(degradado);
-
-        imagemArea.addView(
-                camada,
-                new FrameLayout.LayoutParams(-1, dp(245))
-        );
-
-        provedorHeroHave = texto(
-                "HAVE",
-                12,
-                Color.WHITE
-        );
-        provedorHeroHave.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        provedorHeroHave.setGravity(Gravity.CENTER);
-        provedorHeroHave.setPadding(dp(12), dp(5), dp(12), dp(5));
-
-        GradientDrawable fundoProvedor = new GradientDrawable();
-        fundoProvedor.setColor(Color.argb(210, 0, 0, 0));
-        fundoProvedor.setCornerRadius(dp(20));
-        provedorHeroHave.setBackground(fundoProvedor);
-
-        FrameLayout.LayoutParams provedorParams =
-                new FrameLayout.LayoutParams(
-                        -2,
-                        dp(34),
-                        Gravity.TOP | Gravity.START
-                );
-        provedorParams.setMargins(dp(15), dp(15), 0, 0);
-
-        imagemArea.addView(provedorHeroHave, provedorParams);
-
-        heroHave.addView(
-                imagemArea,
-                new LinearLayout.LayoutParams(-1, dp(245))
-        );
-
-        LinearLayout informacoes = new LinearLayout(this);
-        informacoes.setOrientation(LinearLayout.VERTICAL);
-        informacoes.setPadding(
-                dp(20),
-                dp(14),
-                dp(20),
-                dp(20)
-        );
-
-        TextView etiqueta = texto(
-                "EM DESTAQUE",
-                11,
-                Color.rgb(190, 105, 255)
-        );
-        etiqueta.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-        tituloHeroHave = texto(
-                "Filmes, séries e muita resenha.",
-                25,
-                Color.WHITE
-        );
-        tituloHeroHave.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        tituloHeroHave.setPadding(0, dp(5), 0, dp(6));
-
-        descricaoHeroHave = texto(
-                "Descobrindo novidades para assistir juntos.",
-                14,
-                Color.rgb(190, 205, 235)
-        );
-
-        informacoes.addView(etiqueta);
-        informacoes.addView(tituloHeroHave);
-        informacoes.addView(descricaoHeroHave);
-
-        indicadoresHeroHave = new LinearLayout(this);
-        indicadoresHeroHave.setOrientation(LinearLayout.HORIZONTAL);
-        indicadoresHeroHave.setGravity(Gravity.CENTER_VERTICAL);
-        indicadoresHeroHave.setPadding(0, dp(5), 0, dp(8));
-        informacoes.addView(
-                indicadoresHeroHave,
-                new LinearLayout.LayoutParams(-1, dp(20))
-        );
-        heroHave.addView(informacoes);
-
-        LinearLayout.LayoutParams hp =
-                new LinearLayout.LayoutParams(-1, -2);
-
-        hp.setMargins(0, dp(20), 0, dp(15));
-
-        pai.addView(heroHave, hp);
-
-        carregarCatalogoHave();
-    }
-
-    private void atualizarHeroHave(JSONObject filme) {
-
-        try {
-
-            String titulo = filme.optString(
-                    "title",
-                    filme.optString(
-                            "name",
-                            "Filme em destaque"
-                    )
-            );
-
-            String descricao = filme.optString(
-                    "overview",
-                    "Descubra este título e assista com seus amigos."
-            );
-
-            String provedor = filme.optString(
-                    "have_provider",
-                    "Streaming"
-            );
-
-            String imagem = filme.optString(
-                    "backdrop_path",
-                    ""
-            );
-
-            if (imagem == null || imagem.trim().isEmpty()) {
-
-                imagem = filme.optString(
-                        "poster_path",
-                        ""
-                );
-            }
-
-            tituloHeroHave.setText(titulo);
-
-            descricaoHeroHave.setText(
-                    descricao == null ||
-                    descricao.trim().isEmpty()
-                            ? "Descubra este título e assista com seus amigos."
-                            : descricao
-            );
-
-            provedorHeroHave.setText(provedor);
-            atualizarIndicadoresHeroHave();
-
-            if (imagem != null &&
-                    !imagem.trim().isEmpty()) {
-
-                String endereco;
-
-                if (imagem.startsWith("http://") ||
-                        imagem.startsWith("https://")) {
-
-                    endereco = imagem;
-
-                } else {
-
-                    endereco =
-                            "https://image.tmdb.org/t/p/w1280"
-                            + imagem;
-                }
-
-                carregarImagemHero(endereco);
-            }
-
-        } catch (Exception e) {
-
-            android.util.Log.e(
-                    "HAVE_HERO",
-                    "Erro ao atualizar hero",
-                    e
-            );
-        }
-    }
-
-    private void atualizarIndicadoresHeroHave() {
-        if (indicadoresHeroHave == null) return;
-
-        indicadoresHeroHave.removeAllViews();
-
-        if (catalogoHeroHave == null || catalogoHeroHave.length() <= 1) {
-            return;
-        }
-
-        for (int i = 0; i < catalogoHeroHave.length(); i++) {
-            GradientDrawable ponto = new GradientDrawable();
-            ponto.setShape(GradientDrawable.RECTANGLE);
-            ponto.setCornerRadius(dp(10));
-            ponto.setColor(i == indiceHeroHave
-                    ? Color.rgb(0, 220, 255)
-                    : Color.rgb(90, 75, 125));
-
-            View indicador = new View(this);
-            indicador.setBackground(ponto);
-
-            int largura = i == indiceHeroHave ? dp(23) : dp(7);
-            LinearLayout.LayoutParams lp =
-                    new LinearLayout.LayoutParams(largura, dp(7));
-            lp.setMargins(dp(3), 0, dp(3), 0);
-            indicadoresHeroHave.addView(indicador, lp);
-        }
-    }
-
-    private void carregarImagemHero(
-            String endereco
-    ) {
-
-        new Thread(() -> {
-
-            HttpURLConnection conexao = null;
-            InputStream entrada = null;
-
-            try {
-
-                URL url = new URL(endereco);
-
-                conexao =
-                        (HttpURLConnection)
-                                url.openConnection();
-
-                conexao.setRequestMethod("GET");
-                conexao.setConnectTimeout(15000);
-                conexao.setReadTimeout(20000);
-                conexao.setInstanceFollowRedirects(true);
-
-                int codigo =
-                        conexao.getResponseCode();
-
-                if (codigo < 200 || codigo >= 300) {
-
-                    throw new Exception(
-                            "Imagem HTTP " + codigo
-                    );
-                }
-
-                entrada =
-                        conexao.getInputStream();
-
-                Bitmap bitmap =
-                        BitmapFactory.decodeStream(
-                                entrada
-                        );
-
-                if (bitmap == null) {
-
-                    throw new Exception(
-                            "Bitmap nulo"
-                    );
-                }
-
-                runOnUiThread(() -> {
-
-                    imagemHeroHave
-                            .setImageBitmap(bitmap);
-
-                    imagemHeroHave
-                            .setAlpha(0f);
-
-                    imagemHeroHave
-                            .animate()
-                            .alpha(1f)
-                            .setDuration(450)
-                            .start();
-                });
-
-            } catch (Exception e) {
-
-                android.util.Log.e(
-                        "HAVE_HERO",
-                        "Falha ao carregar imagem: "
-                                + endereco,
-                        e
-                );
-
             } finally {
-
-                try {
-
-                    if (entrada != null) {
-                        entrada.close();
-                    }
-
-                } catch (Exception ignored) {}
-
                 if (conexao != null) {
                     conexao.disconnect();
                 }
@@ -844,1828 +1897,7 @@ public class HaveHomeActivity extends Activity {
         }).start();
     }
 
-    private void iniciarCarrosselHeroHave() {
-        handlerHeroHave.removeCallbacksAndMessages(null);
-
-        handlerHeroHave.postDelayed(
-                new Runnable() {
-                    @Override
-                    public void run() {
-
-                        if (catalogoHeroHave != null &&
-                                catalogoHeroHave.length() > 0) {
-
-                            indiceHeroHave++;
-
-                            if (indiceHeroHave >=
-                                    catalogoHeroHave.length()) {
-                                indiceHeroHave = 0;
-                            }
-
-                            try {
-                                atualizarHeroHave(
-                                        catalogoHeroHave.getJSONObject(
-                                                indiceHeroHave
-                                        )
-                                );
-                            } catch (Exception ignored) {
-                            }
-                        }
-
-                        handlerHeroHave.postDelayed(
-                                this,
-                                6500
-                        );
-                    }
-                },
-                6500
-        );
-    }
-
-
-    void criarBotaoCriarGrupoHave(LinearLayout pai) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.VERTICAL);
-        card.setGravity(Gravity.CENTER);
-        card.setPadding(dp(20), dp(18), dp(20), dp(18));
-
-        GradientDrawable fundoCard = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{
-                        Color.rgb(18, 10, 35),
-                        Color.rgb(7, 14, 32)
-                }
-        );
-        fundoCard.setCornerRadius(dp(24));
-        fundoCard.setStroke(dp(1), Color.rgb(125, 55, 235));
-        card.setBackground(fundoCard);
-        card.setElevation(dp(8));
-
-        TextView titulo = texto(
-                "＋  CRIAR GRUPO HAVE",
-                17,
-                Color.WHITE
-        );
-        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        titulo.setGravity(Gravity.CENTER);
-
-        TextView subtitulo = texto(
-                "Crie uma sala e assista junto. Cada pessoa usa sua própria conta.",
-                12,
-                Color.rgb(165, 180, 215)
-        );
-        subtitulo.setGravity(Gravity.CENTER);
-        subtitulo.setPadding(0, dp(5), 0, 0);
-
-        card.addView(
-                titulo,
-                new LinearLayout.LayoutParams(-1, dp(32))
-        );
-
-        card.addView(
-                subtitulo,
-                new LinearLayout.LayoutParams(-1, dp(38))
-        );
-
-        card.setOnClickListener(v -> abrirCriarGrupoHave());
-
-        LinearLayout.LayoutParams cp =
-                new LinearLayout.LayoutParams(-1, dp(100));
-        cp.setMargins(0, dp(2), 0, dp(18));
-
-        pai.addView(card, cp);
-    }
-
-    void criarBotaoCriarSala(LinearLayout pai) {
-        TextView botao = texto(
-                "＋  CRIAR SALA",
-                17,
-                Color.rgb(255, 255, 255)
-        );
-
-        botao.setGravity(Gravity.CENTER);
-        botao.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        botao.setLetterSpacing(0.06f);
-
-        GradientDrawable fundoBotao = new GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{
-                        Color.rgb(35, 10, 65),
-                        Color.rgb(8, 25, 55)
-                }
-        );
-        fundoBotao.setCornerRadius(dp(18));
-        fundoBotao.setStroke(dp(2), Color.rgb(160, 75, 255));
-        botao.setBackground(fundoBotao);
-        botao.setElevation(dp(5));
-        botao.setPadding(dp(12), dp(8), dp(12), dp(8));
-        botao.setOnClickListener(v -> abrirNetflixComBalao());
-
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(-1, dp(62));
-        params.setMargins(0, dp(16), 0, dp(18));
-        pai.addView(botao, params);
-    }
-
-    void abrirCriarGrupoHave() {
-        final android.app.Dialog dialog =
-                new android.app.Dialog(this);
-
-        LinearLayout raiz = new LinearLayout(this);
-        raiz.setOrientation(LinearLayout.VERTICAL);
-        raiz.setPadding(dp(22), dp(20), dp(22), dp(22));
-
-        GradientDrawable fundoDialog = new GradientDrawable(
-                GradientDrawable.Orientation.TL_BR,
-                new int[]{
-                        Color.rgb(8, 8, 20),
-                        Color.rgb(18, 8, 35)
-                }
-        );
-        fundoDialog.setCornerRadius(dp(28));
-        fundoDialog.setStroke(dp(1), Color.rgb(130, 55, 235));
-        raiz.setBackground(fundoDialog);
-
-        TextView titulo = texto(
-                "CRIAR GRUPO HAVE",
-                22,
-                Color.WHITE
-        );
-        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-        TextView descricao = texto(
-                "Monte sua sala e convide pessoas para assistir juntas.",
-                13,
-                Color.rgb(165, 180, 215)
-        );
-        descricao.setPadding(0, dp(5), 0, dp(18));
-
-        raiz.addView(titulo);
-        raiz.addView(descricao);
-
-        TextView servico = texto(
-                "ESCOLHA O SERVIÇO",
-                11,
-                Color.rgb(190, 105, 255)
-        );
-        servico.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        raiz.addView(servico);
-
-        HorizontalScrollView appsScroll =
-                new HorizontalScrollView(this);
-        appsScroll.setHorizontalScrollBarEnabled(false);
-
-        LinearLayout appsLinha =
-                new LinearLayout(this);
-        appsLinha.setOrientation(LinearLayout.HORIZONTAL);
-
-        final String[] nomes = {
-                "Netflix",
-                "Prime Video",
-                "Disney+",
-                "Max",
-                "Globoplay"
-        };
-
-        final String[] logos = {
-                "netflix",
-                "primevideo",
-                "disneyplus",
-                "hbomax",
-                "globoplay"
-        };
-
-        final TextView[] selecionado = {null};
-        final String[] servicoSelecionado = {"Netflix"};
-
-        for (int i = 0; i < nomes.length; i++) {
-            TextView item = texto(
-                    nomes[i],
-                    12,
-                    Color.WHITE
-            );
-            item.setGravity(Gravity.CENTER);
-            item.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-            GradientDrawable normal = new GradientDrawable();
-            normal.setColor(Color.rgb(13, 15, 30));
-            normal.setCornerRadius(dp(16));
-            normal.setStroke(dp(1), Color.rgb(65, 70, 105));
-            item.setBackground(normal);
-
-            final int pos = i;
-
-            item.setOnClickListener(v -> {
-                servicoSelecionado[0] = nomes[pos];
-
-                if (selecionado[0] != null) {
-                    GradientDrawable antigo =
-                            new GradientDrawable();
-                    antigo.setColor(Color.rgb(13, 15, 30));
-                    antigo.setCornerRadius(dp(16));
-                    antigo.setStroke(
-                            dp(1),
-                            Color.rgb(65, 70, 105)
-                    );
-                    selecionado[0].setBackground(antigo);
-                }
-
-                GradientDrawable ativo =
-                        new GradientDrawable();
-                ativo.setColor(Color.rgb(30, 12, 55));
-                ativo.setCornerRadius(dp(16));
-                ativo.setStroke(
-                        dp(2),
-                        Color.rgb(0, 220, 255)
-                );
-                item.setBackground(ativo);
-
-                selecionado[0] = item;
-            });
-
-            LinearLayout.LayoutParams lp =
-                    new LinearLayout.LayoutParams(
-                            dp(125),
-                            dp(58)
-                    );
-            lp.setMargins(0, dp(10), dp(8), dp(10));
-
-            appsLinha.addView(item, lp);
-        }
-
-        appsScroll.addView(appsLinha);
-        raiz.addView(
-                appsScroll,
-                new LinearLayout.LayoutParams(-1, dp(80))
-        );
-
-        EditText nomeSala = new EditText(this);
-        nomeSala.setHint("Nome da sala");
-        nomeSala.setHintTextColor(Color.rgb(105, 115, 145));
-        nomeSala.setTextColor(Color.WHITE);
-        nomeSala.setSingleLine(true);
-
-        GradientDrawable campo = new GradientDrawable();
-        campo.setColor(Color.rgb(10, 12, 27));
-        campo.setCornerRadius(dp(15));
-        campo.setStroke(dp(1), Color.rgb(55, 65, 100));
-        nomeSala.setBackground(campo);
-        nomeSala.setPadding(dp(15), 0, dp(15), 0);
-
-        LinearLayout.LayoutParams campoLp =
-                new LinearLayout.LayoutParams(-1, dp(54));
-        campoLp.setMargins(0, dp(10), 0, dp(10));
-        raiz.addView(nomeSala, campoLp);
-
-        TextView regra = texto(
-                "🔒 Cada participante entra com a própria conta. O HAVE não solicita nem armazena senhas.",
-                12,
-                Color.rgb(155, 170, 205)
-        );
-        regra.setPadding(0, dp(5), 0, dp(15));
-        raiz.addView(regra);
-
-        TextView criar = texto(
-                "CRIAR SALA",
-                14,
-                Color.WHITE
-        );
-        criar.setGravity(Gravity.CENTER);
-        criar.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-        GradientDrawable botao = new GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{
-                        Color.rgb(120, 0, 255),
-                        Color.rgb(0, 125, 255)
-                }
-        );
-        botao.setCornerRadius(dp(30));
-        botao.setStroke(dp(1), Color.rgb(0, 220, 255));
-        criar.setBackground(botao);
-
-        criar.setOnClickListener(v -> {
-            String nome = nomeSala.getText().toString().trim();
-
-            if (nome.isEmpty()) {
-                nomeSala.setError("Digite o nome da sala");
-                return;
-            }
-
-            FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
-
-            if (usuario == null) {
-                Toast.makeText(
-                        this,
-                        "Faça login novamente para criar uma sala.",
-                        Toast.LENGTH_LONG
-                ).show();
-                return;
-            }
-
-            criar.setEnabled(false);
-            criar.setText("CRIANDO SALA...");
-
-            String meuUid = usuario.getUid();
-            String servicoAtual = servicoSelecionado[0];
-
-            Map<String, Object> grupo = new HashMap<>();
-            grupo.put("nome", nome);
-            grupo.put("descricao", "Sala HAVE • " + servicoAtual);
-            grupo.put("administradorUid", meuUid);
-            grupo.put("participantes", java.util.Collections.singletonList(meuUid));
-            grupo.put("servicoHave", servicoAtual);
-            grupo.put("tipo", "HAVE");
-            grupo.put("publico", true);
-            grupo.put("criadoEm", FieldValue.serverTimestamp());
-
-            FirebaseFirestore.getInstance()
-                    .collection("grupos")
-                    .add(grupo)
-                    .addOnSuccessListener(documento -> {
-                        String grupoId = documento.getId();
-
-                        Map<String, Object> dados = new HashMap<>();
-                        dados.put("grupoId", grupoId);
-                        dados.put("nome", nome);
-                        dados.put("nomeGrupo", nome);
-                        dados.put("servicoHave", servicoAtual);
-                        dados.put("administradorUid", meuUid);
-                        dados.put("participantes",
-                                java.util.Collections.singletonList(meuUid));
-                        dados.put("criadoEm", FieldValue.serverTimestamp());
-
-                        documento.set(dados, SetOptions.merge())
-                                .addOnSuccessListener(v2 -> {
-                                    dialog.dismiss();
-
-                                String pacote = "com.netflix.mediaclient";
-                                String site = "https://www.netflix.com";
-
-                                if ("Prime Video".equals(servicoAtual)) {
-                                    pacote = "com.amazon.avod.thirdpartyclient";
-                                    site = "https://www.primevideo.com";
-                                } else if ("Disney+".equals(servicoAtual)) {
-                                    pacote = "com.disney.disneyplus";
-                                    site = "https://www.disneyplus.com";
-                                } else if ("Max".equals(servicoAtual)) {
-                                    pacote = "com.hbo.hbonow";
-                                    site = "https://www.max.com";
-                                } else if ("Globoplay".equals(servicoAtual)) {
-                                    pacote = "com.globo.globoplay";
-                                    site = "https://globoplay.globo.com";
-                                }
-
-                                Toast.makeText(
-                                        this,
-                                        "Sala criada! Entrando na sala HAVE...",
-                                        Toast.LENGTH_SHORT
-                                ).show();
-
-                                Intent salaIntent = new Intent(this, HavePlataformasActivity.class);
-                                salaIntent.putExtra("grupoId", grupoId);
-                                salaIntent.putExtra("nomeGrupo", nome);
-                                salaIntent.putExtra("servicoHave", servicoAtual);
-                                startActivity(salaIntent);
-                                })
-                                .addOnFailureListener(erro -> {
-                                    criar.setEnabled(true);
-                                    criar.setText("CRIAR SALA");
-
-                                    Toast.makeText(
-                                            this,
-                                            "Sala criada, mas não foi possível abrir.",
-                                            Toast.LENGTH_LONG
-                                    ).show();
-                                });
-                    })
-                    .addOnFailureListener(erro -> {
-                        criar.setEnabled(true);
-                        criar.setText("CRIAR SALA");
-
-                        Toast.makeText(
-                                this,
-                                "Não foi possível criar a sala.",
-                                Toast.LENGTH_LONG
-                        ).show();
-                    });
-        });
-
-        raiz.addView(
-                criar,
-                new LinearLayout.LayoutParams(-1, dp(54))
-        );
-
-        dialog.setContentView(raiz);
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(
-                    android.R.color.transparent
-            );
-            dialog.getWindow().setLayout(
-                    (int)(getResources()
-                            .getDisplayMetrics().widthPixels * 0.94f),
-                    -2
-            );
-        }
-
-        dialog.show();
-
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setLayout(
-                    (int)(getResources()
-                            .getDisplayMetrics().widthPixels * 0.94f),
-                    -2
-            );
-        }
-    }
-
-    void criarApps(LinearLayout pai) {
-
-        TextView titulo = texto(
-                "▦  Seus Apps",
-                21,
-                Color.WHITE
-        );
-
-        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        pai.addView(titulo);
-
-        TextView subtitulo = texto(
-                "Seus serviços de streaming, em um só lugar.",
-                14,
-                Color.rgb(155, 170, 205)
-        );
-
-        subtitulo.setPadding(0, dp(3), 0, dp(12));
-        pai.addView(subtitulo);
-
-        HorizontalScrollView scroll =
-                new HorizontalScrollView(this);
-
-        scroll.setHorizontalScrollBarEnabled(false);
-        scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
-
-        LinearLayout apps = new LinearLayout(this);
-        apps.setOrientation(LinearLayout.HORIZONTAL);
-
-        adicionarApp(
-                apps,
-                "Netflix",
-                Color.rgb(230, 0, 25),
-                "com.netflix.mediaclient",
-                "https://www.netflix.com",
-                "LOCAL_NETFLIX"
-        );
-
-        adicionarApp(
-                apps,
-                "YouTube",
-                Color.RED,
-                "com.google.android.youtube",
-                "https://www.youtube.com",
-                "LOCAL_YOUTUBE"
-        );
-
-        adicionarApp(
-                apps,
-                "Prime Video",
-                Color.rgb(30, 140, 240),
-                "com.amazon.avod.thirdpartyclient",
-                "https://www.primevideo.com",
-                "LOCAL_PRIMEVIDEO"
-        );
-
-        adicionarApp(
-                apps,
-                "Disney+",
-                Color.rgb(45, 85, 220),
-                "com.disney.disneyplus",
-                "https://www.disneyplus.com",
-                "LOCAL_DISNEYPLUS"
-        );
-
-        adicionarApp(
-                apps,
-                "Max",
-                Color.rgb(70, 55, 255),
-                "com.hbo.hbonow",
-                "https://www.max.com",
-                "LOCAL_HBOMAX"
-        );
-
-        adicionarApp(
-                apps,
-                "Globoplay",
-                Color.rgb(255, 80, 30),
-                "com.globo.globoplay",
-                "https://globoplay.globo.com",
-                "LOCAL_GLOBOPLAY"
-        );
-
-        scroll.addView(apps);
-
-        pai.addView(
-                scroll,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(160)
-                )
-        );
-    }
-
-    void adicionarApp(
-            LinearLayout pai,
-            String nome,
-            int cor,
-            String pacote,
-            String site,
-            String logoUrl
-    ) {
-
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
-        item.setGravity(Gravity.CENTER_HORIZONTAL);
-
-        ImageView logo = new ImageView(this);
-        if ("LOCAL_PRIMEVIDEO".equals(logoUrl)) {
-            logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            logo.setAdjustViewBounds(true);
-            logo.setPadding(dp(0), dp(18), dp(0), dp(18));
-        } else {
-            logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            logo.setAdjustViewBounds(true);
-            logo.setPadding(dp(3), dp(3), dp(3), dp(3));
-        }
-
-        GradientDrawable fundoLogo = fundo(
-                Color.rgb(7, 9, 25),
-                20
-        );
-        fundoLogo.setStroke(dp(3), cor);
-        logo.setBackground(fundoLogo);
-        logo.setElevation(dp(14));
-        logo.setTranslationZ(dp(4));
-
-        item.addView(
-                logo,
-                new LinearLayout.LayoutParams(
-                        dp(112),
-                        dp(112)
-                )
-        );
-
-        if ("LOCAL_NETFLIX".equals(logoUrl)) {
-            logo.setImageResource(R.drawable.netflix);
-        } else if ("LOCAL_YOUTUBE".equals(logoUrl)) {
-            logo.setImageResource(R.drawable.youtube);
-        } else if ("LOCAL_PRIMEVIDEO".equals(logoUrl)) {
-            logo.setImageResource(R.drawable.primevideo);
-        } else if ("LOCAL_DISNEYPLUS".equals(logoUrl)) {
-            logo.setImageResource(R.drawable.disneyplus);
-        } else if ("LOCAL_HBOMAX".equals(logoUrl)) {
-            logo.setImageResource(R.drawable.hbomax);
-        } else if ("LOCAL_GLOBOPLAY".equals(logoUrl)) {
-            logo.setImageResource(R.drawable.globoplay);
-        } else {
-            carregarLogoApp(logo, logoUrl);
-        }
-
-        TextView nomeView = texto(
-                nome,
-                13,
-                Color.WHITE
-        );
-
-        nomeView.setGravity(Gravity.CENTER);
-        nomeView.setMaxLines(2);
-
-        item.addView(
-                nomeView,
-                new LinearLayout.LayoutParams(
-                        dp(105),
-                        dp(38)
-                )
-        );
-
-        item.setOnClickListener(
-                v -> abrirAplicativo(pacote, site)
-        );
-
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(
-                        dp(112),
-                        dp(145)
-                );
-
-        params.setMargins(
-                0,
-                0,
-                dp(8),
-                0
-        );
-
-        pai.addView(item, params);
-    }
-
-    void carregarLogoApp(
-            ImageView imagem,
-            String endereco
-    ) {
-
-        new Thread(() -> {
-
-            try {
-
-                URL url = new URL(endereco);
-
-                HttpURLConnection conexao =
-                        (HttpURLConnection) url.openConnection();
-
-                conexao.setRequestMethod("GET");
-                conexao.setConnectTimeout(10000);
-                conexao.setReadTimeout(10000);
-                conexao.setInstanceFollowRedirects(true);
-
-                int codigo =
-                        conexao.getResponseCode();
-
-                if (codigo < 200 || codigo >= 300) {
-                    throw new Exception(
-                            "Logo HTTP " + codigo
-                    );
-                }
-
-                InputStream entrada =
-                        conexao.getInputStream();
-
-                Bitmap bitmap =
-                        BitmapFactory.decodeStream(entrada);
-
-                entrada.close();
-                conexao.disconnect();
-
-                if (bitmap != null) {
-
-                    runOnUiThread(() ->
-                            imagem.setImageBitmap(bitmap)
-                    );
-                }
-
-            } catch (Exception e) {
-
-                android.util.Log.e(
-                        "HAVE_LOGO",
-                        "Falha ao carregar logo: "
-                                + endereco,
-                        e
-                );
-            }
-
-        }).start();
-    }
-
-    void abrirNetflixComBalao() {
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M
-                && !Settings.canDrawOverlays(this)) {
-
-            Toast.makeText(
-                    this,
-                    "Permita a sobreposição para ativar o balão HAVE.",
-                    Toast.LENGTH_LONG
-            ).show();
-
-            try {
-                Intent permissao = new Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getPackageName())
-                );
-                startActivity(permissao);
-            } catch (Exception e) {
-                startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
-            }
-
-            return;
-        }
-
-        Intent servico = new Intent(this, HaveOverlayService.class);
-        servico.putExtra("grupoId", "");
-        servico.putExtra("nomeGrupo", "Sala HAVE");
-        servico.putExtra("servicoHave", "Netflix");
-
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            startForegroundService(servico);
-        } else {
-            startService(servico);
-        }
-
-        try {
-            Intent netflix = getPackageManager()
-                    .getLaunchIntentForPackage("com.netflix.mediaclient");
-
-            if (netflix == null) {
-                stopService(new Intent(this, HaveOverlayService.class));
-                Toast.makeText(
-                        this,
-                        "O aplicativo oficial da Netflix não foi encontrado. Verifique se está instalado.",
-                        Toast.LENGTH_LONG
-                ).show();
-                return;
-            }
-
-            netflix.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            startActivity(netflix);
-
-        } catch (Exception e) {
-            stopService(new Intent(this, HaveOverlayService.class));
-            Toast.makeText(
-                    this,
-                    "Não foi possível abrir o aplicativo Netflix.",
-                    Toast.LENGTH_LONG
-            ).show();
-        }
-    }
-
-    void abrirAplicativo(String pacote, String site) {
-
-        try {
-
-            Intent intent =
-                    getPackageManager()
-                            .getLaunchIntentForPackage(pacote);
-
-            if (intent != null) {
-                startActivity(intent);
-                return;
-            }
-
-        } catch (Exception ignored) {}
-
-        try {
-
-            startActivity(new Intent(
-                    Intent.ACTION_VIEW,
-                    Uri.parse(site)
-            ));
-
-        } catch (Exception e) {
-
-            Toast.makeText(
-                    this,
-                    "Não foi possível abrir o serviço.",
-                    Toast.LENGTH_SHORT
-            ).show();
-        }
-    }
-
-    void criarSalas(LinearLayout pai) {
-        TextView titulo = texto("HAVE CONNECT  •  SALAS", 19, Color.WHITE);
-        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        titulo.setPadding(0, dp(20), 0, dp(5));
-        pai.addView(titulo);
-
-        TextView subtitulo = texto(
-                "Encontre uma sala e participe da experiência.",
-                13, Color.rgb(140, 160, 195)
-        );
-        subtitulo.setPadding(0, 0, 0, dp(14));
-        pai.addView(subtitulo);
-
-        TextView avisoLink = texto("🔗 LINK UNIVERSAL • FILME OU SÉRIE", 13, ciano);
-        avisoLink.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        avisoLink.setPadding(0, dp(2), 0, dp(8));
-        pai.addView(avisoLink);
-
-        campoLinkUniversalHave = new EditText(this);
-        campoLinkUniversalHave.setSingleLine(true);
-        campoLinkUniversalHave.setTextSize(14);
-        campoLinkUniversalHave.setHint("Cole aqui o link direto do título");
-        campoLinkUniversalHave.setHintTextColor(Color.rgb(125, 145, 175));
-        campoLinkUniversalHave.setTextColor(Color.WHITE);
-        campoLinkUniversalHave.setPadding(dp(14), dp(10), dp(14), dp(10));
-        campoLinkUniversalHave.setInputType(android.text.InputType.TYPE_CLASS_TEXT |
-                android.text.InputType.TYPE_TEXT_VARIATION_URI);
-        GradientDrawable fundoLinkUniversal = fundo(Color.rgb(8, 14, 28), 14);
-        fundoLinkUniversal.setStroke(dp(1), ciano);
-        campoLinkUniversalHave.setBackground(fundoLinkUniversal);
-        LinearLayout.LayoutParams linkUniversalLp =
-                new LinearLayout.LayoutParams(-1, dp(52));
-        linkUniversalLp.setMargins(0, 0, 0, dp(8));
-        pai.addView(campoLinkUniversalHave, linkUniversalLp);
-
-        TextView dicaLink = texto(
-                "Cole o link e toque na sala desejada. O anfitrião precisa salvar o link para compartilhá-lo.",
-                11, Color.rgb(145, 165, 195));
-        dicaLink.setPadding(dp(2), 0, dp(2), dp(12));
-        pai.addView(dicaLink);
-
-
-        LinearLayout lista = new LinearLayout(this);
-        lista.setOrientation(LinearLayout.VERTICAL);
-        pai.addView(lista);
-
-        FirebaseFirestore.getInstance()
-                .collection("grupos")
-                .whereEqualTo("tipo", "HAVE")
-                .whereEqualTo("publico", true)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    lista.removeAllViews();
-
-                    if (snapshot.isEmpty()) {
-                        TextView vazio = texto(
-                                "Nenhuma sala pública disponível agora.",
-                                13, Color.rgb(140, 155, 195)
-                        );
-                        vazio.setPadding(dp(4), dp(12), dp(4), dp(18));
-                        lista.addView(vazio);
-                        return;
-                    }
-
-                    java.util.List<com.google.firebase.firestore.DocumentSnapshot> salas =
-                            new java.util.ArrayList<>(snapshot.getDocuments());
-
-                    com.google.firebase.auth.FirebaseUser usuarioAtual =
-                            com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
-                    String uidAtual = usuarioAtual == null ? null : usuarioAtual.getUid();
-
-                    salas.sort((a, b) -> {
-                        Object pa = a.get("participantes");
-                        Object pb = b.get("participantes");
-
-                        boolean participaA = uidAtual != null
-                                && pa instanceof java.util.List
-                                && ((java.util.List<?>) pa).contains(uidAtual);
-                        boolean participaB = uidAtual != null
-                                && pb instanceof java.util.List
-                                && ((java.util.List<?>) pb).contains(uidAtual);
-
-                        return Boolean.compare(participaB, participaA);
-                    });
-
-                    for (com.google.firebase.firestore.DocumentSnapshot doc : salas) {
-                        String grupoId = doc.getId();
-                        String nome = doc.getString("nome");
-
-                        if (nome == null || nome.trim().isEmpty()) {
-                            nome = doc.getString("nomeGrupo");
-                        }
-                        if (nome == null || nome.trim().isEmpty()) {
-                            nome = "Sala HAVE";
-                        }
-
-                        String servico = doc.getString("servicoHave");
-                        if (servico == null || servico.trim().isEmpty()) {
-                            servico = "Streaming";
-                        }
-
-                        Object participantesObj = doc.get("participantes");
-                        int quantidade = 0;
-                        if (participantesObj instanceof java.util.List) {
-                            quantidade = ((java.util.List<?>) participantesObj).size();
-                        }
-
-                        int cor = Color.rgb(125, 55, 235);
-                        String simbolo = "▶";
-
-                        if ("Netflix".equalsIgnoreCase(servico)) {
-                            cor = Color.rgb(220, 35, 55);
-                            simbolo = "N";
-                        } else if ("Prime Video".equalsIgnoreCase(servico)) {
-                            cor = Color.rgb(35, 125, 245);
-                            simbolo = "P";
-                        } else if ("Disney+".equalsIgnoreCase(servico)) {
-                            cor = Color.rgb(65, 90, 210);
-                            simbolo = "D+";
-                        } else if ("Max".equalsIgnoreCase(servico)) {
-                            cor = Color.rgb(90, 75, 220);
-                            simbolo = "M";
-                        } else if ("Globoplay".equalsIgnoreCase(servico)) {
-                            cor = Color.rgb(190, 45, 175);
-                            simbolo = "G";
-                        }
-
-                        adicionarSala(
-                                lista, simbolo, nome, servico,
-                                cor, grupoId, servico, quantidade
-                        );
-                    }
-                })
-                .addOnFailureListener(e -> {
-                    lista.removeAllViews();
-                    TextView erro = texto(
-                            "Não foi possível carregar as salas. Tente novamente.",
-                            13, Color.rgb(255, 90, 120)
-                    );
-                    erro.setPadding(0, dp(10), 0, dp(18));
-                    lista.addView(erro);
-                });
-    }
-
-    void adicionarSala(
-            LinearLayout pai,
-            String imagem,
-            String nome,
-            String servico,
-            int cor,
-            String grupoId,
-            String servicoHave,
-            int quantidade
-    ) {
-        LinearLayout sala = new LinearLayout(this);
-        sala.setOrientation(LinearLayout.VERTICAL);
-        sala.setPadding(dp(14), dp(14), dp(14), dp(14));
-
-        GradientDrawable fundoSala = fundo(Color.rgb(8, 12, 29), 20);
-        fundoSala.setStroke(dp(1), Color.rgb(45, 65, 105));
-        sala.setBackground(fundoSala);
-        sala.setElevation(dp(3));
-
-        LinearLayout topo = new LinearLayout(this);
-        topo.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView poster = texto(imagem, 23, Color.WHITE);
-        poster.setGravity(Gravity.CENTER);
-        poster.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        poster.setBackground(fundo(cor, 13));
-        topo.addView(poster, new LinearLayout.LayoutParams(dp(48), dp(48)));
-
-        LinearLayout identificacao = new LinearLayout(this);
-        identificacao.setOrientation(LinearLayout.VERTICAL);
-        identificacao.setPadding(dp(11), 0, 0, 0);
-
-        TextView nomeServico = texto(servico.toUpperCase(java.util.Locale.ROOT),
-                10, Color.rgb(0, 220, 255));
-        nomeServico.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        identificacao.addView(nomeServico);
-
-        TextView nomeView = texto(nome, 17, Color.WHITE);
-        nomeView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        nomeView.setMaxLines(2);
-        identificacao.addView(nomeView);
-
-        topo.addView(identificacao,
-                new LinearLayout.LayoutParams(0, -2, 1));
-
-        TextView publica = texto("PÚBLICA", 9, Color.rgb(100, 255, 180));
-        publica.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        publica.setPadding(dp(8), dp(5), dp(8), dp(5));
-        GradientDrawable fundoPublica = fundo(Color.rgb(10, 45, 39), 20);
-        fundoPublica.setStroke(dp(1), Color.rgb(30, 120, 90));
-        publica.setBackground(fundoPublica);
-        topo.addView(publica);
-
-        sala.addView(topo);
-
-        View separador = new View(this);
-        separador.setBackgroundColor(Color.rgb(30, 43, 68));
-        LinearLayout.LayoutParams separadorLp =
-                new LinearLayout.LayoutParams(-1, dp(1));
-        separadorLp.setMargins(0, dp(13), 0, dp(11));
-        sala.addView(separador, separadorLp);
-
-        LinearLayout rodape = new LinearLayout(this);
-        rodape.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView membros = texto(
-                "●  " + quantidade +
-                        (quantidade == 1 ? " participante" : " participantes"),
-                12, Color.rgb(155, 180, 215)
-        );
-        rodape.addView(membros,
-                new LinearLayout.LayoutParams(0, -2, 1));
-
-        TextView entrar = texto("ENTRAR NA SALA  ›", 11, Color.WHITE);
-        entrar.setGravity(Gravity.CENTER);
-        entrar.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        entrar.setPadding(dp(13), 0, dp(13), 0);
-
-        GradientDrawable fundoEntrar = new GradientDrawable(
-                GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{
-                        Color.rgb(100, 35, 220),
-                        Color.rgb(0, 115, 210)
-                }
-        );
-        fundoEntrar.setCornerRadius(dp(25));
-        fundoEntrar.setStroke(dp(1), Color.rgb(0, 210, 255));
-        entrar.setBackground(fundoEntrar);
-
-        rodape.addView(entrar,
-                new LinearLayout.LayoutParams(-2, dp(42)));
-        sala.addView(rodape);
-
-        View.OnClickListener entrarNaSala = v -> {
-            Intent intent = new Intent(this, HavePlataformasActivity.class);
-            intent.putExtra("grupoId", grupoId);
-            intent.putExtra("nomeGrupo", nome);
-            intent.putExtra("servicoHave", servicoHave);
-                      String linkUniversal = campoLinkUniversalHave == null
-                              ? "" : campoLinkUniversalHave.getText().toString().trim();
-                      intent.putExtra("linkUniversalHave", linkUniversal);
-            startActivity(intent);
-        };
-
-        sala.setOnClickListener(entrarNaSala);
-        entrar.setOnClickListener(entrarNaSala);
-
-        LinearLayout.LayoutParams cardLp =
-                new LinearLayout.LayoutParams(-1, -2);
-        cardLp.setMargins(0, 0, 0, dp(12));
-        pai.addView(sala, cardLp);
-    }
-
-    Button pequenoBotao(String textoBotao, int cor) {
-        Button b = new Button(this);
-        b.setText(textoBotao);
-        b.setTextSize(12);
-        b.setTextColor(Color.WHITE);
-        b.setAllCaps(false);
-        GradientDrawable g = fundo(Color.rgb(10, 14, 32), 14);
-        g.setStroke(dp(2), cor);
-        b.setBackground(g);
-        return b;
-    }
-
-    void criarPessoasHave(LinearLayout pai) {
-
-        TextView titulo = texto(
-                "👥  Pessoas do HAVE",
-                21,
-                Color.WHITE
-        );
-
-        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        titulo.setPadding(0, dp(18), 0, dp(6));
-        pai.addView(titulo);
-
-        TextView subtitulo = texto(
-                "Veja quem está no HAVE e encontre novas pessoas.",
-                14,
-                Color.rgb(140, 155, 195)
-        );
-        subtitulo.setPadding(0, 0, 0, dp(12));
-        pai.addView(subtitulo);
-
-        LinearLayout lista = new LinearLayout(this);
-        lista.setOrientation(LinearLayout.VERTICAL);
-        pai.addView(lista);
-
-        FirebaseFirestore.getInstance()
-                .collection("have_perfis_publicos")
-                .orderBy("atualizadoEm", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                .limit(20)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-
-                    if (snapshot.isEmpty()) {
-                        TextView vazio = texto(
-                                "Nenhuma pessoa disponível no HAVE ainda.",
-                                14,
-                                Color.rgb(140, 155, 195)
-                        );
-                        vazio.setPadding(0, dp(8), 0, dp(18));
-                        lista.addView(vazio);
-                        return;
-                    }
-
-                    for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
-
-                        String uid = doc.getId();
-                        String nome = doc.getString("nome");
-                        String haveId = doc.getString("haveId");
-                        String status = doc.getString("status");
-
-                        if (nome == null || nome.trim().isEmpty()) {
-                            nome = "Usuário HAVE";
-                        }
-
-                        if (haveId == null || haveId.trim().isEmpty()) {
-                            haveId = "HAVE-SEM-ID";
-                        }
-
-                        boolean online = "online".equalsIgnoreCase(status);
-
-                        LinearLayout pessoa = new LinearLayout(this);
-                        pessoa.setGravity(Gravity.CENTER_VERTICAL);
-                        pessoa.setPadding(
-                                dp(12),
-                                dp(10),
-                                dp(12),
-                                dp(10)
-                        );
-
-                        GradientDrawable fundoPessoa = fundo(
-                                Color.rgb(8, 11, 30),
-                                20
-                        );
-
-                        fundoPessoa.setStroke(
-                                dp(1),
-                                online
-                                        ? Color.rgb(35, 120, 100)
-                                        : Color.rgb(55, 60, 90)
-                        );
-
-                        pessoa.setBackground(fundoPessoa);
-
-                        TextView avatar = texto(
-                                "●",
-                                28,
-                                online
-                                        ? Color.rgb(40, 255, 145)
-                                        : Color.rgb(100, 115, 145)
-                        );
-
-                        avatar.setGravity(Gravity.CENTER);
-
-                        pessoa.addView(
-                                avatar,
-                                new LinearLayout.LayoutParams(
-                                        dp(48),
-                                        dp(58)
-                                )
-                        );
-
-                        LinearLayout info = new LinearLayout(this);
-                        info.setOrientation(LinearLayout.VERTICAL);
-                        info.setPadding(dp(10), 0, dp(8), 0);
-
-                        TextView nomeView = texto(
-                                nome,
-                                16,
-                                Color.WHITE
-                        );
-
-                        nomeView.setTypeface(
-                                Typeface.DEFAULT,
-                                Typeface.BOLD
-                        );
-
-                        TextView idView = texto(
-                                haveId,
-                                12,
-                                Color.rgb(80, 210, 255)
-                        );
-
-                        TextView statusView = texto(
-                                online
-                                        ? "● ONLINE"
-                                        : "○ OFFLINE",
-                                11,
-                                online
-                                        ? Color.rgb(40, 255, 145)
-                                        : Color.rgb(130, 145, 170)
-                        );
-
-                        info.addView(nomeView);
-                        info.addView(idView);
-                        info.addView(statusView);
-
-                        pessoa.addView(
-                                info,
-                                new LinearLayout.LayoutParams(
-                                        0,
-                                        -2,
-                                        1
-                                )
-                        );
-
-                        TextView acao = texto(
-                                "VER",
-                                11,
-                                Color.WHITE
-                        );
-
-                        acao.setGravity(Gravity.CENTER);
-
-                        GradientDrawable acaoBg = fundo(
-                                Color.rgb(20, 35, 65),
-                                22
-                        );
-
-                        acaoBg.setStroke(
-                                dp(1),
-                                Color.rgb(0, 210, 255)
-                        );
-
-                        acao.setBackground(acaoBg);
-
-                        pessoa.addView(
-                                acao,
-                                new LinearLayout.LayoutParams(
-                                        dp(60),
-                                        dp(40)
-                                )
-                        );
-
-                        final String nomeFinal = nome;
-                        final String haveIdFinal = haveId;
-                        final String uidFinal = uid;
-
-                        View.OnClickListener abrirPessoa = v -> {
-
-                            Toast.makeText(
-                                    this,
-                                    nomeFinal + " • " + haveIdFinal,
-                                    Toast.LENGTH_SHORT
-                            ).show();
-
-                            try {
-                                Intent intent = new Intent(
-                                        this,
-                                        SocialActivity.class
-                                );
-
-                                intent.putExtra("uidUsuario", uidFinal);
-                                intent.putExtra("haveId", haveIdFinal);
-                                intent.putExtra("nomeUsuario", nomeFinal);
-
-                                startActivity(intent);
-
-                            } catch (Exception ignored) {
-                                Toast.makeText(
-                                        this,
-                                        "Perfil disponível pelo HAVE ID: " + haveIdFinal,
-                                        Toast.LENGTH_SHORT
-                                ).show();
-                            }
-                        };
-
-                        pessoa.setOnClickListener(abrirPessoa);
-                        acao.setOnClickListener(abrirPessoa);
-
-                        LinearLayout.LayoutParams pessoaParams =
-                                new LinearLayout.LayoutParams(
-                                        -1,
-                                        dp(80)
-                                );
-
-                        pessoaParams.setMargins(
-                                0,
-                                0,
-                                0,
-                                dp(8)
-                        );
-
-                        lista.addView(pessoa, pessoaParams);
-                    }
-                })
-                .addOnFailureListener(e -> {
-
-                    TextView erro = texto(
-                            "Não foi possível carregar as pessoas do HAVE.",
-                            14,
-                            Color.rgb(255, 80, 110)
-                    );
-
-                    erro.setPadding(0, dp(8), 0, dp(18));
-                    lista.addView(erro);
-                });
-    }
-
-
-    void abrirTelaAmigos() {
-        if (modoConviteHave) {
-            abrirConviteAmigosHave();
-            return;
-        }
-        telaAmigosAberta = true;
-        LinearLayout raiz = new LinearLayout(this);
-        raiz.setOrientation(LinearLayout.VERTICAL);
-        raiz.setBackgroundColor(Color.rgb(3, 4, 15));
-        ScrollView scroll = new ScrollView(this);
-        scroll.setFillViewport(true);
-        LinearLayout conteudo = new LinearLayout(this);
-        conteudo.setOrientation(LinearLayout.VERTICAL);
-        conteudo.setPadding(dp(20), dp(22), dp(20), dp(24));
-        criarAmigos(conteudo);
-        scroll.addView(conteudo);
-        raiz.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        criarNavegacao(raiz);
-        setContentView(raiz);
-    }
-
-    void criarAmigos(LinearLayout pai) {
-        TextView titulo = texto("♧  PESSOAS HAVE", 21, Color.WHITE);
-        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        titulo.setPadding(0, dp(14), 0, dp(8));
-        pai.addView(titulo);
-        pai.addView(texto("Pessoas cadastradas no HAVE", 14,
-                Color.rgb(140, 155, 195)));
-
-        TextView onlineTitulo = texto("🟢  ONLINE AGORA", 16, Color.WHITE);
-        onlineTitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        onlineTitulo.setPadding(0, dp(22), 0, dp(10));
-        pai.addView(onlineTitulo);
-        LinearLayout online = new LinearLayout(this);
-        online.setOrientation(LinearLayout.VERTICAL);
-        pai.addView(online);
-
-        TextView offlineTitulo = texto("⚫  OFFLINE", 16, Color.WHITE);
-        offlineTitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        offlineTitulo.setPadding(0, dp(22), 0, dp(10));
-        pai.addView(offlineTitulo);
-        LinearLayout offline = new LinearLayout(this);
-        offline.setOrientation(LinearLayout.VERTICAL);
-        pai.addView(offline);
-
-        online.addView(texto("Carregando pessoas...", 14,
-                Color.rgb(140, 155, 195)));
-
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("have_perfis_publicos").get()
-          .addOnSuccessListener(resultado -> {
-            online.removeAllViews();
-            int total = 0;
-            String meuUid = FirebaseAuth.getInstance().getUid();
-            for (DocumentSnapshot d : resultado.getDocuments()) {
-                if (meuUid != null && meuUid.equals(d.getId())) continue;
-                total++;
-            }
-            if (total == 0) {
-                online.addView(texto("Nenhuma outra pessoa cadastrada.",
-                        14, Color.rgb(140, 155, 195)));
-                return;
-            }
-            final int[] pendentes = {total};
-            for (DocumentSnapshot d : resultado.getDocuments()) {
-                final String uid = d.getId();
-                if (meuUid != null && meuUid.equals(uid)) continue;
-                String n = d.getString("nome");
-                final String nome = n == null || n.trim().isEmpty()
-                        ? "Pessoa HAVE" : n;
-                String h = d.getString("haveId");
-                final String id = h == null ? "HAVE" : h;
-
-                db.collection("perfis_publicos").document(uid).get()
-                  .addOnSuccessListener(p -> {
-                    Object t = p.get("ultimoAcesso");
-                    boolean ativo = false;
-                    if (Boolean.TRUE.equals(p.getBoolean("online"))
-                            && t instanceof com.google.firebase.Timestamp) {
-                        long idade = System.currentTimeMillis()
-                            - ((com.google.firebase.Timestamp)t).toDate().getTime();
-                        ativo = idade >= 0 && idade <= 90000;
-                    }
-                    adicionarPessoaHave(ativo ? online : offline,
-                            nome, id, ativo);
-                    pendentes[0]--;
-                    if (pendentes[0] == 0) {
-                        if (online.getChildCount() == 0)
-                            online.addView(texto("Ninguém online agora.", 14,
-                                    Color.rgb(140, 155, 195)));
-                        if (offline.getChildCount() == 0)
-                            offline.addView(texto("Nenhuma pessoa offline.", 14,
-                                    Color.rgb(140, 155, 195)));
-                    }
-                  })
-                  .addOnFailureListener(e -> {
-                    adicionarPessoaHave(offline, nome, id, false);
-                    pendentes[0]--;
-                  });
-            }
-          })
-          .addOnFailureListener(e -> {
-            online.removeAllViews();
-            online.addView(texto("Falha ao carregar. Verifique a conexão.",
-                    14, Color.rgb(255, 100, 120)));
-          });
-
-        Button buscar = pequenoBotao("⌕  BUSCAR PESSOA POR ID HAVE",
-                Color.rgb(0, 210, 255));
-        LinearLayout.LayoutParams buscaParams =
-                new LinearLayout.LayoutParams(-1, dp(48));
-        buscaParams.setMargins(0, dp(22), 0, dp(8));
-        pai.addView(buscar, buscaParams);
-        buscar.setOnClickListener(v -> abrirBuscaHave());
-    }
-
-    void adicionarPessoaHave(LinearLayout lista, String nome,
-                             String haveId, boolean online) {
-        LinearLayout card = new LinearLayout(this);
-        card.setOrientation(LinearLayout.HORIZONTAL);
-        card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(dp(14), dp(12), dp(14), dp(12));
-        GradientDrawable fundoPessoa = fundo(Color.rgb(9, 13, 30), 16);
-        fundoPessoa.setStroke(dp(1), online
-                ? Color.rgb(40, 255, 145) : Color.rgb(65, 75, 105));
-        card.setBackground(fundoPessoa);
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(-1, -2);
-        params.setMargins(0, 0, 0, dp(9));
-        lista.addView(card, params);
-        card.addView(texto("●", 18, online
-                ? Color.rgb(40, 255, 145) : Color.rgb(105, 115, 135)),
-                new LinearLayout.LayoutParams(dp(30), -2));
-        LinearLayout coluna = new LinearLayout(this);
-        coluna.setOrientation(LinearLayout.VERTICAL);
-        TextView nomeView = texto(nome, 15, Color.WHITE);
-        nomeView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        coluna.addView(nomeView);
-        coluna.addView(texto(haveId + (online ? " • ONLINE" : " • OFFLINE"),
-                12, online ? Color.rgb(40, 255, 145)
-                           : Color.rgb(140, 155, 195)));
-        card.addView(coluna, new LinearLayout.LayoutParams(0, -2, 1));
-    }
-
-    void adicionarAmigo(
-            LinearLayout pai,
-            String inicial,
-            String nome
-    ) {
-
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
-        item.setGravity(Gravity.CENTER_HORIZONTAL);
-
-        TextView avatar = texto(
-                inicial,
-                22,
-                Color.WHITE
-        );
-
-        avatar.setGravity(Gravity.CENTER);
-
-        GradientDrawable g = fundo(
-                Color.rgb(42, 20, 75),
-                50
-        );
-
-        g.setStroke(
-                dp(2),
-                Color.rgb(130, 55, 255)
-        );
-
-        avatar.setBackground(g);
-
-        item.addView(avatar, new LinearLayout.LayoutParams(
-                dp(65), dp(65)
-        ));
-
-        TextView n = texto(
-                nome,
-                12,
-                Color.WHITE
-        );
-
-        n.setGravity(Gravity.CENTER);
-
-        item.addView(n);
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        dp(82), dp(105)
-                );
-
-        p.setMargins(0, 0, dp(6), 0);
-
-        pai.addView(item, p);
-    }
-
-
-
-    void abrirBuscaHave() {
-        final LinearLayout raiz = new LinearLayout(this);
-        raiz.setOrientation(LinearLayout.VERTICAL);
-        raiz.setPadding(dp(20), dp(24), dp(20), dp(24));
-        raiz.setBackgroundColor(Color.rgb(3, 4, 15));
-
-        TextView titulo = texto("⌕ BUSCAR NO HAVE", 24, Color.WHITE);
-        titulo.setTypeface(Typeface.DEFAULT_BOLD);
-
-        TextView subtitulo = texto(
-                "Encontre pessoas pelo ID HAVE",
-                14,
-                Color.rgb(150, 165, 190)
-        );
-        subtitulo.setPadding(0, dp(6), 0, dp(22));
-
-        EditText campo = new EditText(this);
-        campo.setHint("Ex.: HAVE-AVN4SX12");
-        campo.setHintTextColor(Color.rgb(100, 115, 140));
-        campo.setTextColor(Color.WHITE);
-        campo.setSingleLine(true);
-        campo.setTextSize(15);
-        campo.setPadding(dp(16), 0, dp(16), 0);
-
-        GradientDrawable fundoCampo = fundo(
-                Color.rgb(10, 14, 32),
-                16
-        );
-        fundoCampo.setStroke(
-                dp(1),
-                Color.rgb(0, 210, 255)
-        );
-        campo.setBackground(fundoCampo);
-
-        raiz.addView(titulo);
-        raiz.addView(subtitulo);
-        raiz.addView(
-                campo,
-                new LinearLayout.LayoutParams(-1, dp(54))
-        );
-
-        Button pesquisar = new Button(this);
-        pesquisar.setText("🔎 PESQUISAR");
-        pesquisar.setTextColor(Color.WHITE);
-        pesquisar.setTextSize(14);
-        pesquisar.setAllCaps(false);
-
-        GradientDrawable fundoBotao = fundo(
-                Color.rgb(35, 18, 65),
-                16
-        );
-        fundoBotao.setStroke(
-                dp(1),
-                Color.rgb(145, 45, 255)
-        );
-        pesquisar.setBackground(fundoBotao);
-
-        LinearLayout.LayoutParams botaoParams =
-                new LinearLayout.LayoutParams(-1, dp(54));
-        botaoParams.topMargin = dp(14);
-        raiz.addView(pesquisar, botaoParams);
-
-        LinearLayout resultadoArea = new LinearLayout(this);
-        resultadoArea.setOrientation(LinearLayout.VERTICAL);
-        resultadoArea.setPadding(dp(16), dp(18), dp(16), dp(18));
-        resultadoArea.setVisibility(View.GONE);
-
-        GradientDrawable resultadoBg = fundo(
-                Color.rgb(8, 12, 28),
-                18
-        );
-        resultadoBg.setStroke(
-                dp(1),
-                Color.rgb(55, 75, 110)
-        );
-        resultadoArea.setBackground(resultadoBg);
-
-        LinearLayout.LayoutParams resultadoParams =
-                new LinearLayout.LayoutParams(-1, -2);
-        resultadoParams.topMargin = dp(18);
-
-        TextView resultado = texto(
-                "",
-                15,
-                Color.rgb(220, 225, 240)
-        );
-
-        resultadoArea.addView(resultado);
-
-        Button adicionar = new Button(this);
-        adicionar.setText("➕ ADICIONAR AMIGO");
-        adicionar.setTextColor(Color.WHITE);
-        adicionar.setTextSize(14);
-        adicionar.setAllCaps(false);
-        adicionar.setVisibility(View.GONE);
-
-        GradientDrawable adicionarBg = fundo(
-                Color.rgb(25, 55, 70),
-                16
-        );
-        adicionarBg.setStroke(
-                dp(1),
-                Color.rgb(40, 255, 145)
-        );
-        adicionar.setBackground(adicionarBg);
-
-        LinearLayout.LayoutParams adicionarParams =
-                new LinearLayout.LayoutParams(-1, dp(52));
-        adicionarParams.topMargin = dp(14);
-
-        resultadoArea.addView(adicionar, adicionarParams);
-        raiz.addView(resultadoArea, resultadoParams);
-
-        TextView fechar = texto(
-                "← VOLTAR",
-                14,
-                Color.rgb(0, 210, 255)
-        );
-        fechar.setGravity(Gravity.CENTER);
-        fechar.setPadding(0, dp(18), 0, dp(10));
-
-        raiz.addView(
-                fechar,
-                new LinearLayout.LayoutParams(-1, dp(54))
-        );
-
-        setContentView(raiz);
-
-        final String[] uidEncontrado = {""};
-        final String[] nomeEncontrado = {""};
-        final String[] haveIdEncontrado = {""};
-
-        pesquisar.setOnClickListener(v -> {
-            String id = campo.getText()
-                    .toString()
-                    .trim()
-                    .toUpperCase(Locale.US);
-
-            if (id.isEmpty()) {
-                campo.setError("Digite um ID HAVE");
-                campo.requestFocus();
-                return;
-            }
-
-            resultadoArea.setVisibility(View.VISIBLE);
-            adicionar.setVisibility(View.GONE);
-
-            resultado.setText("🔎 Procurando " + id + "...");
-
-            FirebaseFirestore.getInstance()
-                    .collection("have_perfis_publicos")
-                    .whereEqualTo("haveId", id)
-                    .limit(1)
-                    .get()
-                    .addOnSuccessListener(snapshot -> {
-
-                        if (snapshot.isEmpty()) {
-                            uidEncontrado[0] = "";
-                            resultado.setText(
-                                    "❌ Usuário não encontrado.\n\n" +
-                                    "Confira o ID HAVE e tente novamente."
-                            );
-                            return;
-                        }
-
-                        com.google.firebase.firestore.DocumentSnapshot doc =
-                                snapshot.getDocuments().get(0);
-
-                        String uid = doc.getId();
-                        String nome = doc.getString("nome");
-                        String haveId = doc.getString("haveId");
-                        String status = doc.getString("status");
-
-                        if (nome == null || nome.isEmpty()) {
-                            nome = "Usuário HAVE";
-                        }
-
-                        if (haveId == null || haveId.isEmpty()) {
-                            haveId = id;
-                        }
-
-                        if (status == null || status.isEmpty()) {
-                            status = "offline";
-                        }
-
-                        uidEncontrado[0] = uid;
-                        nomeEncontrado[0] = nome;
-                        haveIdEncontrado[0] = haveId;
-
-                        FirebaseUser atual =
-                                FirebaseAuth.getInstance().getCurrentUser();
-
-                        if (atual != null &&
-                                atual.getUid().equals(uid)) {
-
-                            resultado.setText(
-                                    "🟣 ESTE É SEU PERFIL\n\n" +
-                                    "👤 " + nome + "\n" +
-                                    "🆔 " + haveId + "\n" +
-                                    "● " + status.toUpperCase(Locale.US)
-                            );
-
-                            adicionar.setVisibility(View.GONE);
-                            return;
-                        }
-
-                        resultado.setText(
-                                "● PERFIL ENCONTRADO\n\n" +
-                                "👤 " + nome + "\n" +
-                                "🆔 " + haveId + "\n" +
-                                "● " + status.toUpperCase(Locale.US)
-                        );
-
-                        adicionar.setVisibility(View.VISIBLE);
-                    })
-                    .addOnFailureListener(e -> {
-                        uidEncontrado[0] = "";
-
-                        resultado.setText(
-                                "⚠️ Não foi possível realizar a busca.\n\n" +
-                                "Verifique sua conexão e tente novamente."
-                        );
-                    });
-        });
-
-        adicionar.setOnClickListener(v -> {
-
-            if (uidEncontrado[0].isEmpty()) {
-                Toast.makeText(
-                        this,
-                        "Pesquise um usuário HAVE primeiro.",
-                        Toast.LENGTH_SHORT
-                ).show();
-                return;
-            }
-
-            Toast.makeText(
-                    this,
-                    "Usuário encontrado. Próximo passo: criar amizade HAVE.",
-                    Toast.LENGTH_SHORT
-            ).show();
-        });
-
-        fechar.setOnClickListener(v -> montarHome());
-    }
-
-    void abrirPerfilHave() {
-        FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
-
-        if (usuario == null) {
-            Toast.makeText(this, "Faça login no HAVE primeiro.", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        String uid = usuario.getUid();
-
-        db.collection("have_usuarios")
-                .document(uid)
-                .get()
-                .addOnSuccessListener(doc -> {
-                    if (doc.exists()) {
-                        exibirPerfilHave(
-                                doc.getString("nome"),
-                                doc.getString("haveId"),
-                                usuario.getEmail()
-                        );
-                        sincronizarPerfilPublico(
-                                uid,
-                                doc.getString("nome"),
-                                doc.getString("haveId")
-                        );
-                        return;
-                    }
-
-                    String email = usuario.getEmail();
-                    String nome = usuario.getDisplayName();
-
-                    if (nome == null || nome.trim().isEmpty()) {
-                        nome = "Usuário HAVE";
-                    }
-
-                    String haveId = "HAVE-" +
-                            UUID.randomUUID()
-                                    .toString()
-                                    .replace("-", "")
-                                    .substring(0, 8)
-                                    .toUpperCase(Locale.US);
-
-                    Map<String, Object> dados = new HashMap<>();
-                    dados.put("nome", nome);
-                    dados.put("email", email == null ? "" : email);
-                    dados.put("haveId", haveId);
-                    dados.put("criadoEm", FieldValue.serverTimestamp());
-
-                    final String nomeFinal = nome;
-                    final String haveIdFinal = haveId;
-                    final String emailFinal = email == null ? "" : email;
-
-                    db.collection("have_usuarios")
-                            .document(uid)
-                            .set(dados)
-                            .addOnSuccessListener(v -> {
-                                sincronizarPerfilPublico(
-                                        uid,
-                                        nomeFinal,
-                                        haveIdFinal
-                                );
-
-                                Toast.makeText(
-                                        this,
-                                        "Perfil HAVE recuperado com sucesso.",
-                                        Toast.LENGTH_SHORT
-                                ).show();
-
-                                exibirPerfilHave(
-                                        nomeFinal,
-                                        haveIdFinal,
-                                        emailFinal
-                                );
-                            })
-                            .addOnFailureListener(e ->
-                                    Toast.makeText(
-                                            this,
-                                            "Não foi possível criar seu perfil: "
-                                                    + e.getLocalizedMessage(),
-                                            Toast.LENGTH_LONG
-                                    ).show()
-                            );
-                })
-                .addOnFailureListener(e ->
-                        Toast.makeText(
-                                this,
-                                "Erro ao carregar perfil: "
-                                        + e.getLocalizedMessage(),
-                                Toast.LENGTH_LONG
-                        ).show()
-                );
-    }
-
-    private void sincronizarPerfilPublico(
+private void sincronizarPerfilPublico(
             String uid,
             String nome,
             String haveId
@@ -2690,7 +1922,7 @@ public class HaveHomeActivity extends Activity {
                 .set(publico, SetOptions.merge());
     }
 
-    private void exibirPerfilHave(
+private void exibirPerfilHave(
         String nome,
         String haveId,
         String email
@@ -2913,6 +2145,417 @@ public class HaveHomeActivity extends Activity {
     setContentView(scroll);
 }
 
+
+
+private void atualizarHeroHave(JSONObject filme) {
+
+        try {
+
+            String titulo = filme.optString(
+                    "title",
+                    filme.optString(
+                            "name",
+                            "Filme em destaque"
+                    )
+            );
+
+            String descricao = filme.optString(
+                    "overview",
+                    "Descubra este título e assista com seus amigos."
+            );
+
+            String provedor =
+                    filme.optString(
+                            "have_provider",
+                            "Nuvem NEXO"
+                    );
+
+            String imagem =
+                    filme.optString(
+                            "banner",
+                            ""
+                    );
+
+            if (
+                    imagem == null
+                    || imagem.trim().isEmpty()
+            ) {
+
+                imagem =
+                        filme.optString(
+                                "backdrop",
+                                ""
+                        );
+            }
+
+            if (
+                    imagem == null
+                    || imagem.trim().isEmpty()
+            ) {
+
+                imagem =
+                        filme.optString(
+                                "capa",
+                                ""
+                        );
+            }
+
+            tituloHeroHave.setText(titulo);
+
+            descricaoHeroHave.setText(
+                    descricao == null ||
+                    descricao.trim().isEmpty()
+                            ? "Descubra este título e assista com seus amigos."
+                            : descricao
+            );
+
+            provedorHeroHave.setText(provedor);
+            atualizarIndicadoresHeroHave();
+
+            if (imagem != null &&
+                    !imagem.trim().isEmpty()) {
+
+                String endereco;
+
+                if (imagem.startsWith("http://") ||
+                        imagem.startsWith("https://")) {
+
+                    endereco = imagem;
+
+                } else {
+
+                    endereco =
+                            "https://image.tmdb.org/t/p/w1280"
+                            + imagem;
+                }
+
+                carregarImagemHero(endereco);
+            }
+
+        } catch (Exception e) {
+
+            android.util.Log.e(
+                    "HAVE_HERO",
+                    "Erro ao atualizar hero",
+                    e
+            );
+        }
+    }
+
+private void iniciarCarrosselHeroHave() {
+        handlerHeroHave.removeCallbacksAndMessages(null);
+
+        handlerHeroHave.postDelayed(
+                new Runnable() {
+                    @Override
+                    public void run() {
+
+                        if (catalogoHeroHave != null &&
+                                catalogoHeroHave.length() > 0) {
+
+                            indiceHeroHave++;
+
+                            if (indiceHeroHave >=
+                                    catalogoHeroHave.length()) {
+                                indiceHeroHave = 0;
+                            }
+
+                            try {
+                                atualizarHeroHave(
+                                        catalogoHeroHave.getJSONObject(
+                                                indiceHeroHave
+                                        )
+                                );
+                            } catch (Exception ignored) {
+                            }
+                        }
+
+                        handlerHeroHave.postDelayed(
+                                this,
+                                6500
+                        );
+                    }
+                },
+                6500
+        );
+    }
+
+private TextView itemConfiguracaoHave(
+            String icone,
+            String titulo,
+            String descricao
+    ) {
+        TextView item = texto(
+                icone + "  " + titulo + "\n" + descricao,
+                15,
+                Color.WHITE
+        );
+
+        item.setPadding(dp(4), dp(14), dp(4), dp(14));
+        item.setGravity(Gravity.CENTER_VERTICAL);
+
+        GradientDrawable linha = new GradientDrawable();
+        linha.setColor(Color.TRANSPARENT);
+        linha.setStroke(dp(1), Color.rgb(35, 70, 105));
+        linha.setCornerRadius(dp(14));
+        item.setBackground(linha);
+
+        item.setOnTouchListener((v, event) -> {
+            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                item.setAlpha(0.65f);
+            } else if (event.getAction() == android.view.MotionEvent.ACTION_UP
+                    || event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
+                item.setAlpha(1f);
+            }
+            return false;
+        });
+
+        LinearLayout.LayoutParams params =
+                new LinearLayout.LayoutParams(-1, -2);
+        params.topMargin = dp(5);
+        params.bottomMargin = dp(5);
+        item.setLayoutParams(params);
+
+        return item;
+    }
+
+private void abrirPrivacidadeHave() {
+        android.app.AlertDialog.Builder builder =
+                new android.app.AlertDialog.Builder(this);
+
+        LinearLayout conteudo = new LinearLayout(this);
+        conteudo.setOrientation(LinearLayout.VERTICAL);
+        conteudo.setPadding(dp(24), dp(10), dp(24), dp(10));
+
+        TextView titulo = texto(
+                "🔒 PRIVACIDADE",
+                21,
+                Color.WHITE
+        );
+        titulo.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
+        TextView explicacao = texto(
+                "Escolha quais informações do seu perfil podem "
+                        + "ser exibidas para outras pessoas.",
+                13,
+                Color.rgb(155, 165, 195)
+        );
+        explicacao.setPadding(0, dp(8), 0, dp(18));
+
+        android.widget.Switch foto = new android.widget.Switch(this);
+        foto.setText("📷 Mostrar minha foto");
+        foto.setTextColor(Color.WHITE);
+        foto.setChecked(getPreferences(0)
+                .getBoolean("priv_foto", true));
+
+        android.widget.Switch status = new android.widget.Switch(this);
+        status.setText("🟢 Mostrar status online");
+        status.setTextColor(Color.WHITE);
+        status.setChecked(getPreferences(0)
+                .getBoolean("priv_status", true));
+
+        TextView idInfo = texto(
+                "🆔 HAVE ID\n"
+                        + "Seu HAVE ID permanece público para "
+                        + "permitir que outras pessoas encontrem você.",
+                13,
+                Color.rgb(195, 205, 225)
+        );
+        idInfo.setPadding(0, dp(12), 0, dp(12));
+
+        TextView emailInfo = texto(
+                "📧 E-mail\n"
+                        + "Seu e-mail é sempre privado e não aparece "
+                        + "no perfil público.",
+                13,
+                Color.rgb(195, 205, 225)
+        );
+        emailInfo.setPadding(0, dp(8), 0, dp(12));
+
+        conteudo.addView(titulo);
+        conteudo.addView(explicacao);
+        conteudo.addView(foto);
+        conteudo.addView(status);
+        conteudo.addView(idInfo);
+        conteudo.addView(emailInfo);
+
+        android.app.AlertDialog dialog = builder
+                .setView(conteudo)
+                .setPositiveButton("SALVAR", null)
+                .setNegativeButton("CANCELAR", null)
+                .create();
+
+        dialog.setOnShowListener(v -> {
+            dialog.getButton(
+                    android.app.AlertDialog.BUTTON_POSITIVE
+            ).setOnClickListener(x -> {
+                getPreferences(0)
+                        .edit()
+                        .putBoolean("priv_foto", foto.isChecked())
+                        .putBoolean("priv_status", status.isChecked())
+                        .apply();
+
+                Toast.makeText(
+                        this,
+                        "Privacidade atualizada.",
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                dialog.dismiss();
+            });
+        });
+
+        dialog.show();
+    }
+
+private void abrirSegurancaHave() {
+    final EditText email = new EditText(this);
+    email.setSingleLine(true);
+    email.setHint("E-mail da conta HAVE");
+    email.setTextColor(Color.WHITE);
+    email.setHintTextColor(Color.rgb(120, 140, 175));
+    email.setInputType(
+            android.text.InputType.TYPE_CLASS_TEXT |
+            android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+    );
+
+    FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
+    if (usuario != null && usuario.getEmail() != null) {
+        email.setText(usuario.getEmail());
+    }
+
+    new android.app.AlertDialog.Builder(this)
+            .setTitle("🛡 SEGURANÇA")
+            .setMessage(
+                    "Digite o e-mail da sua conta. " +
+                    "O Firebase enviará o link oficial para criar uma nova senha."
+            )
+            .setView(email)
+            .setNegativeButton("FECHAR", null)
+            .setPositiveButton("ENVIAR", (dialog, which) -> {
+                String endereco = email.getText().toString().trim();
+
+                if (endereco.isEmpty() ||
+                        !android.util.Patterns.EMAIL_ADDRESS
+                                .matcher(endereco).matches()) {
+                    Toast.makeText(
+                            this,
+                            "Digite um e-mail válido.",
+                            Toast.LENGTH_LONG
+                    ).show();
+                    return;
+                }
+
+                FirebaseAuth.getInstance()
+                        .sendPasswordResetEmail(endereco)
+                        .addOnSuccessListener(v ->
+                                Toast.makeText(
+                                        this,
+                                        "E-mail de redefinição enviado. Verifique também o spam.",
+                                        Toast.LENGTH_LONG
+                                ).show()
+                        )
+                        .addOnFailureListener(e ->
+                                Toast.makeText(
+                                        this,
+                                        "Não foi possível enviar o e-mail.",
+                                        Toast.LENGTH_LONG
+                                ).show()
+                        );
+            })
+            .show();
+}
+
+private void abrirAparenciaHave() {
+    final String[] opcoes = {
+            "☀  Modo claro",
+            "🌙  Modo escuro",
+            "⚙  Automático"
+    };
+
+    android.content.SharedPreferences pref =
+            getSharedPreferences("have_config", MODE_PRIVATE);
+
+    String atual = pref.getString("tema", "claro");
+
+    int marcado = 0;
+    if ("escuro".equals(atual)) marcado = 1;
+    if ("automatico".equals(atual)) marcado = 2;
+
+    final int[] escolha = {marcado};
+
+    new android.app.AlertDialog.Builder(this)
+            .setTitle("🎨 APARÊNCIA")
+            .setSingleChoiceItems(
+                    opcoes,
+                    marcado,
+                    (dialog, which) -> escolha[0] = which
+            )
+            .setNegativeButton("CANCELAR", null)
+            .setPositiveButton("APLICAR", (dialog, which) -> {
+                String tema =
+                        escolha[0] == 1
+                                ? "escuro"
+                                : escolha[0] == 2
+                                ? "automatico"
+                                : "claro";
+
+                pref.edit()
+                        .putString("tema", tema)
+                        .apply();
+
+                Toast.makeText(
+                        this,
+                        "Tema salvo: " +
+                                (tema.equals("claro")
+                                        ? "Modo claro"
+                                        : tema.equals("escuro")
+                                        ? "Modo escuro"
+                                        : "Automático"),
+                        Toast.LENGTH_SHORT
+                ).show();
+
+                aplicarTemaHave(tema);
+            })
+            .show();
+}
+
+private void abrirNotificacoesHave() {
+        android.widget.Switch avisos =
+                new android.widget.Switch(this);
+
+        avisos.setText("🔔 Permitir notificações do HAVE");
+        avisos.setTextColor(Color.WHITE);
+        avisos.setChecked(
+                getPreferences(0)
+                        .getBoolean("notificacoes_have", true)
+        );
+
+        new android.app.AlertDialog.Builder(this)
+                .setTitle("🔔 NOTIFICAÇÕES")
+                .setView(avisos)
+                .setPositiveButton("SALVAR", (dialog, which) -> {
+                    getPreferences(0)
+                            .edit()
+                            .putBoolean(
+                                    "notificacoes_have",
+                                    avisos.isChecked()
+                            )
+                            .apply();
+
+                    Toast.makeText(
+                            this,
+                            "Preferência de notificações salva.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+                })
+                .setNegativeButton("CANCELAR", null)
+                .show();
+    }
+
 private void abrirMeuHaveId(String nome, String haveId) {
     TextView id = texto(haveId, 22, Color.rgb(75, 220, 255));
     id.setGravity(Gravity.CENTER);
@@ -3054,249 +2697,125 @@ private void abrirBloqueadosHave() {
             .show();
 }
 
-    private TextView itemConfiguracaoHave(
-            String icone,
-            String titulo,
-            String descricao
+
+
+private void atualizarIndicadoresHeroHave() {
+        if (indicadoresHeroHave == null) return;
+
+        indicadoresHeroHave.removeAllViews();
+
+        if (catalogoHeroHave == null || catalogoHeroHave.length() <= 1) {
+            return;
+        }
+
+        for (int i = 0; i < catalogoHeroHave.length(); i++) {
+            GradientDrawable ponto = new GradientDrawable();
+            ponto.setShape(GradientDrawable.RECTANGLE);
+            ponto.setCornerRadius(dp(10));
+            ponto.setColor(i == indiceHeroHave
+                    ? Color.rgb(0, 220, 255)
+                    : Color.rgb(90, 75, 125));
+
+            View indicador = new View(this);
+            indicador.setBackground(ponto);
+
+            int largura = i == indiceHeroHave ? dp(23) : dp(7);
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(largura, dp(7));
+            lp.setMargins(dp(3), 0, dp(3), 0);
+            indicadoresHeroHave.addView(indicador, lp);
+        }
+    }
+
+private void carregarImagemHero(
+            String endereco
     ) {
-        TextView item = texto(
-                icone + "  " + titulo + "\n" + descricao,
-                15,
-                Color.WHITE
-        );
 
-        item.setPadding(dp(4), dp(14), dp(4), dp(14));
-        item.setGravity(Gravity.CENTER_VERTICAL);
+        new Thread(() -> {
 
-        GradientDrawable linha = new GradientDrawable();
-        linha.setColor(Color.TRANSPARENT);
-        linha.setStroke(dp(1), Color.rgb(35, 70, 105));
-        linha.setCornerRadius(dp(14));
-        item.setBackground(linha);
+            HttpURLConnection conexao = null;
+            InputStream entrada = null;
 
-        item.setOnTouchListener((v, event) -> {
-            if (event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
-                item.setAlpha(0.65f);
-            } else if (event.getAction() == android.view.MotionEvent.ACTION_UP
-                    || event.getAction() == android.view.MotionEvent.ACTION_CANCEL) {
-                item.setAlpha(1f);
-            }
-            return false;
-        });
+            try {
 
-        LinearLayout.LayoutParams params =
-                new LinearLayout.LayoutParams(-1, -2);
-        params.topMargin = dp(5);
-        params.bottomMargin = dp(5);
-        item.setLayoutParams(params);
+                URL url = new URL(endereco);
 
-        return item;
-    }
+                conexao =
+                        (HttpURLConnection)
+                                url.openConnection();
 
-    private void abrirPrivacidadeHave() {
-        android.app.AlertDialog.Builder builder =
-                new android.app.AlertDialog.Builder(this);
+                conexao.setRequestMethod("GET");
+                conexao.setConnectTimeout(15000);
+                conexao.setReadTimeout(20000);
+                conexao.setInstanceFollowRedirects(true);
 
-        LinearLayout conteudo = new LinearLayout(this);
-        conteudo.setOrientation(LinearLayout.VERTICAL);
-        conteudo.setPadding(dp(24), dp(10), dp(24), dp(10));
+                int codigo =
+                        conexao.getResponseCode();
 
-        TextView titulo = texto(
-                "🔒 PRIVACIDADE",
-                21,
-                Color.WHITE
-        );
-        titulo.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
+                if (codigo < 200 || codigo >= 300) {
 
-        TextView explicacao = texto(
-                "Escolha quais informações do seu perfil podem "
-                        + "ser exibidas para outras pessoas.",
-                13,
-                Color.rgb(155, 165, 195)
-        );
-        explicacao.setPadding(0, dp(8), 0, dp(18));
-
-        android.widget.Switch foto = new android.widget.Switch(this);
-        foto.setText("📷 Mostrar minha foto");
-        foto.setTextColor(Color.WHITE);
-        foto.setChecked(getPreferences(0)
-                .getBoolean("priv_foto", true));
-
-        android.widget.Switch status = new android.widget.Switch(this);
-        status.setText("🟢 Mostrar status online");
-        status.setTextColor(Color.WHITE);
-        status.setChecked(getPreferences(0)
-                .getBoolean("priv_status", true));
-
-        TextView idInfo = texto(
-                "🆔 HAVE ID\n"
-                        + "Seu HAVE ID permanece público para "
-                        + "permitir que outras pessoas encontrem você.",
-                13,
-                Color.rgb(195, 205, 225)
-        );
-        idInfo.setPadding(0, dp(12), 0, dp(12));
-
-        TextView emailInfo = texto(
-                "📧 E-mail\n"
-                        + "Seu e-mail é sempre privado e não aparece "
-                        + "no perfil público.",
-                13,
-                Color.rgb(195, 205, 225)
-        );
-        emailInfo.setPadding(0, dp(8), 0, dp(12));
-
-        conteudo.addView(titulo);
-        conteudo.addView(explicacao);
-        conteudo.addView(foto);
-        conteudo.addView(status);
-        conteudo.addView(idInfo);
-        conteudo.addView(emailInfo);
-
-        android.app.AlertDialog dialog = builder
-                .setView(conteudo)
-                .setPositiveButton("SALVAR", null)
-                .setNegativeButton("CANCELAR", null)
-                .create();
-
-        dialog.setOnShowListener(v -> {
-            dialog.getButton(
-                    android.app.AlertDialog.BUTTON_POSITIVE
-            ).setOnClickListener(x -> {
-                getPreferences(0)
-                        .edit()
-                        .putBoolean("priv_foto", foto.isChecked())
-                        .putBoolean("priv_status", status.isChecked())
-                        .apply();
-
-                Toast.makeText(
-                        this,
-                        "Privacidade atualizada.",
-                        Toast.LENGTH_SHORT
-                ).show();
-
-                dialog.dismiss();
-            });
-        });
-
-        dialog.show();
-    }
-    private void abrirSegurancaHave() {
-    final EditText email = new EditText(this);
-    email.setSingleLine(true);
-    email.setHint("E-mail da conta HAVE");
-    email.setTextColor(Color.WHITE);
-    email.setHintTextColor(Color.rgb(120, 140, 175));
-    email.setInputType(
-            android.text.InputType.TYPE_CLASS_TEXT |
-            android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
-    );
-
-    FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
-    if (usuario != null && usuario.getEmail() != null) {
-        email.setText(usuario.getEmail());
-    }
-
-    new android.app.AlertDialog.Builder(this)
-            .setTitle("🛡 SEGURANÇA")
-            .setMessage(
-                    "Digite o e-mail da sua conta. " +
-                    "O Firebase enviará o link oficial para criar uma nova senha."
-            )
-            .setView(email)
-            .setNegativeButton("FECHAR", null)
-            .setPositiveButton("ENVIAR", (dialog, which) -> {
-                String endereco = email.getText().toString().trim();
-
-                if (endereco.isEmpty() ||
-                        !android.util.Patterns.EMAIL_ADDRESS
-                                .matcher(endereco).matches()) {
-                    Toast.makeText(
-                            this,
-                            "Digite um e-mail válido.",
-                            Toast.LENGTH_LONG
-                    ).show();
-                    return;
+                    throw new Exception(
+                            "Imagem HTTP " + codigo
+                    );
                 }
 
-                FirebaseAuth.getInstance()
-                        .sendPasswordResetEmail(endereco)
-                        .addOnSuccessListener(v ->
-                                Toast.makeText(
-                                        this,
-                                        "E-mail de redefinição enviado. Verifique também o spam.",
-                                        Toast.LENGTH_LONG
-                                ).show()
-                        )
-                        .addOnFailureListener(e ->
-                                Toast.makeText(
-                                        this,
-                                        "Não foi possível enviar o e-mail.",
-                                        Toast.LENGTH_LONG
-                                ).show()
+                entrada =
+                        conexao.getInputStream();
+
+                Bitmap bitmap =
+                        BitmapFactory.decodeStream(
+                                entrada
                         );
-            })
-            .show();
-}
-    private void abrirAparenciaHave() {
-    final String[] opcoes = {
-            "☀  Modo claro",
-            "🌙  Modo escuro",
-            "⚙  Automático"
-    };
 
-    android.content.SharedPreferences pref =
-            getSharedPreferences("have_config", MODE_PRIVATE);
+                if (bitmap == null) {
 
-    String atual = pref.getString("tema", "claro");
+                    throw new Exception(
+                            "Bitmap nulo"
+                    );
+                }
 
-    int marcado = 0;
-    if ("escuro".equals(atual)) marcado = 1;
-    if ("automatico".equals(atual)) marcado = 2;
+                runOnUiThread(() -> {
 
-    final int[] escolha = {marcado};
+                    imagemHeroHave
+                            .setImageBitmap(bitmap);
 
-    new android.app.AlertDialog.Builder(this)
-            .setTitle("🎨 APARÊNCIA")
-            .setSingleChoiceItems(
-                    opcoes,
-                    marcado,
-                    (dialog, which) -> escolha[0] = which
-            )
-            .setNegativeButton("CANCELAR", null)
-            .setPositiveButton("APLICAR", (dialog, which) -> {
-                String tema =
-                        escolha[0] == 1
-                                ? "escuro"
-                                : escolha[0] == 2
-                                ? "automatico"
-                                : "claro";
+                    imagemHeroHave
+                            .setAlpha(0f);
 
-                pref.edit()
-                        .putString("tema", tema)
-                        .apply();
+                    imagemHeroHave
+                            .animate()
+                            .alpha(1f)
+                            .setDuration(450)
+                            .start();
+                });
 
-                Toast.makeText(
-                        this,
-                        "Tema salvo: " +
-                                (tema.equals("claro")
-                                        ? "Modo claro"
-                                        : tema.equals("escuro")
-                                        ? "Modo escuro"
-                                        : "Automático"),
-                        Toast.LENGTH_SHORT
-                ).show();
+            } catch (Exception e) {
 
-                aplicarTemaHave(tema);
-            })
-            .show();
-}
+                android.util.Log.e(
+                        "HAVE_HERO",
+                        "Falha ao carregar imagem: "
+                                + endereco,
+                        e
+                );
 
+            } finally {
 
-        private void aplicarTemaHave(String tema) {
+                try {
+
+                    if (entrada != null) {
+                        entrada.close();
+                    }
+
+                } catch (Exception ignored) {}
+
+                if (conexao != null) {
+                    conexao.disconnect();
+                }
+            }
+        }).start();
+    }
+
+private void aplicarTemaHave(String tema) {
     boolean escuro = "escuro".equals(tema);
 
     if ("automatico".equals(tema)) {
@@ -3318,256 +2837,810 @@ private void abrirBloqueadosHave() {
     }
 }
 
-private void abrirNotificacoesHave() {
-        android.widget.Switch avisos =
-                new android.widget.Switch(this);
-
-        avisos.setText("🔔 Permitir notificações do HAVE");
-        avisos.setTextColor(Color.WHITE);
-        avisos.setChecked(
-                getPreferences(0)
-                        .getBoolean("notificacoes_have", true)
-        );
-
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("🔔 NOTIFICAÇÕES")
-                .setView(avisos)
-                .setPositiveButton("SALVAR", (dialog, which) -> {
-                    getPreferences(0)
-                            .edit()
-                            .putBoolean(
-                                    "notificacoes_have",
-                                    avisos.isChecked()
-                            )
-                            .apply();
-
-                    Toast.makeText(
-                            this,
-                            "Preferência de notificações salva.",
-                            Toast.LENGTH_SHORT
-                    ).show();
-                })
-                .setNegativeButton("CANCELAR", null)
-                .show();
+Button pequenoBotao(String textoBotao, int cor) {
+        Button b = new Button(this);
+        b.setText(textoBotao);
+        b.setTextSize(12);
+        b.setTextColor(Color.WHITE);
+        b.setAllCaps(false);
+        GradientDrawable g = fundo(Color.rgb(10, 14, 32), 14);
+        g.setStroke(dp(2), cor);
+        b.setBackground(g);
+        return b;
     }
 
+    private View criarCardNexo(JSONObject filme) {
+        final FrameLayout card = new FrameLayout(this);
+        card.setPadding(0, 0, 0, 0);
+        card.setClipToOutline(true);
 
+        GradientDrawable fundoCard = fundo(
+                Color.rgb(9, 10, 22),
+                16
+        );
+        fundoCard.setStroke(dp(1), Color.rgb(42, 38, 72));
+        card.setBackground(fundoCard);
+        card.setElevation(dp(4));
 
-    private void abrirConviteAmigosHave() {
-        LinearLayout raiz = new LinearLayout(this);
-        raiz.setOrientation(LinearLayout.VERTICAL);
-        raiz.setPadding(dp(18), dp(18), dp(18), dp(18));
+        final ImageView poster = new ImageView(this);
+        poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        poster.setAdjustViewBounds(false);
+        poster.setBackgroundColor(Color.rgb(9, 10, 22));
+
+        FrameLayout.LayoutParams posterLp =
+                new FrameLayout.LayoutParams(
+                        -1,
+                        -1,
+                        Gravity.CENTER
+                );
+
+        card.addView(poster, posterLp);
+
+        String posterUrl = filme.optString("poster_url", "");
+
+        if (posterUrl.trim().isEmpty()) {
+            posterUrl = filme.optString("capa", "");
+        }
+
+        if (posterUrl.trim().isEmpty()) {
+            posterUrl = filme.optString("poster", "");
+        }
+
+        if (posterUrl.trim().isEmpty()) {
+            posterUrl = filme.optString("banner_url", "");
+        }
+
+        if (posterUrl.trim().isEmpty()) {
+            posterUrl = filme.optString("banner", "");
+        }
+
+        if (!posterUrl.trim().isEmpty()) {
+            carregarImagemNexo(poster, posterUrl);
+        }
+
+        card.setOnClickListener(v -> abrirDetalhesNexo(filme));
+
+        return card;
+    }
+
+    private void carregarImagemNexo(
+            ImageView imagem,
+            String endereco
+    ) {
+
+        new Thread(() -> {
+
+            try {
+
+                URL url =
+                        new URL(endereco);
+
+                HttpURLConnection conexao =
+                        (HttpURLConnection)
+                                url.openConnection();
+
+                conexao.setConnectTimeout(10000);
+                conexao.setReadTimeout(15000);
+
+                InputStream entrada =
+                        conexao.getInputStream();
+
+                android.graphics.Bitmap bitmap =
+                        android.graphics.BitmapFactory
+                                .decodeStream(entrada);
+
+                entrada.close();
+                conexao.disconnect();
+
+                if (bitmap != null) {
+
+                    runOnUiThread(() ->
+                            imagem.setImageBitmap(bitmap)
+                    );
+                }
+
+            } catch (Exception ignored) {
+            }
+
+        }).start();
+    }
+
+    private void abrirDetalhesNexo(JSONObject filme) {
+        final android.app.Dialog dialog = new android.app.Dialog(
+                this,
+                android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen
+        );
+
+        FrameLayout raiz = new FrameLayout(this);
         raiz.setBackgroundColor(Color.rgb(3, 4, 15));
 
-        LinearLayout topo = new LinearLayout(this);
-        topo.setGravity(Gravity.CENTER_VERTICAL);
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.setFillViewport(true);
 
+        LinearLayout conteudo = new LinearLayout(this);
+        conteudo.setOrientation(LinearLayout.VERTICAL);
+        conteudo.setPadding(0, 0, 0, dp(40));
+
+        // ----------------------------------------------------
+        // BANNER PRINCIPAL
+        // ----------------------------------------------------
+        FrameLayout bannerBox = new FrameLayout(this);
+
+        ImageView banner = new ImageView(this);
+        banner.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        banner.setBackgroundColor(Color.rgb(8, 9, 18));
+
+        bannerBox.addView(
+                banner,
+                new FrameLayout.LayoutParams(
+                        -1,
+                        dp(300),
+                        Gravity.TOP
+                )
+        );
+
+        String bannerUrl = filme.optString("banner", "");
+
+        if (bannerUrl.trim().isEmpty()) {
+            bannerUrl = filme.optString("backdrop", "");
+        }
+
+        if (bannerUrl.trim().isEmpty()) {
+            bannerUrl = filme.optString("banner_url", "");
+        }
+
+        if (bannerUrl.trim().isEmpty()) {
+            bannerUrl = filme.optString("capa", "");
+        }
+
+        if (!bannerUrl.trim().isEmpty()) {
+            carregarImagemNexo(banner, bannerUrl);
+        }
+
+        // Gradiente escuro sobre o banner
+        View sombra = new View(this);
+        android.graphics.drawable.GradientDrawable gradiente =
+                new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                        new int[]{
+                                Color.argb(20, 0, 0, 0),
+                                Color.argb(100, 3, 4, 15),
+                                Color.rgb(3, 4, 15)
+                        }
+                );
+        sombra.setBackground(gradiente);
+
+        bannerBox.addView(
+                sombra,
+                new FrameLayout.LayoutParams(
+                        -1,
+                        dp(300),
+                        Gravity.TOP
+                )
+        );
+
+        // Botão voltar
         TextView voltar = texto("‹", 38, Color.WHITE);
         voltar.setGravity(Gravity.CENTER);
-        voltar.setOnClickListener(v -> {
-            if (modoConviteHave && !salaConviteId.isEmpty()) {
-                finish();
-            } else {
-                montarHome();
-            }
-        });
+        voltar.setBackground(fundo(Color.argb(100, 0, 0, 0), 50));
+        voltar.setOnClickListener(v -> dialog.dismiss());
 
-        topo.addView(voltar, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        FrameLayout.LayoutParams voltarLp =
+                new FrameLayout.LayoutParams(
+                        dp(48),
+                        dp(48),
+                        Gravity.TOP | Gravity.START
+                );
+        voltarLp.setMargins(dp(16), dp(18), 0, 0);
 
-        LinearLayout titulos = new LinearLayout(this);
-        titulos.setOrientation(LinearLayout.VERTICAL);
+        bannerBox.addView(voltar, voltarLp);
 
-        TextView titulo = texto("CONVIDAR AMIGOS", 21, Color.WHITE);
-        titulo.setTypeface(Typeface.DEFAULT_BOLD);
-
-        TextView subtitulo = texto(
-                "AMIGOS HAVE • " + salaConviteServico,
-                12,
-                Color.rgb(0, 220, 255)
+        conteudo.addView(
+                bannerBox,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(300)
+                )
         );
 
-        titulos.addView(titulo);
-        titulos.addView(subtitulo);
+        // ----------------------------------------------------
+        // BLOCO DE INFORMAÇÕES
+        // ----------------------------------------------------
+        LinearLayout info = new LinearLayout(this);
+        info.setOrientation(LinearLayout.HORIZONTAL);
+        info.setPadding(dp(20), 0, dp(20), 0);
 
-        topo.addView(titulos, new LinearLayout.LayoutParams(0, -2, 1));
-        raiz.addView(topo);
+        ImageView capa = new ImageView(this);
+        capa.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        capa.setBackgroundColor(Color.rgb(10, 11, 20));
 
-        LinearLayout sala = new LinearLayout(this);
-        sala.setOrientation(LinearLayout.VERTICAL);
-        sala.setPadding(dp(16), dp(14), dp(16), dp(14));
+        String capaUrl = filme.optString("capa", "");
 
-        GradientDrawable fundoSala = fundo(Color.rgb(10, 17, 35), 18);
-        fundoSala.setStroke(dp(1), Color.rgb(145, 40, 255));
-        sala.setBackground(fundoSala);
+        if (capaUrl.trim().isEmpty()) {
+            capaUrl = filme.optString("poster", "");
+        }
 
-        TextView salaTitulo = texto("● SALA HAVE", 13, Color.rgb(190, 100, 255));
-        salaTitulo.setTypeface(Typeface.DEFAULT_BOLD);
+        if (capaUrl.trim().isEmpty()) {
+            capaUrl = filme.optString("poster_url", "");
+        }
 
-        TextView salaNome = texto(
-                salaConviteNome,
-                17,
+        if (!capaUrl.trim().isEmpty()) {
+            carregarImagemNexo(capa, capaUrl);
+        }
+
+        LinearLayout.LayoutParams capaLp =
+                new LinearLayout.LayoutParams(
+                        dp(132),
+                        dp(198)
+                );
+        capaLp.setMargins(0, -dp(62), dp(18), 0);
+
+        info.addView(capa, capaLp);
+
+        LinearLayout dados = new LinearLayout(this);
+        dados.setOrientation(LinearLayout.VERTICAL);
+        dados.setGravity(Gravity.BOTTOM);
+        dados.setPadding(0, 0, 0, dp(8));
+
+        String titulo = filme.optString(
+                "titulo",
+                filme.optString("title", "Sem título")
+        );
+
+        TextView tituloView = texto(
+                titulo,
+                22,
                 Color.WHITE
         );
-        salaNome.setTypeface(Typeface.DEFAULT_BOLD);
+        tituloView.setTypeface(
+                android.graphics.Typeface.DEFAULT,
+                android.graphics.Typeface.BOLD
+        );
+        tituloView.setMaxLines(3);
 
-        TextView salaServico = texto(
-                "Serviço: " + salaConviteServico,
-                12,
-                Color.rgb(155, 170, 200)
+        dados.addView(
+                tituloView,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        -2
+                )
         );
 
-        sala.addView(salaTitulo);
-        sala.addView(salaNome);
-        sala.addView(salaServico);
+        String ano = filme.optString("ano", "");
+        String duracao = filme.optString("duracao", "");
+        String categoria = filme.optString("categoria", "");
 
-        LinearLayout.LayoutParams salaParams =
-                new LinearLayout.LayoutParams(-1, -2);
-        salaParams.setMargins(0, dp(18), 0, dp(18));
-        raiz.addView(sala, salaParams);
+        StringBuilder meta = new StringBuilder();
 
-        TextView instrucao = texto(
-                "Selecione amigos HAVE para convidar para esta sala.",
-                14,
-                Color.rgb(190, 200, 220)
-        );
-        instrucao.setPadding(dp(2), 0, dp(2), dp(12));
-        raiz.addView(instrucao);
-
-        TextView vazio = texto(
-                "Nenhum amigo HAVE carregado ainda.",
-                14,
-                Color.rgb(130, 145, 175)
-        );
-        vazio.setGravity(Gravity.CENTER);
-        vazio.setPadding(0, dp(35), 0, dp(35));
-        raiz.addView(
-                vazio,
-                new LinearLayout.LayoutParams(-1, -2)
-        );
-
-        Button voltarSala = pequenoBotao(
-                "←  VOLTAR PARA SALA",
-                Color.rgb(0, 220, 255)
-        );
-        voltarSala.setOnClickListener(v -> finish());
-
-        LinearLayout.LayoutParams voltarParams =
-                new LinearLayout.LayoutParams(-1, dp(48));
-        voltarParams.topMargin = dp(12);
-
-        raiz.addView(voltarSala, voltarParams);
-
-        setContentView(raiz);
-    }
-
-    void criarNavegacao(LinearLayout raiz) {
-        LinearLayout nav = new LinearLayout(this);
-        nav.setGravity(Gravity.CENTER);
-        nav.setPadding(dp(8), dp(5), dp(8), dp(5));
-        GradientDrawable bg = fundo(Color.rgb(5, 7, 22), 22);
-        bg.setStroke(dp(1), Color.rgb(45, 50, 100));
-        nav.setBackground(bg);
-        nav.setElevation(dp(12));
-        adicionarNav(nav, "⌂", "HOME", !telaAmigosAberta);
-        adicionarNav(nav, "♧", "AMIGOS", telaAmigosAberta);
-        adicionarNav(nav, "●", "PERFIL", false);
-        nav.getChildAt(0).setOnClickListener(v -> montarHome());
-        nav.getChildAt(1).setOnClickListener(v -> {
-            if (modoConviteHave) abrirConviteAmigosHave();
-            else abrirTelaAmigos();
-        });
-        nav.getChildAt(2).setOnClickListener(v -> abrirPerfilHave());
-        raiz.addView(nav, new LinearLayout.LayoutParams(-1, dp(66)));
-    }
-
-    void adicionarNav(
-            LinearLayout nav, String icone, String nome, boolean ativo
-    ) {
-        LinearLayout item = new LinearLayout(this);
-        item.setOrientation(LinearLayout.VERTICAL);
-        item.setGravity(Gravity.CENTER);
-        item.setPadding(dp(8), dp(3), dp(8), dp(3));
-
-        if (ativo) {
-            GradientDrawable selecionado = fundo(Color.rgb(8, 28, 48), 15);
-            selecionado.setStroke(dp(1), Color.rgb(0, 220, 255));
-            item.setBackground(selecionado);
-            item.setElevation(dp(5));
+        if (!ano.isEmpty()) {
+            meta.append(ano);
         }
 
-        View desenho = new IconeNav(this, nome, ativo);
-        LinearLayout.LayoutParams ip =
-                new LinearLayout.LayoutParams(dp(27), dp(27));
-        ip.bottomMargin = dp(3);
-        item.addView(desenho, ip);
-
-        TextView rotulo = texto(nome, 10,
-                ativo ? Color.rgb(105, 235, 255)
-                      : Color.rgb(140, 155, 180));
-        rotulo.setGravity(Gravity.CENTER);
-        rotulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        item.addView(rotulo);
-
-        nav.addView(item, new LinearLayout.LayoutParams(0, -1, 1));
-    }
-
-    private class IconeNav extends View {
-        private final String tipo;
-        private final boolean ativo;
-        private final android.graphics.Paint pincel =
-                new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-
-        IconeNav(Activity contexto, String tipo, boolean ativo) {
-            super(contexto);
-            this.tipo = tipo;
-            this.ativo = ativo;
-            pincel.setStyle(android.graphics.Paint.Style.STROKE);
-            pincel.setStrokeWidth(2f);
-            pincel.setStrokeCap(android.graphics.Paint.Cap.ROUND);
-            pincel.setStrokeJoin(android.graphics.Paint.Join.ROUND);
-            pincel.setColor(ativo ? Color.rgb(0, 220, 255)
-                                  : Color.rgb(140, 165, 195));
-        }
-
-        @Override
-        protected void onDraw(android.graphics.Canvas canvas) {
-            super.onDraw(canvas);
-            canvas.save();
-            canvas.scale(getWidth() / 28f, getHeight() / 28f);
-
-            android.graphics.Path p = new android.graphics.Path();
-
-            if ("HOME".equals(tipo)) {
-                p.moveTo(3, 13);
-                p.lineTo(14, 4);
-                p.lineTo(25, 13);
-                p.moveTo(6, 12);
-                p.lineTo(6, 24);
-                p.lineTo(22, 24);
-                p.lineTo(22, 12);
-                p.moveTo(11, 24);
-                p.lineTo(11, 16);
-                p.lineTo(17, 16);
-                p.lineTo(17, 24);
-                canvas.drawPath(p, pincel);
-            } else if ("AMIGOS".equals(tipo)) {
-                canvas.drawCircle(10, 9, 3.2f, pincel);
-                canvas.drawCircle(19, 10, 2.8f, pincel);
-                p.moveTo(3, 23);
-                p.cubicTo(3, 16, 6, 14, 10, 14);
-                p.cubicTo(14, 14, 17, 17, 17, 23);
-                p.moveTo(16, 16);
-                p.cubicTo(22, 14, 25, 18, 25, 23);
-                canvas.drawPath(p, pincel);
-            } else {
-                canvas.drawCircle(14, 8, 4, pincel);
-                p.moveTo(5, 24);
-                p.cubicTo(5, 17, 9, 14, 14, 14);
-                p.cubicTo(19, 14, 23, 17, 23, 24);
-                canvas.drawPath(p, pincel);
+        if (!duracao.isEmpty() && !duracao.equals("0")) {
+            int minutos = 0;
+            try {
+                minutos = Integer.parseInt(duracao);
+            } catch (Exception ignored) {
             }
 
-            canvas.restore();
+            if (minutos > 0) {
+                if (meta.length() > 0) meta.append(" • ");
+                meta.append(minutos).append(" min");
+            }
+        }
+
+        if (!categoria.isEmpty()) {
+            if (meta.length() > 0) meta.append(" • ");
+            meta.append(categoria);
+        }
+
+        if (meta.length() > 0) {
+            TextView metaView = texto(
+                    meta.toString(),
+                    13,
+                    Color.rgb(190, 190, 205)
+            );
+            metaView.setPadding(0, dp(6), 0, 0);
+
+            dados.addView(
+                    metaView,
+                    new LinearLayout.LayoutParams(
+                            -1,
+                            -2
+                    )
+            );
+        }
+
+        info.addView(
+                dados,
+                new LinearLayout.LayoutParams(
+                        0,
+                        -2,
+                        1f
+                )
+        );
+
+        conteudo.addView(
+                info,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        -2
+                )
+        );
+
+        // ----------------------------------------------------
+        // BOTÃO ASSISTIR
+        // ----------------------------------------------------
+        String videoUrlResolvido = filme.optString(
+                "video_url", ""
+        ).trim();
+
+        if (videoUrlResolvido.isEmpty()) {
+            String videoKey = filme.optString("videoKey", "").trim();
+            if (!videoKey.isEmpty()) {
+                videoUrlResolvido = urlNexoArquivo("video", videoKey);
+            }
+        }
+
+        final String videoUrl = videoUrlResolvido;
+
+        TextView assistir = texto(
+                "▶  ASSISTIR AGORA",
+                16,
+                Color.WHITE
+        );
+        assistir.setGravity(Gravity.CENTER);
+        assistir.setTypeface(
+                android.graphics.Typeface.DEFAULT,
+                android.graphics.Typeface.BOLD
+        );
+        android.graphics.drawable.GradientDrawable fundoAssistir =
+                new android.graphics.drawable.GradientDrawable(
+                        android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                        new int[]{
+                                Color.rgb(0, 112, 235),
+                                Color.rgb(0, 195, 255)
+                        }
+                );
+        fundoAssistir.setCornerRadius(dp(12));
+        assistir.setBackground(fundoAssistir);
+        assistir.setElevation(dp(5));
+        assistir.setLetterSpacing(0.035f);
+
+        LinearLayout.LayoutParams assistirLp =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(52)
+                );
+        assistirLp.setMargins(
+                dp(20),
+                dp(20),
+                dp(20),
+                dp(18)
+        );
+
+        conteudo.addView(assistir, assistirLp);
+
+        // ----------------------------------------------------
+        // DESCRIÇÃO
+        // ----------------------------------------------------
+        TextView descricaoTitulo = texto(
+                "SOBRE O FILME",
+                13,
+                Color.rgb(150, 150, 170)
+        );
+        descricaoTitulo.setTypeface(
+                android.graphics.Typeface.DEFAULT,
+                android.graphics.Typeface.BOLD
+        );
+
+        LinearLayout.LayoutParams descricaoTituloLp =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        -2
+                );
+        descricaoTituloLp.setMargins(
+                dp(20),
+                dp(4),
+                dp(20),
+                dp(8)
+        );
+
+        conteudo.addView(
+                descricaoTitulo,
+                descricaoTituloLp
+        );
+
+        String descricao = filme.optString(
+                "descricao",
+                filme.optString(
+                        "description",
+                        filme.optString(
+                                "overview",
+                                "Sem descrição."
+                        )
+                )
+        );
+
+        TextView descricaoView = texto(
+                descricao,
+                15,
+                Color.rgb(215, 215, 225)
+        );
+        descricaoView.setLineSpacing(dp(2), 1.05f);
+
+        LinearLayout.LayoutParams descricaoLp =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        -2
+                );
+        descricaoLp.setMargins(
+                dp(20),
+                0,
+                dp(20),
+                dp(24)
+        );
+
+        conteudo.addView(
+                descricaoView,
+                descricaoLp
+        );
+
+        // Séries: mostrar temporadas e episódios preservados do catálogo R2.
+        boolean ehSerie = "serie".equalsIgnoreCase(
+                filme.optString("tipo", "filme")
+        ) || "série".equalsIgnoreCase(filme.optString("tipo", ""));
+
+        if (ehSerie) {
+            assistir.setVisibility(View.GONE);
+
+            TextView temporadasTitulo = texto(
+                    "TEMPORADAS E EPISÓDIOS",
+                    17,
+                    Color.WHITE
+            );
+            temporadasTitulo.setTypeface(
+                    android.graphics.Typeface.DEFAULT,
+                    android.graphics.Typeface.BOLD
+            );
+            temporadasTitulo.setPadding(dp(20), dp(8), dp(20), dp(12));
+            conteudo.addView(temporadasTitulo);
+
+            JSONArray temporadas = filme.optJSONArray("temporadas");
+            if (temporadas == null || temporadas.length() == 0) {
+                TextView vazio = texto(
+                        "Nenhuma temporada cadastrada ainda.",
+                        14,
+                        Color.LTGRAY
+                );
+                vazio.setPadding(dp(20), dp(4), dp(20), dp(20));
+                conteudo.addView(vazio);
+            } else {
+                for (int ti = 0; ti < temporadas.length(); ti++) {
+                    JSONObject temporada = temporadas.optJSONObject(ti);
+                    if (temporada == null) continue;
+
+                    int numeroTemporada = temporada.optInt("numero", ti + 1);
+                    TextView nomeTemporada = texto(
+                            "Temporada " + numeroTemporada,
+                            16,
+                            Color.rgb(100, 190, 255)
+                    );
+                    nomeTemporada.setTypeface(
+                            android.graphics.Typeface.DEFAULT,
+                            android.graphics.Typeface.BOLD
+                    );
+                    nomeTemporada.setPadding(
+                            dp(20), dp(12), dp(20), dp(8)
+                    );
+                    conteudo.addView(nomeTemporada);
+
+                    JSONArray episodios = temporada.optJSONArray("episodios");
+                    if (episodios == null || episodios.length() == 0) {
+                        TextView semEpisodios = texto(
+                                "Nenhum episódio cadastrado.",
+                                14,
+                                Color.LTGRAY
+                        );
+                        semEpisodios.setPadding(
+                                dp(28), dp(4), dp(20), dp(12)
+                        );
+                        conteudo.addView(semEpisodios);
+                        continue;
+                    }
+
+                    for (int ei = 0; ei < episodios.length(); ei++) {
+                        JSONObject episodio = episodios.optJSONObject(ei);
+                        if (episodio == null) continue;
+
+                        String nomeEpisodio = episodio.optString(
+                                "titulo", "Episódio " + (ei + 1)
+                        );
+                        String estadoEpisodio = episodio.optString(
+                                "estado", ""
+                        );
+                        boolean publicado = "publicado".equalsIgnoreCase(
+                                estadoEpisodio
+                        );
+
+                        String legenda = publicado
+                                ? "▶  " + nomeEpisodio
+                                : "◷  " + nomeEpisodio + " — Aguardando publicação";
+
+                        TextView linhaEpisodio = texto(
+                                legenda,
+                                14,
+                                publicado
+                                        ? Color.WHITE
+                                        : Color.rgb(170, 170, 185)
+                        );
+                        linhaEpisodio.setPadding(
+                                dp(28), dp(14), dp(20), dp(14)
+                        );
+                        linhaEpisodio.setBackground(
+                                fundo(Color.rgb(12, 14, 28), 10)
+                        );
+
+                        LinearLayout.LayoutParams episodioLp =
+                                new LinearLayout.LayoutParams(-1, -2);
+                        episodioLp.setMargins(
+                                dp(20), dp(3), dp(20), dp(5)
+                        );
+                        conteudo.addView(linhaEpisodio, episodioLp);
+
+                        if (publicado) {
+                            final JSONObject episodioFinal = episodio;
+                            final String tituloEpisodio = nomeEpisodio;
+                            linhaEpisodio.setOnClickListener(v -> {
+                                String chave = episodioFinal.optString(
+                                        "videoKey", ""
+                                );
+                                String endereco = episodioFinal.optString(
+                                        "video_url", ""
+                                );
+
+                                if (endereco.trim().isEmpty()
+                                        && !chave.trim().isEmpty()) {
+                                    endereco = urlNexoArquivo("video", chave);
+                                }
+
+                                if (endereco.trim().isEmpty()) {
+                                    Toast.makeText(
+                                            this,
+                                            "Este episódio ainda não possui vídeo.",
+                                            Toast.LENGTH_SHORT
+                                    ).show();
+                                    return;
+                                }
+
+                                dialog.dismiss();
+                                abrirPlayerNexo(tituloEpisodio, endereco);
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        assistir.setOnClickListener(v -> {
+            if (videoUrl.isEmpty()) {
+                Toast.makeText(
+                        this,
+                        "Este título ainda não possui vídeo.",
+                        Toast.LENGTH_SHORT
+                ).show();
+                return;
+            }
+
+            dialog.dismiss();
+            abrirPlayerNexo(titulo, videoUrl);
+        });
+
+        scroll.addView(conteudo);
+
+        raiz.addView(
+                scroll,
+                new FrameLayout.LayoutParams(
+                        -1,
+                        -1
+                )
+        );
+
+        dialog.setContentView(raiz);
+        dialog.setOnDismissListener(d -> {
+            // Nada: o player é controlado separadamente.
+        });
+
+        android.view.Window janela = dialog.getWindow();
+        if (janela != null) {
+            janela.setBackgroundDrawable(
+                    new android.graphics.drawable.ColorDrawable(
+                            Color.rgb(3, 4, 15)
+                    )
+            );
+            janela.setLayout(-1, -1);
+        }
+
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(-1, -1);
         }
     }
+
+    private void abrirPlayerNexo(
+            String titulo,
+            String videoUrl
+    ) {
+        if (videoUrl == null || videoUrl.trim().isEmpty()) {
+            Toast.makeText(
+                    this,
+                    "Este título ainda não possui vídeo.",
+                    Toast.LENGTH_SHORT
+            ).show();
+            return;
+        }
+
+        final android.app.Dialog dialog =
+                new android.app.Dialog(
+                        this,
+                        android.R.style.Theme_DeviceDefault_NoActionBar_Fullscreen
+                );
+
+        FrameLayout raiz = new FrameLayout(this);
+        raiz.setBackgroundColor(Color.BLACK);
+
+        PlayerView playerView = new PlayerView(this);
+        playerView.setUseController(true);
+        playerView.setControllerAutoShow(true);
+        playerView.setControllerHideOnTouch(true);
+        playerView.setShowBuffering(
+                androidx.media3.ui.PlayerView.SHOW_BUFFERING_WHEN_PLAYING
+        );
+        playerView.setKeepScreenOn(true);
+
+        raiz.addView(
+                playerView,
+                new FrameLayout.LayoutParams(
+                        -1,
+                        -1
+                )
+        );
+
+        TextView fullscreen =
+                texto("⛶", 24, Color.WHITE);
+
+        fullscreen.setGravity(Gravity.CENTER);
+        fullscreen.setAlpha(0.82f);
+        fullscreen.setBackground(
+                fundo(Color.argb(85, 0, 0, 0), 50)
+        );
+        fullscreen.setVisibility(View.GONE);
+        fullscreen.setOnClickListener(v -> {
+            int orientacao = getResources()
+                    .getConfiguration()
+                    .orientation;
+
+            if (orientacao ==
+                    android.content.res.Configuration.ORIENTATION_LANDSCAPE) {
+
+                setRequestedOrientation(
+                        android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                );
+
+            } else {
+
+                setRequestedOrientation(
+                        android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                );
+            }
+
+            playerView.showController();
+        });
+
+        FrameLayout.LayoutParams fullscreenParams =
+                new FrameLayout.LayoutParams(
+                        dp(48),
+                        dp(48),
+                        Gravity.END | Gravity.BOTTOM
+                );
+
+        fullscreenParams.setMargins(
+                0,
+                0,
+                dp(14),
+                dp(54)
+        );
+
+        raiz.addView(fullscreen, fullscreenParams);
+
+        final ExoPlayer player =
+                new ExoPlayer.Builder(this).build();
+
+
+        playerView.setPlayer(player);
+
+        MediaItem item =
+                MediaItem.fromUri(videoUrl.trim());
+
+        player.setMediaItem(item);
+        player.prepare();
+        player.play();
+
+        player.addListener(
+                new Player.Listener() {
+
+                    @Override
+                    public void onPlaybackStateChanged(
+                            int playbackState
+                    ) {
+                        if (playbackState ==
+                                Player.STATE_READY) {
+                            player.play();
+                        }
+                    }
+
+                    @Override
+                    public void onPlayerError(
+                            PlaybackException error
+                    ) {
+                        Toast.makeText(
+                                HaveHomeActivity.this,
+                                "Não foi possível reproduzir este vídeo.",
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                }
+        );
+
+        playerView.setControllerVisibilityListener(
+                (androidx.media3.ui.PlayerView.ControllerVisibilityListener)
+                visibility -> {
+                    if (visibility == View.VISIBLE) {
+                        fullscreen.setVisibility(View.VISIBLE);
+                    } else {
+                        fullscreen.setVisibility(View.GONE);
+                    }
+                }
+        );
+
+        dialog.setContentView(raiz);
+
+        dialog.setOnKeyListener(
+                (d, keyCode, event) -> {
+                    if (keyCode == android.view.KeyEvent.KEYCODE_BACK
+                            && event.getAction() ==
+                            android.view.KeyEvent.ACTION_UP) {
+
+                        dialog.dismiss();
+                        return true;
+                    }
+
+                    return false;
+                }
+        );
+
+        dialog.setOnDismissListener(
+                d -> {
+                    player.stop();
+                    player.release();
+                    playerView.setPlayer(null);
+                    setRequestedOrientation(
+                            android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                    );
+                }
+        );
+
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(-1, -1);
+        }
+
+        playerView.postDelayed(
+                playerView::showController,
+                250
+        );
+    }
+
 }

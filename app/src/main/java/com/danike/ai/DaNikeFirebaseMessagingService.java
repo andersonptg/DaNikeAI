@@ -1,5 +1,9 @@
 package com.danike.ai;
 
+import com.danike.ai.NexoAppObserver;
+
+import com.danike.ai.NexoDiagnostic;
+
 import android.graphics.BitmapFactory;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -25,6 +29,16 @@ public class DaNikeFirebaseMessagingService extends FirebaseMessagingService {
 
     @Override
     public void onNewToken(String token) {
+        long nexoInicio = android.os.SystemClock.elapsedRealtime();
+        NexoAppObserver.evento(
+                getApplication(),
+                "NEXO_FCM_TOKEN_REFRESH",
+                "INFO",
+                "FCM",
+                "onNewToken",
+                "Token FCM renovado."
+        );
+
         super.onNewToken(token);
 
         if (FirebaseAuth.getInstance().getCurrentUser() == null) {
@@ -50,6 +64,16 @@ public class DaNikeFirebaseMessagingService extends FirebaseMessagingService {
 
     @Override
     public void onMessageReceived(RemoteMessage mensagem) {
+        long nexoInicioMensagem = android.os.SystemClock.elapsedRealtime();
+        NexoAppObserver.evento(
+                getApplication(),
+                "NEXO_FCM_MESSAGE_RECEIVED",
+                "INFO",
+                "FCM",
+                "onMessageReceived",
+                "Mensagem FCM recebida."
+        );
+
         super.onMessageReceived(mensagem);
 
         Map<String, String> dados = mensagem.getData();

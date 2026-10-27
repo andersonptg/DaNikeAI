@@ -1,5 +1,7 @@
 package com.danike.ai;
 
+import com.danike.ai.NexoAppObserver;
+
 
 
 import java.util.Random;
@@ -1002,6 +1004,20 @@ public class MainActivity extends Activity {
 
 
 
+    // Acesso administrativo NEXO exclusivo do proprietário.
+    private boolean nexoUsuarioProprietario() {
+        com.google.firebase.auth.FirebaseUser usuario =
+                com.google.firebase.auth.FirebaseAuth
+                        .getInstance()
+                        .getCurrentUser();
+
+        return usuario != null
+                && usuario.getEmail() != null
+                && "lipesanderson@gmail.com".equalsIgnoreCase(
+                        usuario.getEmail().trim()
+                );
+    }
+
     protected void onCreate(Bundle b) {
 
         // Keep-Alive para aquecer backend no Render
@@ -1347,7 +1363,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         telaHomeVazia.setOrientation(LinearLayout.VERTICAL);
 
-        telaHomeVazia.setGravity(Gravity.START);
+        telaHomeVazia.setGravity(Gravity.CENTER_HORIZONTAL);
 
         telaHomeVazia.setPadding(dp(14), dp(112), dp(14), dp(90));
 
@@ -1362,6 +1378,7 @@ botaoPerfilTopo.setOnClickListener(v ->
         homeVaziaParams.bottomMargin = dp(76);
 
         raiz.addView(telaHomeVazia, homeVaziaParams);
+        cabecalhoNexo.bringToFront();
 
 
 
@@ -1409,7 +1426,8 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         anunciosHomeParams.bottomMargin = dp(12);
 
-        telaHomeVazia.addView(scrollAnunciosHome, anunciosHomeParams);
+        // Carrossel de anúncios da Home desativado.
+        // Mantido no código para possível reutilização futura.
 
 
 
@@ -1805,21 +1823,33 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         // =========================
 
+        // =========================================================
+        // EQUIPE INTEGRADA À HOME
+        // =========================================================
+        LinearLayout.LayoutParams equipeHomeParams =
+                new LinearLayout.LayoutParams(-1, dp(300));
+
+        equipeHomeParams.setMargins(
+                dp(8),
+                dp(0),
+                dp(8),
+                dp(12)
+        );
+
+        telaHomeVazia.addView(
+                equipeTopo,
+                equipeHomeParams
+        );
+
+        equipeTopo.setVisibility(View.GONE);
+
         // PAINEL NEON / ÁGUA DA EQUIPE
 
         // =========================
 
 
 
-        equipeTopo.setVisibility(
-
-                temEquipe
-
-                        ? View.VISIBLE
-
-                        : View.GONE
-
-        );
+        equipeTopo.setVisibility(View.GONE);
 
 
 
@@ -1903,13 +1933,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-        raiz.addView(
-
-                equipeTopo,
-
-                equipeParams
-
-        );
+        // equipeTopo será exibido dentro da Home.
 
 
 
@@ -3092,6 +3116,9 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
         FrameLayout containerFilmes = new FrameLayout(this);
+        if (!nexoUsuarioProprietario()) {
+            containerFilmes.setVisibility(android.view.View.GONE);
+        }
 
         containerFilmes.setClipChildren(false);
 
@@ -3433,6 +3460,87 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
+
+        // HOME_VERTICAL_DANIKAI_V1
+        // Os cartões existentes são reaproveitados para preservar seus cliques.
+        // A tabela da equipe deixa de ser exibida, mas seus dados são mantidos.
+        equipeTopo.setVisibility(View.GONE);
+        if (equipeTopo.getParent() instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) equipeTopo.getParent()).removeView(equipeTopo);
+        }
+
+        // O cartão Filmes sai da Home. O módulo NEXO e seus dados são preservados.
+        if (containerFilmes.getParent() instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) containerFilmes.getParent()).removeView(containerFilmes);
+        }
+
+        ScrollView homeCardsScroll = new ScrollView(this);
+        homeCardsScroll.setFillViewport(false);
+        homeCardsScroll.setVerticalScrollBarEnabled(false);
+        homeCardsScroll.setClipToPadding(false);
+
+        LinearLayout homeCards = new LinearLayout(this);
+        homeCards.setOrientation(LinearLayout.VERTICAL);
+        homeCards.setGravity(Gravity.CENTER_HORIZONTAL);
+        homeCards.setPadding(0, dp(2), 0, dp(16));
+
+        // IA
+        if (containerIA.getParent() instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) containerIA.getParent()).removeView(containerIA);
+        }
+        homeCards.addView(containerIA, iaParams);
+
+        // Histórico
+        if (containerHistorico.getParent() instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) containerHistorico.getParent()).removeView(containerHistorico);
+        }
+        homeCards.addView(containerHistorico, historicoParams);
+
+        // Perfil
+        if (containerPerfil.getParent() instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) containerPerfil.getParent()).removeView(containerPerfil);
+        }
+        homeCards.addView(containerPerfil, perfilParams);
+
+        // Have
+        if (containerHave.getParent() instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) containerHave.getParent()).removeView(containerHave);
+        }
+        homeCards.addView(containerHave, raveParams);
+
+        // Compartilhar App
+        if (compartilharApp.getParent() instanceof android.view.ViewGroup) {
+            ((android.view.ViewGroup) compartilharApp.getParent()).removeView(compartilharApp);
+        }
+        homeCards.addView(compartilharApp, compartilharParams);
+
+        homeCardsScroll.addView(
+                homeCards,
+                new ScrollView.LayoutParams(-1, -2)
+        );
+
+        // Camada visual de Halloween: fumaça e aranha atrás dos cartões.
+        android.widget.FrameLayout halloweenFrame =
+                new android.widget.FrameLayout(this);
+
+        HalloweenHomeOverlay halloweenOverlay =
+                new HalloweenHomeOverlay(this);
+
+        halloweenFrame.addView(
+                halloweenOverlay,
+                new android.widget.FrameLayout.LayoutParams(-1, -1)
+        );
+
+        halloweenFrame.addView(
+                homeCardsScroll,
+                new android.widget.FrameLayout.LayoutParams(-1, -1)
+        );
+
+        telaHomeVazia.addView(
+                halloweenFrame,
+                new LinearLayout.LayoutParams(-1, 0, 1f)
+        );
+
         scroll.addView(conteudo);
 
 
@@ -3558,16 +3666,7 @@ botaoPerfilTopo.setOnClickListener(v ->
                 Typeface.BOLD
 
         );
-
-
-
-        TextView botaoColaboradores = txt("👥\\nColaboradores", 11, Color.WHITE);
-
-        botaoColaboradores.setGravity(Gravity.CENTER);
-
-        botaoColaboradores.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-        TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
+TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
         botaoConexoes.setGravity(Gravity.CENTER);
 
@@ -3789,7 +3888,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                 ? new TextView[]{
 
-                        botaoHome, botaoColaboradores, botaoConexoes, botaoMais,
+                        botaoHome, botaoConexoes, botaoMais,
 
                         botaoAdm
 
@@ -3797,7 +3896,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                 : new TextView[]{
 
-                        botaoHome, botaoColaboradores, botaoConexoes, botaoMais
+                        botaoHome, botaoConexoes, botaoMais
 
                 };
 
@@ -3895,17 +3994,6 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         botaoConexoes.setBackground(fundoConexoes);
 
-        GradientDrawable fundoColaboradores = new GradientDrawable();
-
-        fundoColaboradores.setColor(Color.rgb(20, 35, 70));
-
-        fundoColaboradores.setCornerRadius(dp(18));
-
-        fundoColaboradores.setStroke(dp(1), Color.rgb(70, 145, 255));
-
-        botaoColaboradores.setBackground(fundoColaboradores);
-
-        botaoColaboradores.setElevation(dp(10));
 
         botaoConexoes.setElevation(dp(10));
 
@@ -3939,21 +4027,6 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         });
 
-        botaoColaboradores.setOnClickListener(v -> {
-
-            botaoPerfilTopo.setVisibility(View.GONE);
-
-            telaHomeVazia.setVisibility(View.GONE);
-
-            tela.setVisibility(View.VISIBLE);
-
-            equipeTopo.setVisibility(View.VISIBLE);
-
-            botaoMenu.setVisibility(View.VISIBLE);
-
-            scroll.smoothScrollTo(0, 0);
-
-        });
 
 
 
@@ -4142,6 +4215,15 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
         filmes.setOnClickListener(v -> {
+            if (!nexoUsuarioProprietario()) {
+                android.widget.Toast.makeText(
+                        MainActivity.this,
+                        "Área exclusiva do proprietário.",
+                        android.widget.Toast.LENGTH_SHORT
+                ).show();
+                return;
+            }
+
 
             abrirAreaComManutencao(
 
@@ -4157,7 +4239,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                                         MainActivity.this,
 
-                                        com.danike.ai.filmes.FilmesActivity.class
+                                        com.danike.ai.nexo.NexoFilmesActivity.class
 
                                 );
 
@@ -4869,21 +4951,67 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-        equipeLinha.addView(
+                String instagramEquipeUsuario = instagramUsuario == null
+                        ? "" : instagramUsuario.trim();
+                String instagramEquipeLink = instagramLink == null
+                        ? "" : instagramLink.trim();
 
-                membro,
+                if (!instagramEquipeUsuario.isEmpty()
+                        || !instagramEquipeLink.isEmpty()) {
+                    TextView instagram = txt(
+                            instagramEquipeUsuario.isEmpty()
+                                    ? "Instagram"
+                                    : "@" + instagramEquipeUsuario.replaceFirst("^@", ""),
+                            11,
+                            Color.rgb(90, 210, 255)
+                    );
+                    instagram.setGravity(Gravity.CENTER);
+                    instagram.setSingleLine(true);
+                    instagram.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                    instagram.setPadding(dp(4), dp(5), dp(4), dp(5));
 
-                new LinearLayout.LayoutParams(
+                    GradientDrawable fundoInstagram = new GradientDrawable();
+                    fundoInstagram.setColor(Color.rgb(3, 12, 28));
+                    fundoInstagram.setCornerRadius(dp(16));
+                    fundoInstagram.setStroke(dp(1), Color.rgb(0, 200, 255));
+                    instagram.setBackground(fundoInstagram);
 
-                        -2,
+                    LinearLayout.LayoutParams instagramParams =
+                            new LinearLayout.LayoutParams(dp(132), dp(32));
+                    instagramParams.setMargins(0, dp(6), 0, 0);
+                    membro.addView(instagram, instagramParams);
 
-                        dp(260)
+                    String destinoInstagram = instagramEquipeLink;
+                    if (destinoInstagram.isEmpty()) {
+                        destinoInstagram = "https://www.instagram.com/"
+                                + instagramEquipeUsuario.replaceFirst("^@", "");
+                    } else if (!destinoInstagram.matches("(?i)^https?://.*")) {
+                        destinoInstagram = "https://www.instagram.com/"
+                                + destinoInstagram.replaceFirst("^@", "");
+                    }
 
-                )
+                    final String abrirInstagram = destinoInstagram;
+                    instagram.setOnClickListener(v -> {
+                        try {
+                            startActivity(new android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(abrirInstagram)
+                            ));
+                        } catch (Exception ignored) {
+                            android.widget.Toast.makeText(
+                                    MainActivity.this,
+                                    "Não foi possível abrir o Instagram.",
+                                    android.widget.Toast.LENGTH_SHORT
+                            ).show();
+                        }
+                    });
+                }
 
-        );
-
-    }
+                equipeLinha.addView(
+                        membro,
+                        new LinearLayout.LayoutParams(-2, dp(300))
+                );
+}
 
 
 
@@ -7731,6 +7859,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
+        if (nexoUsuarioProprietario()) {
         adicionarItemMenu(
 
                 listaMenu,
@@ -7755,7 +7884,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                                             MainActivity.this,
 
-                                            com.danike.ai.filmes.FilmesActivity.class
+                                            com.danike.ai.nexo.NexoFilmesActivity.class
 
                                     )
 
@@ -7766,6 +7895,7 @@ botaoPerfilTopo.setOnClickListener(v ->
                 }
 
         );
+        }
 
 
 

@@ -1,5 +1,9 @@
 package com.danike.ai;
 
+import com.danike.ai.NexoAppObserver;
+
+import com.danike.ai.NexoDiagnostic;
+
 import android.content.Context;
 import android.util.Log;
 import org.json.JSONObject;
@@ -96,46 +100,147 @@ public final class DaNikeNotificacoes {
             String remetenteUid,
             String filaId
     ) {
+
+
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
         executor.execute(() -> {
-            HttpURLConnection conexao = null;
+            final String endpoint =
+                    "https://danikeai-brain.onrender.com/notificar";
+
+            String json = "{"
+                    + "\"uid\":\"" + escaparJson(uid) + "\","
+                    + "\"tipo\":\"" + escaparJson(tipo) + "\","
+                    + "\"titulo\":\"" + escaparJson(titulo) + "\","
+                    + "\"texto\":\"" + escaparJson(texto) + "\","
+                    + "\"remetente_uid\":\"" + escaparJson(remetenteUid) + "\","
+                    + "\"fila_id\":\"" + escaparJson(filaId) + "\""
+                    + "}";
+
+            boolean sucesso = false;
 
             try {
-                URL url = new URL("https://danikeai-brain.onrender.com/notificar");
-                conexao = (HttpURLConnection) url.openConnection();
-                conexao.setRequestMethod("POST");
-                conexao.setConnectTimeout(60000);
-                conexao.setReadTimeout(60000);
-                conexao.setDoOutput(true);
-                conexao.setRequestProperty("Content-Type", "application/json");
-                conexao.setRequestProperty("X-DaNikeAI-Secret", new String(
-                        java.util.Base64.getDecoder().decode("UWgxSFBEX25xNUhpUTB4Y0JSQXRWVmU5N0RhMWJrUG5NN2JpZHpIX0d0QSAgICAgICAgICAg"),
-                        StandardCharsets.UTF_8
-                ));
+                /*
+                 * O Render Free pode estar acordando após inatividade.
+                 * Tentamos duas vezes para tolerar cold start.
+                 */
+                for (int tentativa = 1; tentativa <= 2; tentativa++) {
+                    HttpURLConnection conexao = null;
 
-                String json = "{"
-                        + "\"uid\":\"" + escaparJson(uid) + "\","
-                        + "\"tipo\":\"" + escaparJson(tipo) + "\","
-                        + "\"titulo\":\"" + escaparJson(titulo) + "\","
-                        + "\"texto\":\"" + escaparJson(texto) + "\","
-                        + "\"remetente_uid\":\"" + escaparJson(remetenteUid) + "\""
-                    + ",\"fila_id\":\"" + escaparJson(filaId) + "\""
-                        + "}";
+                    try {
+                        Log.e(
+                                TAG,
+                                "NOTIFICACAO IMEDIATA: tentativa "
+                                        + tentativa
+                        );
 
-                try (OutputStream saida = conexao.getOutputStream()) {
-                    saida.write(json.getBytes(StandardCharsets.UTF_8));
+                        URL url = new URL(endpoint);
+                        conexao = (HttpURLConnection) url.openConnection();
+
+                        conexao.setRequestMethod("POST");
+
+                        /*
+                         * Tempo maior para permitir o cold start
+                         * do serviço no Render.
+                         */
+                        conexao.setConnectTimeout(90000);
+                        conexao.setReadTimeout(90000);
+
+                        conexao.setDoOutput(true);
+
+                        conexao.setRequestProperty(
+                                "Content-Type",
+                                "application/json"
+                        );
+
+                        conexao.setRequestProperty(
+                                "X-DaNikeAI-Secret",
+                                new String(
+                                        java.util.Base64.getDecoder().decode(
+                                                "UWgxSFBEX25xNUhpUTB4Y0JSQXRWVmU5N0RhMWJrUG5NN2JpZHpIX0d0QSAgICAgICAgICAg"
+                                        ),
+                                        StandardCharsets.UTF_8
+                                )
+                        );
+
+                        try (OutputStream saida =
+                                     conexao.getOutputStream()) {
+                            saida.write(
+                                    json.getBytes(
+                                            StandardCharsets.UTF_8
+                                    )
+                            );
+                            saida.flush();
+                        }
+
+                        int codigo = conexao.getResponseCode();
+
+                        Log.e(
+                                TAG,
+                                "NOTIFICACAO IMEDIATA: HTTP "
+                                        + codigo
+                                        + " tentativa="
+                                        + tentativa
+                        );
+
+                        if (codigo >= 200 && codigo < 300) {
+                            sucesso = true;
+                            break;
+                        }
+
+                        /*
+                         * Erros 4xx normalmente são definitivos.
+                         * Não repetir nesses casos.
+                         */
+                        if (codigo >= 400 && codigo < 500) {
+                            break;
+                        }
+
+                    } catch (java.net.SocketTimeoutException e) {
+                        Log.e(
+                                TAG,
+                                "NOTIFICACAO IMEDIATA: TIMEOUT tentativa="
+                                        + tentativa,
+                                e
+                        );
+
+                    } catch (Exception e) {
+                        Log.e(
+                                TAG,
+                                "NOTIFICACAO IMEDIATA: ERRO tentativa="
+                                        + tentativa,
+                                e
+                        );
+
+                    } finally {
+                        if (conexao != null) {
+                            conexao.disconnect();
+                        }
+                    }
+
+                    if (!sucesso && tentativa < 2) {
+                        try {
+                            Thread.sleep(3000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
                 }
 
-                int codigo = conexao.getResponseCode();
-                Log.e(TAG, "NOTIFICACAO IMEDIATA: HTTP " + codigo);
+                if (sucesso) {
+                    Log.e(
+                            TAG,
+                            "NOTIFICACAO IMEDIATA: SUCESSO"
+                    );
+                } else {
+                    Log.e(
+                            TAG,
+                            "NOTIFICACAO IMEDIATA: FALHA APOS TENTATIVAS"
+                    );
+                }
 
-            } catch (Exception e) {
-                Log.e(TAG, "NOTIFICACAO IMEDIATA: ERRO", e);
             } finally {
-                if (conexao != null) {
-                    conexao.disconnect();
-                }
                 executor.shutdown();
             }
         });

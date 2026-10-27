@@ -1,5 +1,7 @@
 package com.danike.ai;
 
+import com.danike.ai.NexoAppObserver;
+
 import org.json.JSONObject;
 import org.json.JSONArray;
 import android.graphics.RectF;
@@ -1765,7 +1767,7 @@ private boolean salvarPerfilEquipeLocal(
                     startActivity(
                             new Intent(
                                     this,
-                                    com.danike.ai.filmes.FilmesActivity.class
+                                    com.danike.ai.nexo.NexoFilmesActivity.class
                             )
                     )
             );
