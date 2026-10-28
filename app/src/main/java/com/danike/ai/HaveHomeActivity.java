@@ -51,6 +51,7 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.DefaultLoadControl;
 import androidx.media3.ui.PlayerView;
 import android.widget.MediaController;
 
@@ -1080,6 +1081,84 @@ public class HaveHomeActivity extends Activity {
         areaNexoFilmes.addView(subtitulo,
                 new LinearLayout.LayoutParams(-1, -2));
 
+        // Categorias NEXO — faixa horizontal rolável na Home.
+        HorizontalScrollView categoriasScroll = new HorizontalScrollView(this);
+        categoriasScroll.setHorizontalScrollBarEnabled(false);
+        categoriasScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+
+        LinearLayout categoriasLinha = new LinearLayout(this);
+        categoriasLinha.setOrientation(LinearLayout.HORIZONTAL);
+        categoriasLinha.setGravity(Gravity.CENTER_VERTICAL);
+
+        String[] categoriasNexo = {
+                "TODOS",
+                "AÇÃO",
+                "AVENTURA",
+                "COMÉDIA",
+                "DRAMA",
+                "TERROR",
+                "ROMANCE",
+                "FICÇÃO",
+                "SUSPENSE",
+                "ANIMAÇÃO",
+                "ANIME",
+                "INFANTIL",
+                "DOCUMENTÁRIO"
+        };
+
+        for (String categoria : categoriasNexo) {
+            TextView botaoCategoria = texto(
+                    categoria,
+                    12,
+                    categoria.equals("TODOS")
+                            ? Color.WHITE
+                            : Color.rgb(175, 185, 210)
+            );
+            botaoCategoria.setGravity(Gravity.CENTER);
+            botaoCategoria.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            botaoCategoria.setPadding(
+                    dp(16), dp(9), dp(16), dp(9)
+            );
+            botaoCategoria.setBackground(
+                    fundo(
+                            categoria.equals("TODOS")
+                                    ? Color.rgb(30, 35, 58)
+                                    : Color.rgb(14, 16, 30),
+                            40
+                    )
+            );
+
+            LinearLayout.LayoutParams categoriaLp =
+                    new LinearLayout.LayoutParams(-2, dp(38));
+            categoriaLp.setMargins(
+                    dp(3), dp(2), dp(5), dp(8)
+            );
+
+            categoriasLinha.addView(botaoCategoria, categoriaLp);
+
+            final String categoriaFinal = categoria;
+
+            botaoCategoria.setOnClickListener(v -> {
+                String categoriaFiltro =
+                        "TODOS".equalsIgnoreCase(categoriaFinal)
+                                ? ""
+                                : categoriaFinal;
+
+                abrirCatalogoVerticalNexo(
+                        "filme",
+                        categoriaFiltro
+                );
+            });
+        }
+
+        categoriasScroll.addView(categoriasLinha,
+                new HorizontalScrollView.LayoutParams(-2, -2));
+
+        areaNexoFilmes.addView(
+                categoriasScroll,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
+
         if (itens == null || itens.length() == 0) {
             TextView vazio = texto(
                     "Nenhum título publicado ainda.",
@@ -1225,6 +1304,237 @@ public class HaveHomeActivity extends Activity {
     }
 
 
+
+    private void abrirCatalogoVerticalNexo(String filtroTipo, String filtroCategoria) {
+        final android.app.Dialog dialog = new android.app.Dialog(
+                this,
+                android.R.style.Theme_DeviceDefault_NoActionBar
+        );
+
+        LinearLayout raiz = new LinearLayout(this);
+        raiz.setOrientation(LinearLayout.VERTICAL);
+        raiz.setBackgroundColor(Color.rgb(3, 4, 15));
+        raiz.setPadding(dp(16), dp(14), dp(16), dp(10));
+
+        LinearLayout topo = new LinearLayout(this);
+        topo.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView titulo = texto("NEXO FILMES", 22, Color.WHITE);
+        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        TextView fechar = texto("✕", 22, Color.WHITE);
+        fechar.setGravity(Gravity.CENTER);
+
+        topo.addView(titulo,
+                new LinearLayout.LayoutParams(0, dp(48), 1f));
+
+        topo.addView(fechar,
+                new LinearLayout.LayoutParams(dp(48), dp(48)));
+
+        fechar.setOnClickListener(v -> dialog.dismiss());
+
+        raiz.addView(topo);
+
+        LinearLayout tipos = new LinearLayout(this);
+        tipos.setOrientation(LinearLayout.HORIZONTAL);
+
+        String[] tiposNexo = {"FILMES", "SÉRIES"};
+
+        for (String tipo : tiposNexo) {
+            TextView botao = texto(
+                    tipo,
+                    13,
+                    tipo.equalsIgnoreCase(filtroTipo)
+                            ? Color.WHITE
+                            : Color.rgb(160, 170, 195)
+            );
+            botao.setGravity(Gravity.CENTER);
+            botao.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            botao.setPadding(dp(18), 0, dp(18), 0);
+            botao.setBackground(
+                    fundo(
+                            tipo.equalsIgnoreCase(filtroTipo)
+                                    ? Color.rgb(30, 35, 58)
+                                    : Color.rgb(12, 14, 28),
+                            30
+                    )
+            );
+
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(-2, dp(40));
+            lp.setMargins(0, 0, dp(8), dp(8));
+
+            tipos.addView(botao, lp);
+
+            final String tipoFinal =
+                    tipo.equalsIgnoreCase("SÉRIES") ? "serie" : "filme";
+
+            botao.setOnClickListener(v -> {
+                dialog.dismiss();
+                abrirCatalogoVerticalNexo(tipoFinal, filtroCategoria);
+            });
+        }
+
+        raiz.addView(tipos);
+
+        HorizontalScrollView categoriasScroll =
+                new HorizontalScrollView(this);
+        categoriasScroll.setHorizontalScrollBarEnabled(false);
+
+        LinearLayout categorias =
+                new LinearLayout(this);
+        categorias.setOrientation(LinearLayout.HORIZONTAL);
+
+        String[] categoriasNexo = {
+                "TODOS", "AÇÃO", "AVENTURA", "COMÉDIA", "DRAMA",
+                "TERROR", "ROMANCE", "FICÇÃO", "SUSPENSE",
+                "ANIMAÇÃO", "ANIME", "INFANTIL", "DOCUMENTÁRIO"
+        };
+
+        for (String categoria : categoriasNexo) {
+            TextView botao = texto(
+                    categoria,
+                    12,
+                    categoria.equalsIgnoreCase(filtroCategoria)
+                            || ("TODOS".equals(categoria)
+                            && (filtroCategoria == null
+                            || filtroCategoria.trim().isEmpty()))
+                            ? Color.WHITE
+                            : Color.rgb(160, 170, 195)
+            );
+
+            botao.setGravity(Gravity.CENTER);
+            botao.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+            botao.setPadding(dp(15), 0, dp(15), 0);
+            botao.setBackground(
+                    fundo(
+                            categoria.equalsIgnoreCase(filtroCategoria)
+                                    || ("TODOS".equals(categoria)
+                                    && (filtroCategoria == null
+                                    || filtroCategoria.trim().isEmpty()))
+                                    ? Color.rgb(30, 35, 58)
+                                    : Color.rgb(12, 14, 28),
+                            30
+                    )
+            );
+
+            LinearLayout.LayoutParams lp =
+                    new LinearLayout.LayoutParams(-2, dp(38));
+            lp.setMargins(0, 0, dp(7), dp(10));
+
+            categorias.addView(botao, lp);
+
+            final String categoriaFinal = categoria;
+
+            botao.setOnClickListener(v -> {
+                String novaCategoria =
+                        "TODOS".equalsIgnoreCase(categoriaFinal)
+                                ? ""
+                                : categoriaFinal;
+
+                abrirCatalogoVerticalNexo(
+                        filtroTipo,
+                        novaCategoria
+                );
+            });
+        }
+
+        categoriasScroll.addView(
+                categorias,
+                new HorizontalScrollView.LayoutParams(-2, -2)
+        );
+
+        raiz.addView(
+                categoriasScroll,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
+
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+
+        LinearLayout grade = new LinearLayout(this);
+        grade.setOrientation(LinearLayout.VERTICAL);
+        grade.setPadding(0, dp(4), 0, dp(30));
+
+        JSONArray origem = catalogoNexoHave;
+
+        if (origem != null) {
+            for (int i = 0; i < origem.length(); i++) {
+                JSONObject item = origem.optJSONObject(i);
+                if (item == null) continue;
+
+                String tipo = item.optString(
+                        "_haveTipoCatalogo",
+                        item.optString("tipo", "filme")
+                ).trim();
+
+                boolean ehSerie =
+                        "serie".equalsIgnoreCase(tipo)
+                        || "série".equalsIgnoreCase(tipo)
+                        || "series".equalsIgnoreCase(tipo)
+                        || "séries".equalsIgnoreCase(tipo);
+
+                boolean tipoOk =
+                        "serie".equalsIgnoreCase(filtroTipo)
+                                ? ehSerie
+                                : !ehSerie;
+
+                if (!tipoOk) continue;
+
+                if (filtroCategoria != null &&
+                        !filtroCategoria.trim().isEmpty()) {
+
+                    String categoriaItem = item.optString(
+                            "categoria",
+                            item.optString("genero", "")
+                    ).trim();
+
+                    if (!categoriaItem.toUpperCase()
+                            .contains(filtroCategoria.toUpperCase())) {
+                        continue;
+                    }
+                }
+
+                View card = criarCardNexoVertical(item);
+
+                LinearLayout.LayoutParams cardLp =
+                        new LinearLayout.LayoutParams(
+                                -1,
+                                dp(186)
+                        );
+                cardLp.setMargins(0, 0, 0, dp(12));
+
+                grade.addView(card, cardLp);
+            }
+        }
+
+        if (grade.getChildCount() == 0) {
+            TextView vazio = texto(
+                    "Nenhum título encontrado nesta categoria.",
+                    15,
+                    Color.rgb(170, 180, 205)
+            );
+            vazio.setGravity(Gravity.CENTER);
+            vazio.setPadding(0, dp(50), 0, dp(50));
+            grade.addView(vazio);
+        }
+
+        scroll.addView(grade);
+        raiz.addView(
+                scroll,
+                new LinearLayout.LayoutParams( -1, 0, 1f)
+        );
+
+        dialog.setContentView(raiz);
+        dialog.show();
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setLayout(
+                    -1,
+                    -1
+            );
+        }
+    }
 
     void criarHero(LinearLayout pai) {
     
@@ -2850,9 +3160,9 @@ Button pequenoBotao(String textoBotao, int cor) {
     }
 
     private View criarCardNexo(JSONObject filme) {
-        final FrameLayout card = new FrameLayout(this);
-        card.setPadding(0, 0, 0, 0);
-        card.setClipToOutline(true);
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(0, 0, 0, dp(8));
 
         GradientDrawable fundoCard = fundo(
                 Color.rgb(9, 10, 22),
@@ -2864,14 +3174,12 @@ Button pequenoBotao(String textoBotao, int cor) {
 
         final ImageView poster = new ImageView(this);
         poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        poster.setAdjustViewBounds(false);
         poster.setBackgroundColor(Color.rgb(9, 10, 22));
 
-        FrameLayout.LayoutParams posterLp =
-                new FrameLayout.LayoutParams(
+        LinearLayout.LayoutParams posterLp =
+                new LinearLayout.LayoutParams(
                         -1,
-                        -1,
-                        Gravity.CENTER
+                        dp(245)
                 );
 
         card.addView(poster, posterLp);
@@ -2898,7 +3206,137 @@ Button pequenoBotao(String textoBotao, int cor) {
             carregarImagemNexo(poster, posterUrl);
         }
 
-        card.setOnClickListener(v -> abrirDetalhesNexo(filme));
+        TextView titulo = texto(
+                filme.optString("titulo", "Sem título"),
+                14,
+                Color.WHITE
+        );
+        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        titulo.setGravity(Gravity.CENTER_VERTICAL);
+        titulo.setMaxLines(2);
+        titulo.setEllipsize(null);
+        titulo.setPadding(dp(8), dp(7), dp(8), 0);
+
+        card.addView(
+                titulo,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(48)
+                )
+        );
+
+        card.setOnClickListener(v ->
+                abrirDetalhesNexo(filme)
+        );
+
+        return card;
+    }
+
+    private View criarCardNexoVertical(JSONObject filme) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(8), dp(8), dp(8), dp(8));
+
+        GradientDrawable fundoCard = fundo(
+                Color.rgb(9, 10, 22),
+                16
+        );
+        fundoCard.setStroke(dp(1), Color.rgb(42, 38, 72));
+        card.setBackground(fundoCard);
+        card.setElevation(dp(3));
+
+        ImageView poster = new ImageView(this);
+        poster.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        poster.setBackgroundColor(Color.rgb(9, 10, 22));
+
+        LinearLayout.LayoutParams posterLp =
+                new LinearLayout.LayoutParams(dp(115), dp(170));
+        posterLp.setMargins(0, 0, dp(12), 0);
+
+        card.addView(poster, posterLp);
+
+        String posterUrl = filme.optString("poster_url", "");
+
+        if (posterUrl.trim().isEmpty()) {
+            posterUrl = filme.optString("capa", "");
+        }
+
+        if (posterUrl.trim().isEmpty()) {
+            posterUrl = filme.optString("poster", "");
+        }
+
+        if (posterUrl.trim().isEmpty()) {
+            posterUrl = filme.optString("banner_url", "");
+        }
+
+        if (posterUrl.trim().isEmpty()) {
+            posterUrl = filme.optString("banner", "");
+        }
+
+        if (!posterUrl.trim().isEmpty()) {
+            carregarImagemNexo(poster, posterUrl);
+        }
+
+        LinearLayout informacoes = new LinearLayout(this);
+        informacoes.setOrientation(LinearLayout.VERTICAL);
+        informacoes.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView titulo = texto(
+                filme.optString("titulo", "Sem título"),
+                17,
+                Color.WHITE
+        );
+        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        TextView meta = texto(
+                filme.optString("categoria", "Sem categoria")
+                        + "  •  "
+                        + (filme.optInt("ano", 0) > 0
+                        ? String.valueOf(filme.optInt("ano", 0))
+                        : "N/A"),
+                12,
+                Color.rgb(145, 155, 185)
+        );
+
+        String tipo = filme.optString(
+                "_haveTipoCatalogo",
+                filme.optString("tipo", "filme")
+        );
+
+        TextView tipoTexto = texto(
+                "serie".equalsIgnoreCase(tipo)
+                        || "série".equalsIgnoreCase(tipo)
+                        ? "SÉRIE"
+                        : "FILME",
+                11,
+                Color.rgb(120, 220, 255)
+        );
+        tipoTexto.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        informacoes.addView(
+                titulo,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
+        informacoes.addView(
+                meta,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
+
+        LinearLayout.LayoutParams tipoLp =
+                new LinearLayout.LayoutParams(-2, -2);
+        tipoLp.setMargins(0, dp(8), 0, 0);
+
+        informacoes.addView(tipoTexto, tipoLp);
+
+        card.addView(
+                informacoes,
+                new LinearLayout.LayoutParams(0, -1, 1f)
+        );
+
+        card.setOnClickListener(v ->
+                abrirDetalhesNexo(filme)
+        );
 
         return card;
     }
@@ -2943,6 +3381,107 @@ Button pequenoBotao(String textoBotao, int cor) {
             }
 
         }).start();
+    }
+
+    private String chaveSagaNexo(String titulo) {
+        if (titulo == null) return "";
+
+        String base = titulo
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("\\b(19|20)\\d{2}\\b", " ")
+                .replaceAll("\\btemporada\\s*\\d+\\b", " ")
+                .replaceAll("\\b(parte|part)\\s*\\d+\\b", " ")
+                .replaceAll("\\b(ep|epis[oó]dio)\\s*\\d+\\b", " ")
+                .replaceAll("\\b\\d+\\b", " ")
+                .replaceAll("[\\:\\-\\|\\(\\)\\[\\],.!?]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        if (base.isEmpty()) return "";
+
+        String[] palavras = base.split("\\s+");
+
+        /*
+         * Para títulos com várias palavras, usamos as duas primeiras
+         * palavras significativas como identificação da franquia.
+         *
+         * Exemplos:
+         * Jumanji Bem Vindo ... -> "jumanji bem"
+         * Jumanji Proxima Fase -> "jumanji proxima"
+         *
+         * Para franquias que mudam completamente o subtítulo,
+         * usamos somente a primeira palavra como fallback.
+         */
+        if (palavras.length == 1) {
+            return palavras[0];
+        }
+
+        String primeira = palavras[0];
+
+        /*
+         * Nomes de franquias conhecidas que podem ter subtítulos
+         * diferentes continuam sendo agrupados pela primeira palavra.
+         */
+        String[] franquias = {
+                "jumanji",
+                "john wick",
+                "matrix",
+                "avatar",
+                "vingadores",
+                "avengers",
+                "transformers",
+                "jurassic",
+                "toy story",
+                "carros",
+                "shrek",
+                "harry potter",
+                "homem aranha",
+                "homem-aranha",
+                "spider man",
+                "spider-man"
+        };
+
+        String inicioDuas = palavras[0] + " " + palavras[1];
+
+        for (String franquia : franquias) {
+            if (base.startsWith(franquia + " ")
+                    || base.equals(franquia)) {
+                return franquia;
+            }
+        }
+
+        return inicioDuas;
+    }
+
+    private int numeroSagaNexo(String titulo) {
+        if (titulo == null) return Integer.MAX_VALUE;
+
+        java.util.regex.Matcher m =
+                java.util.regex.Pattern
+                        .compile("\\b(\\d+)\\b")
+                        .matcher(titulo);
+
+        if (m.find()) {
+            try {
+                return Integer.parseInt(m.group(1));
+            } catch (Exception ignored) {
+            }
+        }
+
+        String t = titulo.toLowerCase(Locale.ROOT);
+
+        String[] romanos = {
+                " i", " ii", " iii", " iv", " v",
+                " vi", " vii", " viii", " ix", " x"
+        };
+
+        for (int i = 0; i < romanos.length; i++) {
+            if (t.endsWith(romanos[i])) {
+                return i + 1;
+            }
+        }
+
+        return Integer.MAX_VALUE;
     }
 
     private void abrirDetalhesNexo(JSONObject filme) {
@@ -3232,8 +3771,7 @@ Button pequenoBotao(String textoBotao, int cor) {
                 return;
             }
 
-            dialog.dismiss();
-            abrirPlayerNexo(titulo, videoUrl);
+              abrirPlayerNexo(titulo, videoUrl, filme);
         });
 
 
@@ -3301,6 +3839,125 @@ Button pequenoBotao(String textoBotao, int cor) {
                 descricaoView,
                 descricaoLp
         );
+
+        // ----------------------------------------------------
+        // MAIS DA SAGA — horizontal e rolável
+        // ----------------------------------------------------
+        String chaveAtualSaga = chaveSagaNexo(titulo);
+
+        if (!chaveAtualSaga.isEmpty() && catalogoNexoHave != null) {
+            java.util.ArrayList<JSONObject> relacionados =
+                    new java.util.ArrayList<>();
+
+            for (int si = 0; si < catalogoNexoHave.length(); si++) {
+                JSONObject candidato =
+                        catalogoNexoHave.optJSONObject(si);
+
+                if (candidato == null) continue;
+                if (candidato == filme) continue;
+
+                String tituloCandidato =
+                        candidato.optString("titulo", "").trim();
+
+                if (tituloCandidato.isEmpty()) continue;
+
+                String chaveCandidato =
+                        chaveSagaNexo(tituloCandidato);
+
+                if (chaveAtualSaga.equals(chaveCandidato)) {
+                    relacionados.add(candidato);
+                }
+            }
+
+            if (!relacionados.isEmpty()) {
+                java.util.Collections.sort(
+                        relacionados,
+                        (a, b) -> {
+                            int na = numeroSagaNexo(
+                                    a.optString("titulo", "")
+                            );
+                            int nb = numeroSagaNexo(
+                                    b.optString("titulo", "")
+                            );
+
+                            if (na != nb) {
+                                return Integer.compare(na, nb);
+                            }
+
+                            return a.optString("titulo", "")
+                                    .compareToIgnoreCase(
+                                            b.optString("titulo", "")
+                                    );
+                        }
+                );
+
+                TextView sagaTitulo = texto(
+                        "MAIS DA SAGA",
+                        17,
+                        Color.WHITE
+                );
+                sagaTitulo.setTypeface(
+                        Typeface.DEFAULT,
+                        Typeface.BOLD
+                );
+                sagaTitulo.setPadding(
+                        dp(20), dp(2), dp(20), dp(8)
+                );
+
+                conteudo.addView(sagaTitulo);
+
+                HorizontalScrollView sagaScroll =
+                        new HorizontalScrollView(this);
+                sagaScroll.setHorizontalScrollBarEnabled(false);
+                sagaScroll.setOverScrollMode(
+                        View.OVER_SCROLL_NEVER
+                );
+
+                LinearLayout sagaLinha =
+                        new LinearLayout(this);
+                sagaLinha.setOrientation(
+                        LinearLayout.HORIZONTAL
+                );
+                sagaLinha.setPadding(
+                        dp(20), 0, dp(20), dp(14)
+                );
+
+                for (JSONObject relacionado : relacionados) {
+                    View cardSaga =
+                            criarCardNexo(relacionado);
+
+                    LinearLayout.LayoutParams sagaLp =
+                            new LinearLayout.LayoutParams(
+                                    dp(158),
+                                    dp(240)
+                            );
+                    sagaLp.setMargins(
+                            0, 0, dp(10), 0
+                    );
+
+                    sagaLinha.addView(
+                            cardSaga,
+                            sagaLp
+                    );
+                }
+
+                sagaScroll.addView(
+                        sagaLinha,
+                        new HorizontalScrollView.LayoutParams(
+                                -2,
+                                -2
+                        )
+                );
+
+                conteudo.addView(
+                        sagaScroll,
+                        new LinearLayout.LayoutParams(
+                                -1,
+                                -2
+                        )
+                );
+            }
+        }
 
         // Séries: mostrar temporadas e episódios preservados do catálogo R2.
         boolean ehSerie = "serie".equalsIgnoreCase(
@@ -3394,27 +4051,126 @@ Button pequenoBotao(String textoBotao, int cor) {
                         ).getBoolean(chaveVisualizacaoFinal, false);
 
                         String legenda = publicado
-                                ? "👁  " + nomeEpisodio
-                                : "◷  " + nomeEpisodio + " — Aguardando publicação";
+                                ? nomeEpisodio
+                                : nomeEpisodio + " — Aguardando publicação";
 
-                        TextView linhaEpisodio = texto(
+                        LinearLayout linhaEpisodio = new LinearLayout(this);
+                        linhaEpisodio.setOrientation(LinearLayout.HORIZONTAL);
+                        linhaEpisodio.setGravity(Gravity.CENTER_VERTICAL);
+                        linhaEpisodio.setPadding(
+                                dp(10), dp(8), dp(12), dp(8)
+                        );
+                        linhaEpisodio.setBackground(
+                                fundo(Color.rgb(12, 14, 28), 12)
+                        );
+
+                        ImageView previaEpisodio = new ImageView(this);
+                        previaEpisodio.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                        previaEpisodio.setBackgroundColor(Color.rgb(20, 22, 38));
+
+                        LinearLayout.LayoutParams previaLp =
+                                new LinearLayout.LayoutParams(dp(108), dp(64));
+                        previaLp.setMargins(0, 0, dp(12), 0);
+                        linhaEpisodio.addView(previaEpisodio, previaLp);
+
+                        String imagemEpisodio =
+                                episodio.optString("imagem", "").trim();
+
+                        if (!imagemEpisodio.isEmpty()) {
+                            String urlImagemEpisodio =
+                                    urlNexoArquivo("file", imagemEpisodio);
+                            carregarImagemNexo(previaEpisodio, urlImagemEpisodio);
+                        }
+
+                        LinearLayout blocoTexto = new LinearLayout(this);
+                        blocoTexto.setOrientation(LinearLayout.VERTICAL);
+                        blocoTexto.setGravity(Gravity.CENTER_VERTICAL);
+
+                        TextView tituloEpisodioView = texto(
                                 legenda,
                                 14,
                                 publicado
-                                        ? (jaVisto ? Color.rgb(0, 220, 255) : Color.WHITE)
+                                        ? Color.WHITE
                                         : Color.rgb(170, 170, 185)
                         );
-                        linhaEpisodio.setPadding(
-                                dp(28), dp(14), dp(20), dp(14)
-                        );
-                        linhaEpisodio.setBackground(
-                                fundo(Color.rgb(12, 14, 28), 10)
+
+                        TextView numeroView = texto(
+                                "Episódio " + (ei + 1) +
+                                        "  •  " +
+                                        temporada.optString("titulo",
+                                                "Temporada " + numeroTemporada),
+                                11,
+                                Color.rgb(150, 153, 175)
                         );
 
+                        blocoTexto.addView(
+                                tituloEpisodioView,
+                                new LinearLayout.LayoutParams(-1, -2)
+                        );
+                        blocoTexto.addView(
+                                numeroView,
+                                new LinearLayout.LayoutParams(-1, -2)
+                        );
+
+                        LinearLayout.LayoutParams textoLp =
+                                new LinearLayout.LayoutParams(0, -2, 1f);
+                        linhaEpisodio.addView(blocoTexto, textoLp);
+
+                        final TextView check = texto(
+                                jaVisto ? "✓" : "",
+                                18,
+                                jaVisto
+                                        ? Color.rgb(0, 220, 255)
+                                        : Color.rgb(120, 125, 145)
+                        );
+                        check.setGravity(Gravity.CENTER);
+                        check.setBackground(
+                                fundo(
+                                        jaVisto
+                                                ? Color.rgb(20, 45, 55)
+                                                : Color.rgb(22, 24, 38),
+                                        50
+                                )
+                        );
+
+                        LinearLayout.LayoutParams checkLp =
+                                new LinearLayout.LayoutParams(dp(34), dp(34));
+                        checkLp.setMargins(dp(8), 0, 0, 0);
+                        linhaEpisodio.addView(check, checkLp);
+
+                        check.setOnClickListener(v -> {
+                            boolean estadoAtual = getSharedPreferences(
+                                    "have_config", MODE_PRIVATE
+                            ).getBoolean(chaveVisualizacaoFinal, false);
+
+                            boolean novoEstado = !estadoAtual;
+
+                            getSharedPreferences(
+                                    "have_config", MODE_PRIVATE
+                            ).edit()
+                                    .putBoolean(chaveVisualizacaoFinal, novoEstado)
+                                    .apply();
+
+                            check.setText(novoEstado ? "✓" : "");
+                            check.setTextColor(
+                                    novoEstado
+                                            ? Color.rgb(0, 220, 255)
+                                            : Color.rgb(120, 125, 145)
+                            );
+                            check.setBackground(
+                                    fundo(
+                                            novoEstado
+                                                    ? Color.rgb(20, 45, 55)
+                                                    : Color.rgb(22, 24, 38),
+                                            50
+                                    )
+                            );
+                        });
+
                         LinearLayout.LayoutParams episodioLp =
-                                new LinearLayout.LayoutParams(-1, -2);
+                                new LinearLayout.LayoutParams(-1, dp(80));
                         episodioLp.setMargins(
-                                dp(20), dp(3), dp(20), dp(5)
+                                dp(20), dp(4), dp(20), dp(5)
                         );
                         conteudo.addView(linhaEpisodio, episodioLp);
 
@@ -3428,6 +4184,12 @@ Button pequenoBotao(String textoBotao, int cor) {
                                 String endereco = episodioFinal.optString(
                                         "video_url", ""
                                 );
+
+                                if (endereco.trim().isEmpty()) {
+                                    endereco = episodioFinal.optString(
+                                            "urlReproducao", ""
+                                    );
+                                }
 
                                 if (endereco.trim().isEmpty()
                                         && !chave.trim().isEmpty()) {
@@ -3443,17 +4205,8 @@ Button pequenoBotao(String textoBotao, int cor) {
                                     return;
                                 }
 
-                                getSharedPreferences(
-                                        "have_config", MODE_PRIVATE
-                                ).edit()
-                                        .putBoolean(chaveVisualizacaoFinal, true)
-                                        .apply();
-
-                                linhaEpisodio.setText("👁  " + tituloEpisodio);
-                                linhaEpisodio.setTextColor(Color.rgb(0, 220, 255));
-
                                 dialog.dismiss();
-                                abrirPlayerNexo(tituloEpisodio, endereco);
+                                abrirPlayerNexo(tituloEpisodio, endereco, filme);
                             });
                         }
                     }
@@ -3479,6 +4232,10 @@ Button pequenoBotao(String textoBotao, int cor) {
     }
 
     private void abrirPlayerNexo(String titulo, String videoUrl) {
+        abrirPlayerNexo(titulo, videoUrl, null);
+    }
+
+    private void abrirPlayerNexo(String titulo, String videoUrl, JSONObject detalhesRetorno) {
         if (videoUrl == null || videoUrl.trim().isEmpty()) {
             Toast.makeText(this, "Este título ainda não possui vídeo.", Toast.LENGTH_SHORT).show();
             return;
@@ -3491,6 +4248,7 @@ Button pequenoBotao(String textoBotao, int cor) {
         final android.content.SharedPreferences prefs =
                 getSharedPreferences("have_config", MODE_PRIVATE);
         final long posicaoSalva = prefs.getLong(chave, 0L);
+        final boolean[] posicaoRestaurada = {false};
 
         final android.app.Dialog dialog = new android.app.Dialog(
                 this,
@@ -3514,7 +4272,51 @@ Button pequenoBotao(String textoBotao, int cor) {
 
         raiz.addView(playerView, new FrameLayout.LayoutParams(-1, -1));
 
+        final android.widget.ImageButton botaoTransmitir = new android.widget.ImageButton(this);
+        botaoTransmitir.setImageResource(R.drawable.ic_cast_nexo);
+        botaoTransmitir.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+        botaoTransmitir.setPadding(dp(12), dp(12), dp(12), dp(12));
+        botaoTransmitir.setBackgroundColor(Color.TRANSPARENT);
+        botaoTransmitir.setClickable(true);
+        botaoTransmitir.setFocusable(true);
+        botaoTransmitir.setContentDescription("Transmitir para TV");
+
+        FrameLayout.LayoutParams transmitirParams =
+                new FrameLayout.LayoutParams(dp(54), dp(54));
+        transmitirParams.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
+        transmitirParams.setMargins(0, dp(18), dp(18), 0);
+        raiz.addView(botaoTransmitir, transmitirParams);
+
+        botaoTransmitir.setOnClickListener(v -> {
+            try {
+                startActivity(new android.content.Intent(
+                        android.provider.Settings.ACTION_CAST_SETTINGS
+                ));
+            } catch (Exception erro) {
+                android.util.Log.e(
+                        "HAVE_PLAYER",
+                        "Não foi possível abrir a tela de transmissão.",
+                        erro
+                );
+                Toast.makeText(
+                        HaveHomeActivity.this,
+                        "A transmissão não está disponível neste aparelho.",
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        });
+
+        final DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                        30_000,
+                        120_000,
+                        2_000,
+                        5_000
+                )
+                .build();
+
         final ExoPlayer player = new ExoPlayer.Builder(this)
+                .setLoadControl(loadControl)
                 .setSeekBackIncrementMs(10_000L)
                 .setSeekForwardIncrementMs(10_000L)
                 .build();
@@ -3566,13 +4368,18 @@ Button pequenoBotao(String textoBotao, int cor) {
                 if (state == Player.STATE_READY) {
                     long duracao = player.getDuration();
 
-                    if (posicaoSalva > 0L &&
+                    if (!posicaoRestaurada[0] &&
+                            posicaoSalva > 0L &&
                             (duracao <= 0L || posicaoSalva < duracao - 15_000L)) {
+                        posicaoRestaurada[0] = true;
                         player.seekTo(posicaoSalva);
-                    } else if (duracao > 0L && posicaoSalva >= duracao - 15_000L) {
+                    } else if (!posicaoRestaurada[0] &&
+                            duracao > 0L &&
+                            posicaoSalva >= duracao - 15_000L) {
+                        posicaoRestaurada[0] = true;
                         prefs.edit().remove(chave).apply();
                     }
-                    player.play();
+
                 } else if (state == Player.STATE_ENDED) {
                     prefs.edit().remove(chave).apply();
                 }
@@ -3590,12 +4397,16 @@ Button pequenoBotao(String textoBotao, int cor) {
         });
 
         player.setMediaItem(MediaItem.fromUri(endereco));
+        player.setPlayWhenReady(true);
         player.prepare();
+
+        final boolean[] voltarParaDetalhes = {false};
 
         dialog.setContentView(raiz);
         dialog.setOnKeyListener((d, keyCode, event) -> {
             if (keyCode == android.view.KeyEvent.KEYCODE_BACK &&
                     event.getAction() == android.view.KeyEvent.ACTION_UP) {
+                voltarParaDetalhes[0] = true;
                 dialog.dismiss();
                 return true;
             }
@@ -3610,6 +4421,8 @@ Button pequenoBotao(String textoBotao, int cor) {
             handler.removeCallbacks(salvar[0]);
             playerView.setPlayer(null);
             player.release();
+
+
         });
 
         dialog.show();
