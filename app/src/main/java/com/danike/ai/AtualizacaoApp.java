@@ -112,7 +112,14 @@ public final class AtualizacaoApp {
                             apkUrl,
                             obrigatoria
                     );
-                });
+                })
+                .addOnFailureListener(error ->
+                        android.util.Log.e(
+                                "AtualizacaoApp",
+                                "Falha ao consultar config/update no Firebase",
+                                error
+                        )
+                );
     }
 
     private static String obterTexto(
