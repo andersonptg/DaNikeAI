@@ -399,7 +399,7 @@ public class LoginActivity extends Activity {
         android.widget.ImageView logoNexoSuperior =
                 new android.widget.ImageView(this);
         logoNexoSuperior.setImageResource(
-                com.danike.ai.R.drawable.nexo_logo
+                com.danike.ai.R.drawable.nexo_halloween
         );
         logoNexoSuperior.setScaleType(
                 android.widget.ImageView.ScaleType.FIT_CENTER
@@ -894,11 +894,149 @@ TextView subtitulo = new TextView(this);
             );
         }
 
+        // Camada decorativa de Halloween. Desenha apenas nos cantos
+        // e não intercepta toques nos campos nem nos botões.
+        rootLogin.addView(
+                new HalloweenLoginOverlay(this),
+                new android.widget.FrameLayout.LayoutParams(-1, -1)
+        );
+
         setContentView(rootLogin);
         aplicarNeonLogin(tela);
     }
 
 
+
+
+    // Decoração Halloween da tela de login, desenhada localmente.
+    private class HalloweenLoginOverlay extends android.view.View {
+        private final android.graphics.Paint hp =
+                new android.graphics.Paint(
+                        android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+        HalloweenLoginOverlay(android.content.Context context) {
+            super(context);
+            setClickable(false);
+            setFocusable(false);
+            setImportantForAccessibility(
+                    android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        }
+
+        private float hd(float v) {
+            return v * getResources().getDisplayMetrics().density;
+        }
+
+        private void teia(android.graphics.Canvas c, float x, float y,
+                          float sx, float sy) {
+            hp.setShader(null);
+            hp.setStyle(android.graphics.Paint.Style.STROKE);
+            hp.setStrokeWidth(hd(0.8f));
+            hp.setColor(android.graphics.Color.argb(130, 145, 170, 190));
+
+            android.graphics.Path raios = new android.graphics.Path();
+            raios.moveTo(x, y);
+            raios.lineTo(x + sx, y);
+            raios.moveTo(x, y);
+            raios.lineTo(x, y + sy);
+            raios.moveTo(x, y);
+            raios.lineTo(x + sx * 0.75f, y + sy * 0.75f);
+            raios.moveTo(x, y);
+            raios.lineTo(x + sx * 0.35f, y + sy);
+            c.drawPath(raios, hp);
+
+            for (int i = 1; i <= 4; i++) {
+                float t = i / 5f;
+                android.graphics.Path arco = new android.graphics.Path();
+                arco.moveTo(x + sx * t, y);
+                arco.quadTo(x + sx * t, y + sy * t * 0.3f,
+                        x + sx * t * 0.7f, y + sy * t * 0.7f);
+                arco.quadTo(x + sx * t * 0.3f, y + sy * t,
+                        x, y + sy * t);
+                c.drawPath(arco, hp);
+            }
+            hp.setStyle(android.graphics.Paint.Style.FILL);
+        }
+
+        private void aranha(android.graphics.Canvas c, float x, float y) {
+            hp.setShader(null);
+            hp.setStyle(android.graphics.Paint.Style.STROKE);
+            hp.setStrokeWidth(hd(1.2f));
+            hp.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+            hp.setColor(android.graphics.Color.rgb(180, 195, 210));
+            c.drawLine(x, y - hd(23), x, y - hd(4), hp);
+
+            for (int lado = -1; lado <= 1; lado += 2) {
+                for (int i = 0; i < 4; i++) {
+                    float yy = y - hd(3) + i * hd(2);
+                    android.graphics.Path pata = new android.graphics.Path();
+                    pata.moveTo(x + lado * hd(2), yy);
+                    pata.lineTo(x + lado * hd(6), yy - hd(3));
+                    pata.lineTo(x + lado * hd(8), yy + hd(1));
+                    c.drawPath(pata, hp);
+                }
+            }
+
+            hp.setStyle(android.graphics.Paint.Style.FILL);
+            hp.setColor(android.graphics.Color.rgb(18, 20, 28));
+            c.drawCircle(x, y, hd(4), hp);
+            hp.setStyle(android.graphics.Paint.Style.STROKE);
+            hp.setColor(android.graphics.Color.rgb(0, 195, 235));
+            c.drawCircle(x, y, hd(4), hp);
+            hp.setStyle(android.graphics.Paint.Style.FILL);
+        }
+
+        private void morcego(android.graphics.Canvas c, float x, float y,
+                             float tam) {
+            hp.setShader(null);
+            hp.setStyle(android.graphics.Paint.Style.FILL);
+            hp.setColor(android.graphics.Color.argb(210, 15, 18, 28));
+
+            android.graphics.Path p = new android.graphics.Path();
+            p.moveTo(x, y);
+            p.cubicTo(x - tam * .25f, y - tam * .7f,
+                    x - tam * .7f, y - tam * .5f,
+                    x - tam, y - tam * .15f);
+            p.lineTo(x - tam * .7f, y + tam * .2f);
+            p.lineTo(x - tam * .4f, y + tam * .05f);
+            p.lineTo(x, y + tam * .3f);
+            p.lineTo(x + tam * .4f, y + tam * .05f);
+            p.lineTo(x + tam * .7f, y + tam * .2f);
+            p.lineTo(x + tam, y - tam * .15f);
+            p.cubicTo(x + tam * .7f, y - tam * .5f,
+                    x + tam * .25f, y - tam * .7f, x, y);
+            p.close();
+            c.drawPath(p, hp);
+
+            hp.setStyle(android.graphics.Paint.Style.STROKE);
+            hp.setStrokeWidth(hd(.7f));
+            hp.setColor(android.graphics.Color.argb(175, 0, 185, 225));
+            c.drawPath(p, hp);
+            hp.setStyle(android.graphics.Paint.Style.FILL);
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            super.onDraw(c);
+            float w = getWidth();
+            float h = getHeight();
+
+            teia(c, 0, 0, w * .22f, h * .12f);
+
+            c.save();
+            c.scale(-1, 1, w / 2f, 0);
+            teia(c, 0, 0, w * .22f, h * .12f);
+            c.restore();
+
+            // Aranha perto da logo NEXO, sem cobrir os campos.
+            aranha(c, w * .72f, hd(74));
+
+            morcego(c, w * .15f, h * .30f, hd(12));
+            morcego(c, w * .84f, h * .62f, hd(10));
+
+            hp.setShader(null);
+            hp.setStyle(android.graphics.Paint.Style.FILL);
+        }
+    }
 
     private void aplicarNeonLogin(android.view.ViewGroup raiz) {
         aplicarNeonRecursivo(raiz);

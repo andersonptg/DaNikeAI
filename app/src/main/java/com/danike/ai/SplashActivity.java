@@ -227,7 +227,7 @@ public class SplashActivity extends Activity {
 
             logo = BitmapFactory.decodeResource(
                     getResources(),
-                    R.drawable.nexo_logo
+                    R.drawable.nexo_halloween
             );
 
             setLayerType(View.LAYER_TYPE_SOFTWARE, null);
@@ -287,6 +287,7 @@ public class SplashActivity extends Activity {
 
 
             desenharLogo(canvas, w, h);
+            desenharHalloween(canvas, w, h);
             desenharBarra(canvas, w, h);
         }
 
@@ -335,6 +336,149 @@ public class SplashActivity extends Activity {
 
         // ========================================================
 
+        }
+
+
+        // ========================================================
+        // HALLOWEEN NEXO: teias, aranha e morcegos
+        // Desenho local, sem imagens ou dependências externas.
+        // ========================================================
+
+        private void linhaHalloween(
+                Canvas c, float x1, float y1,
+                float x2, float y2, Paint p) {
+            c.drawLine(x1, y1, x2, y2, p);
+        }
+
+        private void desenharTeia(
+                Canvas c, float ox, float oy,
+                float sx, float sy, Paint p) {
+
+            p.setShader(null);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(d(0.8f));
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setColor(Color.argb(145, 150, 175, 195));
+
+            Path raio = new Path();
+            raio.moveTo(ox, oy);
+            raio.lineTo(ox + sx, oy);
+            raio.moveTo(ox, oy);
+            raio.lineTo(ox, oy + sy);
+            raio.moveTo(ox, oy);
+            raio.lineTo(ox + sx * 0.72f, oy + sy * 0.72f);
+            raio.moveTo(ox, oy);
+            raio.lineTo(ox + sx * 0.35f, oy + sy);
+            c.drawPath(raio, p);
+
+            for (int i = 1; i <= 4; i++) {
+                float t = i / 5f;
+                Path arco = new Path();
+                arco.moveTo(ox + sx * t, oy);
+                arco.quadTo(
+                        ox + sx * t * 0.90f,
+                        oy + sy * t * 0.25f,
+                        ox + sx * t * 0.72f,
+                        oy + sy * t * 0.72f);
+                arco.quadTo(
+                        ox + sx * t * 0.25f,
+                        oy + sy * t * 0.90f,
+                        ox,
+                        oy + sy * t);
+                c.drawPath(arco, p);
+            }
+            p.setStyle(Paint.Style.FILL);
+        }
+
+        private void desenharAranha(
+                Canvas c, float x, float y, Paint p) {
+
+            p.setShader(null);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(d(1.25f));
+            p.setStrokeCap(Paint.Cap.ROUND);
+            p.setColor(Color.rgb(190, 200, 215));
+
+            // Fio suspenso
+            c.drawLine(x, y - d(25), x, y - d(4), p);
+
+            // Oito patas
+            for (int lado = -1; lado <= 1; lado += 2) {
+                for (int i = 0; i < 4; i++) {
+                    float yy = y - d(4) + i * d(2.2f);
+                    Path pata = new Path();
+                    pata.moveTo(x + lado * d(2), yy);
+                    pata.lineTo(x + lado * d(6), yy - d(3));
+                    pata.lineTo(x + lado * d(8), yy + d(1));
+                    c.drawPath(pata, p);
+                }
+            }
+
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(20, 23, 30));
+            c.drawCircle(x, y, d(4.2f), p);
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(d(0.8f));
+            p.setColor(Color.rgb(0, 205, 245));
+            c.drawCircle(x, y, d(4.2f), p);
+            p.setStyle(Paint.Style.FILL);
+        }
+
+        private void desenharMorcego(
+                Canvas c, float x, float y, float tamanho, Paint p) {
+
+            p.setShader(null);
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.argb(205, 18, 20, 29));
+
+            Path asa = new Path();
+            asa.moveTo(x, y);
+            asa.cubicTo(
+                    x - tamanho * 0.25f, y - tamanho * 0.75f,
+                    x - tamanho * 0.72f, y - tamanho * 0.48f,
+                    x - tamanho, y - tamanho * 0.18f);
+            asa.lineTo(x - tamanho * 0.72f, y + tamanho * 0.22f);
+            asa.lineTo(x - tamanho * 0.42f, y + tamanho * 0.05f);
+            asa.lineTo(x, y + tamanho * 0.35f);
+            asa.lineTo(x + tamanho * 0.42f, y + tamanho * 0.05f);
+            asa.lineTo(x + tamanho * 0.72f, y + tamanho * 0.22f);
+            asa.lineTo(x + tamanho, y - tamanho * 0.18f);
+            asa.cubicTo(
+                    x + tamanho * 0.72f, y - tamanho * 0.48f,
+                    x + tamanho * 0.25f, y - tamanho * 0.75f,
+                    x, y);
+            asa.close();
+            c.drawPath(asa, p);
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(d(0.7f));
+            p.setColor(Color.argb(180, 0, 190, 230));
+            c.drawPath(asa, p);
+            p.setStyle(Paint.Style.FILL);
+        }
+
+        private void desenharHalloween(Canvas c, float w, float h) {
+            Paint p = paint;
+            p.setShader(null);
+
+            // Teias discretas nos dois cantos superiores
+            desenharTeia(c, 0, 0, w * 0.25f, h * 0.16f, p);
+
+            c.save();
+            c.scale(-1, 1, w / 2f, 0);
+            desenharTeia(c, 0, 0, w * 0.25f, h * 0.16f, p);
+            c.restore();
+
+            // Aranha próxima à logo NEXO, sem cobrir o centro
+            desenharAranha(c, w * 0.73f, h * 0.345f, p);
+
+            // Morcegos afastados dos elementos principais
+            desenharMorcego(c, w * 0.16f, h * 0.30f, d(13), p);
+            desenharMorcego(c, w * 0.84f, h * 0.57f, d(10), p);
+
+            p.setShader(null);
+            p.setStyle(Paint.Style.FILL);
         }
 
 // BARRA PRATA

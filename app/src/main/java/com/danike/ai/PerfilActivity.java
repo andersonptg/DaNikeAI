@@ -704,8 +704,14 @@ String fotoUrl =
         if (fotoUrl != null
                 && !fotoUrl.trim().isEmpty()) {
 
+            String fotoUrlFinal = fotoUrl.trim();
+
+            prefs.edit()
+                    .putString("foto_perfil_url", fotoUrlFinal)
+                    .apply();
+
             carregarImagemUrl(
-                    fotoUrl.trim()
+                    fotoUrlFinal
             );
         }
     }

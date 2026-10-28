@@ -327,7 +327,327 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(resposta)
 
+
+    # NEXO_R2_ROUTES_V1
+    def _nexo_r2_config(self):
+        import os
+        endpoint = os.environ.get("NEXO_R2_ENDPOINT", "").strip()
+        access = os.environ.get("NEXO_R2_ACCESS_KEY", "").strip()
+        secret = os.environ.get("NEXO_R2_SECRET_KEY", "").strip()
+        bucket = os.environ.get("NEXO_R2_BUCKET", "nexo-videos").strip()
+        if not all((endpoint, access, secret, bucket)):
+            raise RuntimeError("Configuração NEXO R2 incompleta no servidor.")
+        import boto3
+        client = boto3.client(
+            "s3",
+            endpoint_url=endpoint,
+            aws_access_key_id=access,
+            aws_secret_access_key=secret,
+            region_name="auto",
+        )
+        return client, bucket
+
+    def _nexo_r2_body(self, limite=32768):
+        import json
+        tamanho = int(self.headers.get("Content-Length", "0"))
+        if tamanho <= 0 or tamanho > limite:
+            raise ValueError("Tamanho da solicitação inválido.")
+        dados = json.loads(self.rfile.read(tamanho).decode("utf-8"))
+        if not isinstance(dados, dict):
+            raise ValueError("Formato JSON inválido.")
+        return dados
+
+    def _nexo_r2_owner(self):
+        auth = self.headers.get("Authorization", "")
+        if not auth.startswith("Bearer "):
+            return False
+        try:
+            return bool(usuario_e_proprietario(auth[7:].strip()))
+        except Exception:
+            return False
+
+    def _nexo_r2_upload_url(self):
+        import re, uuid
+        from datetime import datetime, timezone
+        try:
+            if not self._nexo_r2_owner():
+                self.enviar_json(403, {"sucesso": False, "erro": "Apenas o proprietário pode publicar conteúdo."})
+                return
+            dados = self._nexo_r2_body()
+            nome = str(dados.get("nome", "video")).strip()
+            mime = str(dados.get("mime", "application/octet-stream")).strip()
+            tipo = str(dados.get("tipo", "video")).strip().lower()
+            if tipo not in ("video", "capa", "banner"):
+                self.enviar_json(400, {"sucesso": False, "erro": "Tipo de arquivo inválido."})
+                return
+            if not mime or len(mime) > 150 or "\n" in mime or "\r" in mime:
+                self.enviar_json(400, {"sucesso": False, "erro": "Tipo MIME inválido."})
+                return
+            nome = re.sub(r"[^A-Za-z0-9._-]", "_", nome.split("/")[-1])[:100] or "arquivo"
+            uid = uuid.uuid4().hex
+            prefixo = "videos" if tipo == "video" else "imagens"
+            chave = f"nexo/{prefixo}/{uid}_{nome}"
+            cliente, bucket = self._nexo_r2_config()
+            url = cliente.generate_presigned_url(
+                "put_object",
+                Params={"Bucket": bucket, "Key": chave, "ContentType": mime},
+                ExpiresIn=900,
+            )
+            self.enviar_json(200, {
+                "sucesso": True,
+                "upload_url": url,
+                "object_key": chave,
+                "tipo": tipo,
+                "mime": mime,
+            })
+        except ValueError as e:
+            self.enviar_json(400, {"sucesso": False, "erro": str(e)})
+        except Exception as e:
+            print("[NEXO R2] Falha ao gerar URL:", type(e).__name__)
+            self.enviar_json(502, {"sucesso": False, "erro": "Não foi possível preparar o upload R2."})
+
+    def _nexo_r2_publicar(self):
+        import json
+        import uuid
+        from datetime import datetime, timezone
+
+        try:
+            if not self._nexo_r2_owner():
+                self.enviar_json(403, {
+                    "sucesso": False,
+                    "erro": "Apenas o proprietário pode publicar conteúdo."
+                })
+                return
+
+            dados = self._nexo_r2_body()
+            titulo = str(dados.get("titulo", "")).strip()
+            video_key = str(dados.get("video_key", "")).strip()
+
+            if not titulo or not video_key:
+                self.enviar_json(400, {
+                    "sucesso": False,
+                    "erro": "Título e video_key são obrigatórios."
+                })
+                return
+
+            if not video_key.startswith("nexo/videos/") or ".." in video_key:
+                self.enviar_json(400, {
+                    "sucesso": False,
+                    "erro": "Chave de vídeo inválida."
+                })
+                return
+
+            cliente, bucket = self._nexo_r2_config()
+            cliente.head_object(Bucket=bucket, Key=video_key)
+
+            capa_key = str(dados.get("capa_key", "")).strip()
+            banner_key = str(dados.get("banner_key", "")).strip()
+
+            for chave in (capa_key, banner_key):
+                if chave:
+                    if not chave.startswith("nexo/imagens/") or ".." in chave:
+                        self.enviar_json(400, {
+                            "sucesso": False,
+                            "erro": "Chave de imagem inválida."
+                        })
+                        return
+                    cliente.head_object(Bucket=bucket, Key=chave)
+
+            filme_id = uuid.uuid4().hex
+            filme = {
+                "id": filme_id,
+                "titulo": titulo[:200],
+                "descricao": str(dados.get("descricao", ""))[:10000],
+                "ano": str(dados.get("ano", ""))[:10],
+                "categoria": str(dados.get("categoria", ""))[:500],
+                "destaque": bool(dados.get("destaque", False)),
+                "ativo": bool(dados.get("ativo", True)),
+                "video_key": video_key,
+                "capa_key": capa_key,
+                "banner_key": banner_key,
+                "criado_em": datetime.now(timezone.utc).isoformat(),
+            }
+
+            chave_meta = "nexo/catalogo/" + filme_id + ".json"
+            cliente.put_object(
+                Bucket=bucket,
+                Key=chave_meta,
+                Body=json.dumps(filme, ensure_ascii=False).encode("utf-8"),
+                ContentType="application/json; charset=utf-8",
+            )
+            self.enviar_json(201, {"sucesso": True, "filme": filme})
+
+        except ValueError as e:
+            self.enviar_json(400, {"sucesso": False, "erro": str(e)})
+        except Exception as e:
+            print("[NEXO R2] Falha ao publicar:", type(e).__name__)
+            self.enviar_json(502, {
+                "sucesso": False,
+                "erro": "Não foi possível confirmar a gravação no catálogo R2."
+            })
+
+    def _nexo_r2_gerenciar(self):
+        import json
+        import re
+
+        try:
+            if not self._nexo_r2_owner():
+                self.enviar_json(403, {
+                    "sucesso": False,
+                    "erro": "Apenas o proprietário pode gerenciar o NEXO."
+                })
+                return
+
+            dados = self._nexo_r2_body()
+            acao = str(dados.get("acao", "")).strip().lower()
+            filme_id = str(dados.get("id", "")).strip()
+
+            if acao not in ("editar", "ocultar", "ativar", "excluir"):
+                self.enviar_json(400, {
+                    "sucesso": False,
+                    "erro": "Ação de gerenciamento inválida."
+                })
+                return
+
+            if not re.fullmatch(r"[a-fA-F0-9]{32}", filme_id):
+                self.enviar_json(400, {
+                    "sucesso": False,
+                    "erro": "Identificador de filme inválido."
+                })
+                return
+
+            cliente, bucket = self._nexo_r2_config()
+            chave_meta = "nexo/catalogo/" + filme_id + ".json"
+
+            try:
+                obj = cliente.get_object(Bucket=bucket, Key=chave_meta)
+                filme = json.loads(obj["Body"].read().decode("utf-8"))
+            except Exception:
+                self.enviar_json(404, {
+                    "sucesso": False,
+                    "erro": "Conteúdo não encontrado no catálogo."
+                })
+                return
+
+            if not isinstance(filme, dict) or filme.get("id") != filme_id:
+                self.enviar_json(404, {
+                    "sucesso": False,
+                    "erro": "Registro de conteúdo inválido."
+                })
+                return
+
+            if acao == "editar":
+                if "titulo" in dados:
+                    titulo = str(dados["titulo"]).strip()
+                    if not titulo:
+                        self.enviar_json(400, {
+                            "sucesso": False,
+                            "erro": "O título não pode ficar vazio."
+                        })
+                        return
+                    filme["titulo"] = titulo[:200]
+
+                if "descricao" in dados:
+                    filme["descricao"] = str(dados["descricao"])[:10000]
+
+                if "ano" in dados:
+                    filme["ano"] = str(dados["ano"])[:10]
+
+                if "categoria" in dados:
+                    filme["categoria"] = str(dados["categoria"])[:500]
+
+                if "destaque" in dados:
+                    if not isinstance(dados["destaque"], bool):
+                        self.enviar_json(400, {
+                            "sucesso": False,
+                            "erro": "O campo destaque deve ser verdadeiro ou falso."
+                        })
+                        return
+                    filme["destaque"] = dados["destaque"]
+
+            elif acao == "ocultar":
+                filme["ativo"] = False
+
+            elif acao == "ativar":
+                filme["ativo"] = True
+
+            elif acao == "excluir":
+                # Remove o registro do catálogo, preservando a mídia no R2.
+                # A limpeza física exige verificar se outros registros usam os arquivos.
+                cliente.delete_object(Bucket=bucket, Key=chave_meta)
+                self.enviar_json(200, {
+                    "sucesso": True,
+                    "acao": "excluir",
+                    "id": filme_id,
+                    "midia_preservada": True
+                })
+                return
+
+            cliente.put_object(
+                Bucket=bucket,
+                Key=chave_meta,
+                Body=json.dumps(filme, ensure_ascii=False).encode("utf-8"),
+                ContentType="application/json; charset=utf-8",
+            )
+
+            self.enviar_json(200, {
+                "sucesso": True,
+                "acao": acao,
+                "filme": filme
+            })
+
+        except ValueError as e:
+            self.enviar_json(400, {"sucesso": False, "erro": str(e)})
+        except Exception as e:
+            print("[NEXO R2] Falha no gerenciamento:", type(e).__name__)
+            self.enviar_json(502, {
+                "sucesso": False,
+                "erro": "Não foi possível concluir a operação de gerenciamento."
+            })
+
+    def _nexo_r2_catalogo(self):
+        import json
+        try:
+            cliente, bucket = self._nexo_r2_config()
+            filmes = []
+            paginador = cliente.get_paginator("list_objects_v2")
+            for pagina in paginador.paginate(Bucket=bucket, Prefix="nexo/catalogo/"):
+                for item in pagina.get("Contents", []):
+                    chave = item.get("Key", "")
+                    if not chave.endswith(".json"):
+                        continue
+                    try:
+                        obj = cliente.get_object(Bucket=bucket, Key=chave)
+                        filme = json.loads(obj["Body"].read().decode("utf-8"))
+                        if not isinstance(filme, dict) or not filme.get("id"):
+                            continue
+                        for campo, campo_url in (
+                            ("video_key", "video_url"),
+                            ("capa_key", "capa_url"),
+                            ("banner_key", "banner_url"),
+                        ):
+                            key = str(filme.get(campo, "")).strip()
+                            if key:
+                                filme[campo_url] = cliente.generate_presigned_url(
+                                    "get_object",
+                                    Params={"Bucket": bucket, "Key": key},
+                                    ExpiresIn=3600,
+                                )
+                        if filme.get("ativo", True):
+                            filmes.append(filme)
+                    except Exception as e:
+                        print("[NEXO R2] Registro ignorado:", type(e).__name__)
+            filmes.sort(key=lambda x: str(x.get("criado_em", "")), reverse=True)
+            self.enviar_json(200, {"sucesso": True, "filmes": filmes})
+        except Exception as e:
+            print("[NEXO R2] Falha no catálogo:", type(e).__name__)
+            self.enviar_json(502, {"sucesso": False, "erro": "Não foi possível carregar o catálogo R2."})
+
     def do_GET(self):
+        if self.path.split("?", 1)[0] == "/nexo/catalogo":
+            self._nexo_r2_catalogo()
+            return
+
         if self.path == "/have/catalog":
             self.enviar_json(200, buscar_catalogo_have())
             return
@@ -596,60 +916,153 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             self.enviar_json(502, {"erro": "Não foi possível enviar a foto. Tente novamente."})
 
-    def do_nexo_publicar_filme(self):
-        autorizacao = self.headers.get("Authorization", "").strip()
 
-        if not autorizacao.startswith("Bearer "):
-            self.enviar_json(
-                401,
-                {"sucesso": False, "erro": "Token Firebase não enviado."}
-            )
-            return
+    def do_notificar(self):
+        import os
+        import hmac
 
-        token = autorizacao[7:].strip()
+        segredo = os.environ.get("DANIKEAI_NOTIFY_SECRET", "").strip()
+        recebido = self.headers.get("X-DaNikeAI-Secret", "")
 
-        if not token:
-            self.enviar_json(
-                401,
-                {"sucesso": False, "erro": "Token Firebase vazio."}
-            )
+        if not segredo or not hmac.compare_digest(recebido, segredo):
+            self.enviar_json(401, {"erro": "Não autorizado."})
             return
 
         try:
-            if not usuario_e_proprietario(token):
+            tamanho = int(self.headers.get("Content-Length", "0"))
+            if tamanho <= 0 or tamanho > 1048576:
+                self.enviar_json(400, {"erro": "Corpo da requisição inválido."})
+                return
+
+            dados = json.loads(self.rfile.read(tamanho).decode("utf-8"))
+            if not isinstance(dados, dict):
+                self.enviar_json(400, {"erro": "JSON inválido."})
+                return
+
+            uid = str(dados.get("uid", "")).strip()
+            tipo = str(dados.get("tipo", "geral")).strip() or "geral"
+            titulo = str(dados.get("titulo", "DaNikeAI")).strip() or "DaNikeAI"
+            texto = str(dados.get("texto", "")).strip()
+            remetente_uid = str(
+                dados.get("remetente_uid", dados.get("remetenteUid", ""))
+            ).strip()
+            fila_id = str(dados.get("fila_id", "")).strip()
+
+            if not uid or not texto:
+                self.enviar_json(400, {"erro": "uid e texto são obrigatórios."})
+                return
+
+            firebase_json = os.environ.get(
+                "FIREBASE_SERVICE_ACCOUNT_JSON", ""
+            ).strip()
+
+            if not firebase_json:
                 self.enviar_json(
-                    403,
-                    {"sucesso": False, "erro": "Apenas o proprietário pode publicar filmes."}
+                    503,
+                    {"erro": "Firebase Admin não configurado no servidor."}
                 )
                 return
-        except Exception:
-            self.enviar_json(
-                401,
-                {"sucesso": False, "erro": "Token Firebase inválido ou expirado."}
+
+            import firebase_admin
+            from firebase_admin import credentials, firestore, messaging
+
+            if not firebase_admin._apps:
+                credencial = credentials.Certificate(json.loads(firebase_json))
+                firebase_admin.initialize_app(
+                    credencial, {"projectId": "da-nike-films"}
+                )
+
+            db = firestore.client()
+            referencia = (
+                db.collection("usuarios")
+                .document(uid)
+                .collection("dispositivos")
             )
-            return
 
-        token_base44 = carregar_token_base44()
+            tokens = []
+            for dispositivo in referencia.stream():
+                registro = dispositivo.to_dict() or {}
+                token = str(registro.get("token") or dispositivo.id).strip()
+                if token and token not in tokens:
+                    tokens.append(token)
 
-        if not token_base44:
-            self.enviar_json(
-                500,
-                {
-                    "sucesso": False,
-                    "erro": "BASE44_ADMIN_TOKEN não configurado no servidor."
-                }
-            )
-            return
+            if not tokens:
+                self.enviar_json(200, {
+                    "status": "sem_dispositivo",
+                    "mensagem": "Nenhum dispositivo FCM encontrado."
+                })
+                return
 
-        self.enviar_json(
-            200,
-            {
-                "sucesso": True,
-                "mensagem": "Autenticação do proprietário validada. Ponte Base44 pronta."
-            }
-        )
+            enviados = 0
+            falhas = 0
+
+            for token in tokens:
+                try:
+                    mensagem = messaging.Message(
+                        data={
+                            "tipo": tipo[:100],
+                            "titulo": titulo[:200],
+                            "texto": texto[:3000],
+                            "remetenteUid": remetente_uid[:200],
+                        },
+                        token=token,
+                        android=messaging.AndroidConfig(priority="high"),
+                    )
+                    messaging.send(mensagem)
+                    enviados += 1
+                except Exception as erro:
+                    falhas += 1
+                    print(
+                        "[FCM] Falha ao enviar para um dispositivo:",
+                        type(erro).__name__
+                    )
+
+            if enviados and fila_id:
+                try:
+                    db.collection("fila_notificacoes").document(fila_id).update({
+                        "enviada": True,
+                        "emProcessamento": False,
+                        "enviadaEm": firestore.SERVER_TIMESTAMP,
+                        "totalDispositivos": enviados,
+                    })
+                except Exception as erro:
+                    print("[FCM] Não foi possível atualizar a fila:", type(erro).__name__)
+
+            if enviados:
+                self.enviar_json(200, {
+                    "status": "enviado",
+                    "metodo": "fcm_direto",
+                    "totalDispositivos": enviados,
+                    "falhas": falhas,
+                })
+            else:
+                self.enviar_json(502, {
+                    "erro": "Nenhum FCM foi enviado.",
+                    "falhas": falhas,
+                })
+
+        except (ValueError, UnicodeDecodeError):
+            self.enviar_json(400, {"erro": "JSON ou corpo inválido."})
+        except Exception as erro:
+            print("[FCM] Erro geral:", type(erro).__name__)
+            self.enviar_json(500, {"erro": "Falha interna no envio FCM."})
+
 
     def do_POST(self):
+        rota_nexo = self.path.split("?", 1)[0]
+        if rota_nexo == "/notificar":
+            self.do_notificar()
+            return
+        if rota_nexo == "/nexo/r2/upload-url":
+            self._nexo_r2_upload_url()
+            return
+        if rota_nexo == "/nexo/publicar-filme":
+            self._nexo_r2_publicar()
+            return
+        if rota_nexo == "/nexo/gerenciar-filme":
+            self._nexo_r2_gerenciar()
+            return
+
         if self.path == "/profile/delete-photo":
             self.do_delete_profile_photo()
             return
@@ -658,9 +1071,6 @@ class Handler(BaseHTTPRequestHandler):
             return
         if self.path == "/equipe/delete-photo":
             self.do_delete_team_photo()
-            return
-        if self.path == "/nexo/publicar-filme":
-            self.do_nexo_publicar_filme()
             return
 
         if self.path != "/ask":

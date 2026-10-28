@@ -31,225 +31,206 @@ public class NeonCardDrawable extends Drawable {
 
         if (w <= 0 || h <= 0) return;
 
-        float t = (SystemClock.uptimeMillis() - inicio) / 1000f;
-
         RectF area = new RectF(0, 0, w, h);
-
         canvas.save();
         canvas.clipRect(area);
 
         int[] cores = coresDoCard();
 
-        // =========================================================
-        // FUNDO COLORIDO FORTE
-        // =========================================================
-
-        float deslocamento = (float) Math.sin(t * 0.45f) * w * 0.35f;
-
-        LinearGradient fundo = new LinearGradient(
-                -w + deslocamento,
-                0,
-                w + deslocamento,
-                h,
-                new int[]{
-                        cores[0],
-                        cores[1],
-                        cores[2],
-                        cores[0]
-                },
-                null,
-                Shader.TileMode.MIRROR
-        );
-
-        p.setShader(fundo);
+        // Fundo escuro premium
+        p.setShader(new LinearGradient(
+                0, 0, w, h,
+                cores[0],
+                cores[1],
+                Shader.TileMode.CLAMP
+        ));
         p.setStyle(Paint.Style.FILL);
-        canvas.drawRect(0, 0, w, h, p);
+        canvas.drawRoundRect(area, 24, 24, p);
         p.setShader(null);
 
-        // =========================================================
-        // MANCHAS DE LUZ GRANDES
-        // =========================================================
-
-        float movimento1 = (float) Math.sin(t * 0.8f);
-        float movimento2 = (float) Math.cos(t * 0.65f);
-
-        desenharLuz(
-                canvas,
-                w * 0.20f + movimento1 * w * 0.15f,
-                h * 0.25f,
-                h * 0.70f,
-                cores[3],
-                120
-        );
-
-        desenharLuz(
-                canvas,
-                w * 0.82f + movimento2 * w * 0.12f,
-                h * 0.72f,
-                h * 0.65f,
-                cores[4],
-                105
-        );
-
-        // =========================================================
-        // ONDAS DE LUZ
-        // =========================================================
-
-        p.setStyle(Paint.Style.STROKE);
-
-        for (int i = 0; i < 4; i++) {
-
-            float fase = t * (0.7f + i * 0.08f) + i * 1.4f;
-
-            Path onda = new Path();
-
-            float baseY = h * (0.30f + i * 0.18f);
-
-            onda.moveTo(-30, baseY);
-
-            for (int x = -30; x <= (int) w + 30; x += 12) {
-
-                float y =
-                        baseY
-                        + (float) Math.sin((x / w) * Math.PI * 2.4f + fase)
-                        * (12 + i * 5);
-
-                onda.lineTo(x, y);
-            }
-
-            p.setStrokeWidth(2.0f + i * 0.5f);
-            p.setColor(Color.argb(
-                    45 + i * 18,
-                    Color.red(cores[3]),
-                    Color.green(cores[3]),
-                    Color.blue(cores[3])
-            ));
-
-            canvas.drawPath(onda, p);
-        }
-
-        // =========================================================
-        // PARTÍCULAS
-        // =========================================================
-
-        p.setStyle(Paint.Style.FILL);
-
-        for (int i = 0; i < 18; i++) {
-
-            float px =
-                    (float) ((i * 83 + t * (18 + i)) % (w + 80)) - 40;
-
-            float py =
-                    (float) (
-                            h * 0.10f
-                            + ((i * 47) % 80) / 100f * h * 0.85f
-                    );
-
-            float pulso =
-                    2.0f
-                    + (float) Math.sin(t * 2.5f + i) * 1.8f;
-
-            p.setColor(Color.argb(
-                    100 + (i % 4) * 30,
-                    Color.red(cores[3]),
-                    Color.green(cores[3]),
-                    Color.blue(cores[3])
-            ));
-
-            canvas.drawCircle(px, py, Math.max(1.5f, pulso), p);
-        }
-
-        // =========================================================
-        // ELEMENTO CENTRAL ESPECÍFICO
-        // =========================================================
-
-        if (tipo.equals("IA")) {
-            desenharIA(canvas, w, h, t, cores);
-        } else if (tipo.equals("Filmes")) {
-            desenharFilmes(canvas, w, h, t, cores);
-        } else if (tipo.equals("Histórico")) {
-            desenharHistorico(canvas, w, h, t, cores);
-        } else if (tipo.equals("Perfil")) {
-            desenharPerfil(canvas, w, h, t, cores);
-        } else if (tipo.equals("ADM")) {
-            desenharADM(canvas, w, h, t, cores);
-        } else if (tipo.equals("Rave")) {
-            desenharRave(canvas, w, h, t, cores);
-        }
-
-        // =========================================================
-        // REFLEXO PASSANDO PELO BOTÃO
-        // =========================================================
-
-        float reflexoX =
-                ((t * 170f) % (w + 280f)) - 140f;
-
-        LinearGradient reflexo = new LinearGradient(
-                reflexoX - 90,
-                0,
-                reflexoX + 90,
-                0,
+        // Brilho discreto
+        RadialGradient brilho = new RadialGradient(
+                w * 0.82f,
+                h * 0.50f,
+                h * 0.85f,
+                Color.argb(55, Color.red(cores[3]), Color.green(cores[3]), Color.blue(cores[3])),
                 Color.TRANSPARENT,
-                Color.argb(85, 255, 255, 255),
                 Shader.TileMode.CLAMP
         );
+        glow.setShader(brilho);
+        canvas.drawRoundRect(area, 24, 24, glow);
+        glow.setShader(null);
 
-        p.setShader(reflexo);
+        // Ícone/arte temática à esquerda
+        float cx = 58;
+        float cy = h * 0.50f;
+        float raio = Math.min(30, h * 0.25f);
+
         p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(35, 255, 255, 255));
+        canvas.drawRoundRect(
+                cx - raio - 10,
+                cy - raio - 10,
+                cx + raio + 10,
+                cy + raio + 10,
+                18,
+                18,
+                p
+        );
 
-        canvas.drawRect(0, 0, w, h, p);
+        desenharIcone(canvas, cx, cy, raio, cores);
 
-        p.setShader(null);
+        // Arte temática no lado direito do cartão
+        float tempo = (SystemClock.uptimeMillis() - inicio) / 1000f;
 
-        // =========================================================
-        // BORDA NEON
-        // =========================================================
+        if (tipo.equals("IA")) {
+            desenharIA(canvas, w, h, tempo, cores);
+        } else if (tipo.equals("Filmes") || tipo.equals("Rave")) {
+            desenharFilmes(canvas, w, h, tempo, cores);
+        } else if (tipo.equals("Histórico")) {
+            desenharHistorico(canvas, w, h, tempo, cores);
+        } else if (tipo.equals("Perfil")) {
+            desenharPerfil(canvas, w, h, tempo, cores);
+        } else if (tipo.equals("ADM")) {
+            desenharADM(canvas, w, h, tempo, cores);
+        }
+
+        // Seta circular à direita
+        float sx = w - 42;
+        p.setStyle(Paint.Style.FILL);
+        p.setColor(Color.argb(42, 255, 255, 255));
+        canvas.drawCircle(sx, cy, 19, p);
 
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(2.5f);
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setColor(Color.WHITE);
+
+        Path seta = new Path();
+        seta.moveTo(sx - 6, cy - 7);
+        seta.lineTo(sx + 2, cy);
+        seta.lineTo(sx - 6, cy + 7);
+        canvas.drawPath(seta, p);
+
+        // Borda neon elegante
+        p.setStrokeWidth(1.8f);
         p.setColor(Color.argb(
                 210,
                 Color.red(cores[3]),
                 Color.green(cores[3]),
                 Color.blue(cores[3])
         ));
-
         canvas.drawRoundRect(
-                2,
-                2,
-                w - 2,
-                h - 2,
-                28,
-                28,
-                p
-        );
-
-        // segunda borda pulsante
-
-        float pulso =
-                (float) ((Math.sin(t * 2.0f) + 1.0) / 2.0);
-
-        p.setStrokeWidth(1.2f);
-        p.setColor(Color.argb(
-                (int) (70 + pulso * 100),
-                Color.red(cores[4]),
-                Color.green(cores[4]),
-                Color.blue(cores[4])
-        ));
-
-        canvas.drawRoundRect(
-                7,
-                7,
-                w - 7,
-                h - 7,
+                1,
+                1,
+                w - 1,
+                h - 1,
                 24,
                 24,
                 p
         );
 
         canvas.restore();
+    }
 
-        invalidateSelf();
+    private void desenharIcone(
+            Canvas canvas,
+            float cx,
+            float cy,
+            float r,
+            int[] cores
+    ) {
+
+        p.setStrokeCap(Paint.Cap.ROUND);
+        p.setStrokeJoin(Paint.Join.ROUND);
+
+        if (tipo.equals("IA")) {
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(3);
+            p.setColor(Color.rgb(80, 225, 255));
+
+            canvas.drawCircle(cx, cy, r * 0.72f, p);
+            canvas.drawCircle(cx, cy, r * 0.34f, p);
+
+            canvas.drawLine(cx - r, cy, cx - r * 0.72f, cy, p);
+            canvas.drawLine(cx + r * 0.72f, cy, cx + r, cy, p);
+            canvas.drawLine(cx, cy - r, cx, cy - r * 0.72f, p);
+            canvas.drawLine(cx, cy + r * 0.72f, cx, cy + r, p);
+
+        } else if (tipo.equals("Filmes")) {
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(3);
+            p.setColor(Color.rgb(255, 140, 65));
+
+            canvas.drawRect(
+                    cx - r * 0.72f,
+                    cy - r * 0.48f,
+                    cx + r * 0.72f,
+                    cy + r * 0.48f,
+                    p
+            );
+
+            p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.rgb(255, 140, 65));
+
+            Path play = new Path();
+            play.moveTo(cx - 7, cy - 11);
+            play.lineTo(cx + 12, cy);
+            play.lineTo(cx - 7, cy + 11);
+            play.close();
+            canvas.drawPath(play, p);
+
+        } else if (tipo.equals("Histórico")) {
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(3);
+            p.setColor(Color.rgb(90, 220, 255));
+
+            canvas.drawCircle(cx, cy, r * 0.72f, p);
+            canvas.drawLine(cx, cy, cx, cy - r * 0.40f, p);
+            canvas.drawLine(cx, cy, cx + r * 0.32f, cy + r * 0.20f, p);
+
+        } else if (tipo.equals("Rave")) {
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(3);
+            p.setColor(Color.rgb(220, 100, 255));
+
+            canvas.drawCircle(cx, cy, r * 0.70f, p);
+
+            p.setStyle(Paint.Style.FILL);
+            Path play = new Path();
+            play.moveTo(cx - 7, cy - 11);
+            play.lineTo(cx + 12, cy);
+            play.lineTo(cx - 7, cy + 11);
+            play.close();
+            canvas.drawPath(play, p);
+
+        } else if (tipo.equals("ADM")) {
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(3);
+            p.setColor(Color.rgb(80, 255, 195));
+
+            Path escudo = new Path();
+            escudo.moveTo(cx, cy - r * 0.78f);
+            escudo.lineTo(cx + r * 0.62f, cy - r * 0.38f);
+            escudo.lineTo(cx + r * 0.48f, cy + r * 0.58f);
+            escudo.lineTo(cx, cy + r * 0.78f);
+            escudo.lineTo(cx - r * 0.48f, cy + r * 0.58f);
+            escudo.lineTo(cx - r * 0.62f, cy - r * 0.38f);
+            escudo.close();
+            canvas.drawPath(escudo, p);
+
+        } else {
+
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(3);
+            p.setColor(Color.rgb(255, 125, 70));
+            canvas.drawCircle(cx, cy, r * 0.65f, p);
+        }
     }
 
     // =============================================================
@@ -258,63 +239,64 @@ public class NeonCardDrawable extends Drawable {
 
     private int[] coresDoCard() {
 
+        // Paleta Halloween Premium: base escura, laranja e violeta.
         if (tipo.equals("IA")) {
             return new int[]{
-                    Color.rgb(0, 30, 65),
-                    Color.rgb(0, 110, 160),
-                    Color.rgb(75, 25, 150),
-                    Color.rgb(0, 245, 255),
-                    Color.rgb(170, 60, 255)
+                    Color.rgb(13, 10, 25),
+                    Color.rgb(31, 13, 37),
+                    Color.rgb(43, 18, 30),
+                    Color.rgb(255, 112, 47),
+                    Color.rgb(151, 72, 220)
             };
         }
 
         if (tipo.equals("Filmes")) {
             return new int[]{
-                    Color.rgb(55, 5, 70),
-                    Color.rgb(150, 20, 100),
-                    Color.rgb(245, 65, 100),
-                    Color.rgb(255, 100, 40),
-                    Color.rgb(180, 40, 255)
+                    Color.rgb(16, 9, 24),
+                    Color.rgb(37, 13, 35),
+                    Color.rgb(48, 17, 29),
+                    Color.rgb(255, 126, 48),
+                    Color.rgb(166, 72, 220)
             };
         }
 
         if (tipo.equals("Histórico")) {
             return new int[]{
-                    Color.rgb(3, 25, 75),
-                    Color.rgb(10, 75, 150),
-                    Color.rgb(70, 30, 170),
-                    Color.rgb(0, 220, 255),
-                    Color.rgb(120, 80, 255)
+                    Color.rgb(11, 12, 28),
+                    Color.rgb(25, 15, 38),
+                    Color.rgb(39, 17, 34),
+                    Color.rgb(255, 112, 47),
+                    Color.rgb(135, 75, 210)
             };
         }
 
         if (tipo.equals("Perfil")) {
             return new int[]{
-                    Color.rgb(0, 35, 60),
-                    Color.rgb(0, 120, 150),
-                    Color.rgb(90, 30, 150),
-                    Color.rgb(0, 255, 230),
-                    Color.rgb(210, 50, 255)
+                    Color.rgb(12, 11, 24),
+                    Color.rgb(27, 13, 34),
+                    Color.rgb(42, 17, 30),
+                    Color.rgb(255, 132, 55),
+                    Color.rgb(170, 82, 225)
             };
         }
 
         if (tipo.equals("ADM")) {
             return new int[]{
-                    Color.rgb(2, 45, 45),
-                    Color.rgb(0, 120, 105),
-                    Color.rgb(20, 70, 150),
-                    Color.rgb(0, 255, 190),
-                    Color.rgb(60, 140, 255)
+                    Color.rgb(10, 12, 24),
+                    Color.rgb(22, 14, 32),
+                    Color.rgb(37, 17, 32),
+                    Color.rgb(255, 112, 47),
+                    Color.rgb(145, 75, 215)
             };
         }
 
-        // RAVE
+        // HAVE / RAVE
         return new int[]{
-                Color.rgb(40, 0, 80),
-                Color.rgb(110, 0, 160),
-                Color.rgb(220, 0, 120),
-                Color.rgb(255, 0, 180),
-                Color.rgb(80, 30, 255)
+                Color.rgb(15, 9, 27),
+                Color.rgb(33, 12, 39),
+                Color.rgb(47, 14, 34),
+                Color.rgb(255, 112, 47),
+                Color.rgb(158, 68, 220)
         };
     }
 

@@ -876,19 +876,19 @@ public class MainActivity extends Activity {
 
 
 
-        b.setText(emoji + "\n" + titulo + "\n" + subtitulo);
+        b.setText(titulo + "\n" + subtitulo);
 
-        b.setTextSize(15);
+        b.setTextSize(16);
 
         b.setTextColor(Color.WHITE);
 
         b.setAllCaps(false);
 
-        b.setGravity(Gravity.CENTER);
+        b.setGravity(Gravity.CENTER_VERTICAL | Gravity.LEFT);
 
         b.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
 
-        b.setPadding(dp(18), dp(12), dp(18), dp(12));
+        b.setPadding(dp(108), dp(12), dp(78), dp(12));
 
 
 
@@ -1233,9 +1233,9 @@ GradientDrawable fundoCabecalho = new GradientDrawable(
 
         new int[] {
 
-                Color.rgb(5, 12, 28),
+                Color.rgb(12, 8, 21),
 
-                Color.rgb(12, 8, 32)
+                Color.rgb(31, 12, 28)
 
         }
 
@@ -1243,7 +1243,7 @@ GradientDrawable fundoCabecalho = new GradientDrawable(
 
 fundoCabecalho.setCornerRadius(dp(22));
 
-fundoCabecalho.setStroke(dp(1), Color.rgb(0, 190, 255));
+fundoCabecalho.setStroke(dp(1), Color.rgb(255, 119, 48));
 
 cabecalhoNexo.setBackground(fundoCabecalho);
 
@@ -1253,7 +1253,7 @@ cabecalhoNexo.setElevation(dp(12));
 
 ImageView logoNexoTopo = new ImageView(this);
 
-logoNexoTopo.setImageResource(R.drawable.nexo_logo);
+logoNexoTopo.setImageResource(R.drawable.nexo_halloween);
 
 logoNexoTopo.setScaleType(ImageView.ScaleType.FIT_CENTER);
 
@@ -1277,34 +1277,80 @@ perfilTopoBox.setGravity(Gravity.CENTER_HORIZONTAL);
 
 
 
-TextView botaoPerfilTopo = txt("👤", 20, Color.WHITE);
+        FrameLayout botaoPerfilTopo = new FrameLayout(this);
+        botaoPerfilTopo.setElevation(dp(10));
 
-botaoPerfilTopo.setGravity(Gravity.CENTER);
+        GradientDrawable fundoPerfilTopo = new GradientDrawable();
+        fundoPerfilTopo.setShape(GradientDrawable.OVAL);
+        fundoPerfilTopo.setColor(Color.rgb(20, 11, 29));
+        fundoPerfilTopo.setStroke(dp(1), Color.rgb(171, 79, 220));
+        botaoPerfilTopo.setBackground(fundoPerfilTopo);
+        botaoPerfilTopo.setClipToOutline(true);
+        botaoPerfilTopo.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(android.view.View view, android.graphics.Outline outline) {
+                outline.setOval(0, 0, view.getWidth(), view.getHeight());
+            }
+        });
 
+        ImageView imagemPerfilTopo = new ImageView(this);
+        imagemPerfilTopo.setImageResource(android.R.drawable.ic_menu_myplaces);
+        imagemPerfilTopo.setColorFilter(Color.WHITE);
+        imagemPerfilTopo.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        imagemPerfilTopo.setClipToOutline(true);
+        imagemPerfilTopo.setContentDescription("Perfil");
 
+        botaoPerfilTopo.addView(
+                imagemPerfilTopo,
+                new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER)
+        );
 
-GradientDrawable fundoPerfilTopo = new GradientDrawable();
+        perfilTopoBox.addView(
+                botaoPerfilTopo,
+                new LinearLayout.LayoutParams(dp(42), dp(42))
+        );
 
-fundoPerfilTopo.setShape(GradientDrawable.OVAL);
+        String fotoPerfilTopo = getSharedPreferences(
+                "DaNikeAI_Dados",
+                MODE_PRIVATE
+        ).getString("foto_perfil_url", "");
 
-fundoPerfilTopo.setColor(Color.rgb(10, 24, 48));
+        if (fotoPerfilTopo == null || fotoPerfilTopo.trim().isEmpty()) {
+            com.google.firebase.auth.FirebaseUser usuarioPerfilTopo =
+                    com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
 
-fundoPerfilTopo.setStroke(dp(1), Color.rgb(70, 145, 255));
+            if (usuarioPerfilTopo != null) {
+                String uidPerfilTopo = usuarioPerfilTopo.getUid();
 
-botaoPerfilTopo.setBackground(fundoPerfilTopo);
+                com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                        .collection("usuarios")
+                        .document(uidPerfilTopo)
+                        .get()
+                        .addOnSuccessListener(doc -> {
+                            if (!doc.exists()) return;
 
-botaoPerfilTopo.setElevation(dp(10));
+                            String fotoFirebase = doc.getString("fotoUrl");
+                            if (fotoFirebase == null || fotoFirebase.trim().isEmpty()) return;
 
+                            getSharedPreferences(
+                                    "DaNikeAI_Dados",
+                                    MODE_PRIVATE
+                            ).edit()
+                                    .putString("foto_perfil_url", fotoFirebase.trim())
+                                    .apply();
 
-
-perfilTopoBox.addView(
-
-        botaoPerfilTopo,
-
-        new LinearLayout.LayoutParams(dp(42), dp(42))
-
-);
-
+                            carregarAvatarHome(
+                                    imagemPerfilTopo,
+                                    fotoFirebase.trim()
+                            );
+                        });
+            }
+        } else {
+            carregarAvatarHome(
+                    imagemPerfilTopo,
+                    fotoPerfilTopo.trim()
+            );
+        }
 
 
 TextView textoPerfilTopo = txt("PERFIL", 9, Color.WHITE);
@@ -1365,9 +1411,9 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         telaHomeVazia.setGravity(Gravity.CENTER_HORIZONTAL);
 
-        telaHomeVazia.setPadding(dp(14), dp(112), dp(14), dp(90));
+        telaHomeVazia.setPadding(0, 0, 0, 0);
 
-        telaHomeVazia.setBackgroundColor(Color.rgb(3, 6, 15));
+        telaHomeVazia.setBackgroundColor(Color.TRANSPARENT);
 
 
 
@@ -1375,7 +1421,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                 new FrameLayout.LayoutParams(-1, -1);
 
-        homeVaziaParams.bottomMargin = dp(76);
+        homeVaziaParams.bottomMargin = 0;
 
         raiz.addView(telaHomeVazia, homeVaziaParams);
         cabecalhoNexo.bringToFront();
@@ -3043,7 +3089,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                 new LinearLayout.LayoutParams(
 
-                        -1,
+                        (int) (getResources().getDisplayMetrics().widthPixels * 0.84f),
 
                         dp(155)
 
@@ -3051,15 +3097,61 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-        iaParams.setMargins(0, dp(10), 0, dp(16));
+        iaParams.setMargins(0, 0, 0, dp(4));
 
 
 
         FrameLayout containerIA = new FrameLayout(this);
 
-        containerIA.setClipChildren(false);
+        
+        containerIA.setClipChildren(true);
+        containerIA.setClickable(false);
+        containerIA.setFocusable(false);
+        containerIA.setEnabled(false);
+  containerIA.setClickable(false);
+  containerIA.setFocusable(false);
 
-        containerIA.addView(ia, new FrameLayout.LayoutParams(-1, -1));
+        android.widget.ImageView imagemIA =
+                new android.widget.ImageView(this);
+
+        imagemIA.setImageResource(R.drawable.ia_home);
+        imagemIA.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        imagemIA.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
+        containerIA.addView(
+                imagemIA,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+
+        ia.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        ia.setTextColor(android.graphics.Color.TRANSPARENT);
+        ia.setPadding(0, 0, 0, 0);
+        ia.setStateListAnimator(null);
+
+        android.graphics.drawable.StateListDrawable efeitoToqueIA =
+                new android.graphics.drawable.StateListDrawable();
+
+        android.graphics.drawable.GradientDrawable pressionadoIA =
+                new android.graphics.drawable.GradientDrawable();
+        pressionadoIA.setColor(0x38FFFFFF);
+        pressionadoIA.setCornerRadius(dp(18));
+
+        android.graphics.drawable.GradientDrawable normalIA =
+                new android.graphics.drawable.GradientDrawable();
+        normalIA.setColor(android.graphics.Color.TRANSPARENT);
+        normalIA.setCornerRadius(dp(18));
+
+        efeitoToqueIA.addState(
+                new int[]{android.R.attr.state_pressed},
+                pressionadoIA
+        );
+        efeitoToqueIA.addState(
+                new int[]{},
+                normalIA
+        );
+
+        ia.setBackground(efeitoToqueIA);
+
 
 
 
@@ -3166,7 +3258,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                 new LinearLayout.LayoutParams(
 
-                        -1,
+                        (int) (getResources().getDisplayMetrics().widthPixels * 0.84f),
 
                         dp(155)
 
@@ -3174,15 +3266,61 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-        historicoParams.setMargins(0, 0, 0, dp(16));
+        historicoParams.setMargins(0, 0, 0, dp(4));
 
 
 
         FrameLayout containerHistorico = new FrameLayout(this);
 
-        containerHistorico.setClipChildren(false);
+        
+        containerHistorico.setClipChildren(true);
+        containerHistorico.setClickable(false);
+        containerHistorico.setFocusable(false);
+        containerHistorico.setEnabled(false);
+  containerHistorico.setClickable(false);
+  containerHistorico.setFocusable(false);
 
-        containerHistorico.addView(historico, new FrameLayout.LayoutParams(-1, -1));
+        android.widget.ImageView imagemHistorico =
+                new android.widget.ImageView(this);
+
+        imagemHistorico.setImageResource(R.drawable.historico_home);
+        imagemHistorico.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        imagemHistorico.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
+        containerHistorico.addView(
+                imagemHistorico,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+
+        historico.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        historico.setTextColor(android.graphics.Color.TRANSPARENT);
+        historico.setPadding(0, 0, 0, 0);
+        historico.setStateListAnimator(null);
+
+        android.graphics.drawable.StateListDrawable efeitoToqueHistorico =
+                new android.graphics.drawable.StateListDrawable();
+
+        android.graphics.drawable.GradientDrawable pressionadoHistorico =
+                new android.graphics.drawable.GradientDrawable();
+        pressionadoHistorico.setColor(0x38FFFFFF);
+        pressionadoHistorico.setCornerRadius(dp(18));
+
+        android.graphics.drawable.GradientDrawable normalHistorico =
+                new android.graphics.drawable.GradientDrawable();
+        normalHistorico.setColor(android.graphics.Color.TRANSPARENT);
+        normalHistorico.setCornerRadius(dp(18));
+
+        efeitoToqueHistorico.addState(
+                new int[]{android.R.attr.state_pressed},
+                pressionadoHistorico
+        );
+        efeitoToqueHistorico.addState(
+                new int[]{},
+                normalHistorico
+        );
+
+        historico.setBackground(efeitoToqueHistorico);
+
 
 
 
@@ -3320,7 +3458,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         Button rave = card(
 
-                "Have",
+                "Filmes e Séries",
 
                 "Acessar",
 
@@ -3334,7 +3472,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                 new LinearLayout.LayoutParams(
 
-                        -1,
+                        (int) (getResources().getDisplayMetrics().widthPixels * 0.84f),
 
                         dp(135)
 
@@ -3342,15 +3480,55 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-        raveParams.setMargins(0, 0, 0, dp(20));
+        raveParams.setMargins(0, 0, 0, dp(4));
 
 
 
         FrameLayout containerHave = new FrameLayout(this);
 
-        containerHave.setClipChildren(false);
+        containerHave.setClipChildren(true);
 
-        containerHave.addView(rave, new FrameLayout.LayoutParams(-1, -1));
+        android.widget.ImageView imagemFilmesSeries =
+                new android.widget.ImageView(this);
+
+        imagemFilmesSeries.setImageResource(R.drawable.filmes_series_home);
+        imagemFilmesSeries.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        imagemFilmesSeries.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
+        containerHave.addView(
+                imagemFilmesSeries,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
+
+        rave.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        rave.setTextColor(android.graphics.Color.TRANSPARENT);
+        rave.setPadding(0, 0, 0, 0);
+        rave.setStateListAnimator(null);
+
+        android.graphics.drawable.StateListDrawable efeitoToqueFilmes =
+                new android.graphics.drawable.StateListDrawable();
+
+        android.graphics.drawable.GradientDrawable pressionadoFilmes =
+                new android.graphics.drawable.GradientDrawable();
+        pressionadoFilmes.setColor(0x38FFFFFF);
+        pressionadoFilmes.setCornerRadius(dp(18));
+
+        android.graphics.drawable.GradientDrawable normalFilmes =
+                new android.graphics.drawable.GradientDrawable();
+        normalFilmes.setColor(android.graphics.Color.TRANSPARENT);
+        normalFilmes.setCornerRadius(dp(18));
+
+        efeitoToqueFilmes.addState(
+                new int[]{android.R.attr.state_pressed},
+                pressionadoFilmes
+        );
+        efeitoToqueFilmes.addState(
+                new int[]{},
+                normalFilmes
+        );
+
+        rave.setBackground(efeitoToqueFilmes);
+
 
 
 
@@ -3390,73 +3568,67 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         LinearLayout.LayoutParams compartilharParams =
 
-                new LinearLayout.LayoutParams(-1, dp(135));
+                new LinearLayout.LayoutParams((int) (getResources().getDisplayMetrics().widthPixels * 0.84f), dp(135));
 
-        compartilharParams.setMargins(0, 0, 0, dp(20));
-
-
-
-        compartilharApp.setOnClickListener(v -> {
-
-            try {
-
-                String versao = getPackageManager()
-
-                        .getPackageInfo(getPackageName(), 0)
-
-                        .versionName;
+        compartilharParams.setMargins(0, 0, 0, dp(4));
 
 
 
-                String link = "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk";
+        android.widget.ImageView imagemCompartilhar =
+                new android.widget.ImageView(this);
 
+        imagemCompartilhar.setImageResource(R.drawable.compartilhar_app_home);
+        imagemCompartilhar.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
+        imagemCompartilhar.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        imagemCompartilhar.setClickable(true);
+        imagemCompartilhar.setFocusable(true);
+        imagemCompartilhar.setEnabled(true);
 
+        FrameLayout containerCompartilhar =
+                new FrameLayout(this);
 
+        containerCompartilhar.setClipChildren(true);
+        containerCompartilhar.setClickable(false);
+        containerCompartilhar.setFocusable(false);
 
+        containerCompartilhar.addView(
+                imagemCompartilhar,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
 
-                String mensagem =
+        compartilharApp.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        compartilharApp.setTextColor(android.graphics.Color.TRANSPARENT);
+        compartilharApp.setPadding(0, 0, 0, 0);
+        compartilharApp.setStateListAnimator(null);
 
-                        "🚀 Baixe o DaNikeAI!\n\n"
+        android.graphics.drawable.StateListDrawable efeitoToqueCompartilhar =
+                new android.graphics.drawable.StateListDrawable();
 
-                        + "Versão atual: " + versao + "\n\n"
+        android.graphics.drawable.GradientDrawable pressionadoCompartilhar =
+                new android.graphics.drawable.GradientDrawable();
+        pressionadoCompartilhar.setColor(0x38FFFFFF);
+        pressionadoCompartilhar.setCornerRadius(dp(18));
 
-                        + link;
+        android.graphics.drawable.GradientDrawable normalCompartilhar =
+                new android.graphics.drawable.GradientDrawable();
+        normalCompartilhar.setColor(android.graphics.Color.TRANSPARENT);
+        normalCompartilhar.setCornerRadius(dp(18));
 
+        efeitoToqueCompartilhar.addState(
+                new int[]{android.R.attr.state_pressed},
+                pressionadoCompartilhar
+        );
+        efeitoToqueCompartilhar.addState(
+                new int[]{},
+                normalCompartilhar
+        );
 
+        compartilharApp.setBackground(efeitoToqueCompartilhar);
 
-                Intent compartilhar = new Intent(Intent.ACTION_SEND);
-
-                compartilhar.setType("text/plain");
-
-                compartilhar.putExtra(Intent.EXTRA_TEXT, mensagem);
-
-
-
-                startActivity(Intent.createChooser(
-
-                        compartilhar,
-
-                        "Compartilhar DaNikeAI"
-
-                ));
-
-
-
-            } catch (Exception e) {
-
-                Toast.makeText(
-
-                        MainActivity.this,
-
-                        "Não foi possível compartilhar o app.",
-
-                        Toast.LENGTH_SHORT
-
-                ).show();
-
-            }
-
-        });
+        containerCompartilhar.addView(
+                compartilharApp,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
 
 
 
@@ -3475,14 +3647,36 @@ botaoPerfilTopo.setOnClickListener(v ->
         }
 
         ScrollView homeCardsScroll = new ScrollView(this);
-        homeCardsScroll.setFillViewport(false);
+        homeCardsScroll.setFillViewport(true);
         homeCardsScroll.setVerticalScrollBarEnabled(false);
         homeCardsScroll.setClipToPadding(false);
 
         LinearLayout homeCards = new LinearLayout(this);
         homeCards.setOrientation(LinearLayout.VERTICAL);
         homeCards.setGravity(Gravity.CENTER_HORIZONTAL);
-        homeCards.setPadding(0, dp(2), 0, dp(16));
+        int larguraTelaHome = getResources().getDisplayMetrics().widthPixels;
+        int alturaTelaHome = getResources().getDisplayMetrics().heightPixels;
+
+        // Bloco compacto e centralizado.
+        int espacoBotoesResponsivo =
+                larguraTelaHome < dp(600) ? dp(4) : dp(6);
+
+        int alturaBloco =
+                dp(155) + dp(155) + dp(135) + dp(155)
+                + (espacoBotoesResponsivo * 3);
+
+        int topoHomeResponsivo =
+                Math.max(
+                        dp(24),
+                        (alturaTelaHome - alturaBloco) / 2
+                );
+
+        homeCards.setPadding(
+                0,
+                topoHomeResponsivo,
+                0,
+                dp(24)
+        );
 
         // IA
         if (containerIA.getParent() instanceof android.view.ViewGroup) {
@@ -3496,11 +3690,7 @@ botaoPerfilTopo.setOnClickListener(v ->
         }
         homeCards.addView(containerHistorico, historicoParams);
 
-        // Perfil
-        if (containerPerfil.getParent() instanceof android.view.ViewGroup) {
-            ((android.view.ViewGroup) containerPerfil.getParent()).removeView(containerPerfil);
-        }
-        homeCards.addView(containerPerfil, perfilParams);
+        // Perfil removido da Home — função/tela de Perfil permanece intacta.
 
         // Have
         if (containerHave.getParent() instanceof android.view.ViewGroup) {
@@ -3512,7 +3702,7 @@ botaoPerfilTopo.setOnClickListener(v ->
         if (compartilharApp.getParent() instanceof android.view.ViewGroup) {
             ((android.view.ViewGroup) compartilharApp.getParent()).removeView(compartilharApp);
         }
-        homeCards.addView(compartilharApp, compartilharParams);
+        homeCards.addView(containerCompartilhar, compartilharParams);
 
         homeCardsScroll.addView(
                 homeCards,
@@ -3522,6 +3712,22 @@ botaoPerfilTopo.setOnClickListener(v ->
         // Camada visual de Halloween: fumaça e aranha atrás dos cartões.
         android.widget.FrameLayout halloweenFrame =
                 new android.widget.FrameLayout(this);
+
+        android.widget.ImageView halloweenBackground =
+                new android.widget.ImageView(this);
+        halloweenBackground.setImageResource(R.drawable.nexo_halloween_fundo);
+        halloweenBackground.setScaleType(
+                android.widget.ImageView.ScaleType.CENTER_CROP
+        );
+        halloweenBackground.setAdjustViewBounds(false);
+        halloweenBackground.setAlpha(1.0f);
+        halloweenBackground.setClickable(false);
+        halloweenBackground.setFocusable(false);
+
+        halloweenFrame.addView(
+                halloweenBackground,
+                new android.widget.FrameLayout.LayoutParams(-1, -1)
+        );
 
         HalloweenHomeOverlay halloweenOverlay =
                 new HalloweenHomeOverlay(this);
@@ -3647,9 +3853,8 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         );
 
-        barraNavegacao.setBackground(fundoBarra);
-
-        barraNavegacao.setElevation(dp(22));
+        barraNavegacao.setBackgroundColor(Color.TRANSPARENT);
+        barraNavegacao.setElevation(0f);
 
 
 
@@ -4178,110 +4383,168 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
         // =========================
 
+        // CLIQUE RESTRITO À ÁREA REALMENTE VISÍVEL DA IMAGEM
+        java.util.function.BiConsumer<android.widget.ImageView, Runnable> cliqueImagem =
+        (imagem, acao) -> {
+
+            // A imagem é o único elemento responsável pelo toque.
+            imagem.setClickable(true);
+            imagem.setFocusable(true);
+            imagem.setEnabled(true);
+
+            imagem.setOnTouchListener((v, event) -> {
+
+                android.graphics.drawable.Drawable drawable =
+                        imagem.getDrawable();
+
+                if (drawable == null) {
+                    return false;
+                }
+
+                float largura = imagem.getWidth();
+                float altura = imagem.getHeight();
+
+                int dw = drawable.getIntrinsicWidth();
+                int dh = drawable.getIntrinsicHeight();
+
+                if (largura <= 0 || altura <= 0 || dw <= 0 || dh <= 0) {
+                    return false;
+                }
+
+                float escala = Math.min(
+                        largura / (float) dw,
+                        altura / (float) dh
+                );
+
+                float larguraVisivel = dw * escala;
+                float alturaVisivel = dh * escala;
+
+                float esquerda =
+                        (largura - larguraVisivel) / 2f;
+
+                float topo =
+                        (altura - alturaVisivel) / 2f;
+
+                boolean dentro =
+                        event.getX() >= esquerda &&
+                        event.getX() <= esquerda + larguraVisivel &&
+                        event.getY() >= topo &&
+                        event.getY() <= topo + alturaVisivel;
+
+                if (!dentro) {
+                    return false;
+                }
+
+                switch (event.getAction()) {
+
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        imagem.setAlpha(0.68f);
+                        return true;
+
+                    case android.view.MotionEvent.ACTION_UP:
+                        imagem.setAlpha(1f);
+                        imagem.performClick();
+                        return true;
+
+                    case android.view.MotionEvent.ACTION_CANCEL:
+                        imagem.setAlpha(1f);
+                        return true;
+                }
+
+                return true;
+            });
+
+            imagem.setOnClickListener(v -> {
+                imagem.setAlpha(1f);
+                acao.run();
+            });
+        };
+
         // CLIQUES
 
         // =========================
 
 
 
-        ia.setOnClickListener(v -> {
 
+        cliqueImagem.accept(imagemIA, () -> {
             abrirAreaComManutencao(
-
                     "ia",
-
                     "IA",
-
                     () -> {
-
-                        Intent intent =
-
-                                new Intent(
-
-                                        MainActivity.this,
-
-                                        IAActivity.class
-
-                                );
-
+                        Intent intent = new Intent(
+                                MainActivity.this,
+                                IAActivity.class
+                        );
                         startActivity(intent);
-
                     }
-
             );
-
         });
 
-
-
-        filmes.setOnClickListener(v -> {
-            if (!nexoUsuarioProprietario()) {
-                android.widget.Toast.makeText(
-                        MainActivity.this,
-                        "Área exclusiva do proprietário.",
-                        android.widget.Toast.LENGTH_SHORT
-                ).show();
-                return;
-            }
-
-
+        cliqueImagem.accept(imagemHistorico, () -> {
             abrirAreaComManutencao(
-
-                    "filmes",
-
-                    "FILMES",
-
-                    () -> {
-
-                        Intent intent =
-
-                                new Intent(
-
-                                        MainActivity.this,
-
-                                        com.danike.ai.nexo.NexoFilmesActivity.class
-
-                                );
-
-                        startActivity(intent);
-
-                    }
-
-            );
-
-        });
-
-
-
-        historico.setOnClickListener(v -> {
-
-            abrirAreaComManutencao(
-
                     "historico",
-
                     "HISTÓRICO",
-
                     () -> {
-
-                        Intent intent =
-
-                                new Intent(
-
-                                        MainActivity.this,
-
-                                        HistoricoActivity.class
-
-                                );
-
+                        Intent intent = new Intent(
+                                MainActivity.this,
+                                HistoricoActivity.class
+                        );
                         startActivity(intent);
-
                     }
-
             );
-
         });
 
+        cliqueImagem.accept(imagemFilmesSeries, () -> {
+            abrirAreaComManutencao(
+                    "have",
+                    "HAVE",
+                    () -> {
+                        Intent intent = new Intent(
+                                MainActivity.this,
+                                HaveLoginActivity.class
+                        );
+                        startActivity(intent);
+                    }
+            );
+        });
 
+        cliqueImagem.accept(imagemCompartilhar, () -> {
+            try {
+                String versao = getPackageManager()
+                        .getPackageInfo(getPackageName(), 0)
+                        .versionName;
+
+                String link =
+                        "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk";
+
+                String mensagem =
+                        "🚀 Baixe o DaNikeAI!\n\n" +
+                        "Versão atual: " + versao + "\n\n" +
+                        link;
+
+                Intent compartilhar =
+                        new Intent(Intent.ACTION_SEND);
+
+                compartilhar.setType("text/plain");
+                compartilhar.putExtra(
+                        Intent.EXTRA_TEXT,
+                        mensagem
+                );
+
+                startActivity(Intent.createChooser(
+                        compartilhar,
+                        "Compartilhar DaNikeAI"
+                ));
+
+            } catch (Exception e) {
+                Toast.makeText(
+                        MainActivity.this,
+                        "Não foi possível compartilhar o app.",
+                        Toast.LENGTH_SHORT
+                ).show();
+            }
+        });
 
         perfil.setOnClickListener(v -> {
 
@@ -4300,36 +4563,6 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
                                         MainActivity.this,
 
                                         PerfilActivity.class
-
-                                );
-
-                        startActivity(intent);
-
-                    }
-
-            );
-
-        });
-
-
-
-        rave.setOnClickListener(v -> {
-
-            abrirAreaComManutencao(
-
-                    "have",
-
-                    "HAVE",
-
-                    () -> {
-
-                        Intent intent =
-
-                                new Intent(
-
-                                        MainActivity.this,
-
-                                        HaveLoginActivity.class
 
                                 );
 
@@ -4433,6 +4666,94 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
     }
 
+
+
+    private void carregarAvatarHome(
+            ImageView imagem,
+            String url
+    ) {
+        new Thread(() -> {
+            try {
+                java.net.URL endereco = new java.net.URL(url);
+                java.net.HttpURLConnection conexao =
+                        (java.net.HttpURLConnection) endereco.openConnection();
+
+                conexao.setConnectTimeout(10000);
+                conexao.setReadTimeout(15000);
+                conexao.setDoInput(true);
+                conexao.connect();
+
+                java.io.InputStream entrada = conexao.getInputStream();
+
+                android.graphics.Bitmap original =
+                        android.graphics.BitmapFactory.decodeStream(entrada);
+
+                entrada.close();
+                conexao.disconnect();
+
+                if (original == null) return;
+
+                int tamanho = Math.min(
+                        original.getWidth(),
+                        original.getHeight()
+                );
+
+                int esquerda = (original.getWidth() - tamanho) / 2;
+                int topo = (original.getHeight() - tamanho) / 2;
+
+                android.graphics.Bitmap quadrado =
+                        android.graphics.Bitmap.createBitmap(
+                                original,
+                                esquerda,
+                                topo,
+                                tamanho,
+                                tamanho
+                        );
+
+                android.graphics.Bitmap circular =
+                        android.graphics.Bitmap.createBitmap(
+                                tamanho,
+                                tamanho,
+                                android.graphics.Bitmap.Config.ARGB_8888
+                        );
+
+                android.graphics.Canvas canvas =
+                        new android.graphics.Canvas(circular);
+
+                android.graphics.Paint paint =
+                        new android.graphics.Paint(
+                                android.graphics.Paint.ANTI_ALIAS_FLAG
+                        );
+
+                android.graphics.BitmapShader shader =
+                        new android.graphics.BitmapShader(
+                                quadrado,
+                                android.graphics.Shader.TileMode.CLAMP,
+                                android.graphics.Shader.TileMode.CLAMP
+                        );
+
+                paint.setShader(shader);
+
+                float centro = tamanho / 2f;
+
+                canvas.drawCircle(
+                        centro,
+                        centro,
+                        centro,
+                        paint
+                );
+
+                imagem.post(() -> {
+                    imagem.clearColorFilter();
+                    imagem.setPadding(0, 0, 0, 0);
+                    imagem.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    imagem.setImageBitmap(circular);
+                });
+
+            } catch (Exception ignored) {
+            }
+        }).start();
+    }
 
 
     // =========================

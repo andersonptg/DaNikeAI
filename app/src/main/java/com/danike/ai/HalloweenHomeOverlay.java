@@ -67,7 +67,7 @@ public final class HalloweenHomeOverlay extends View {
 
         float t = (System.currentTimeMillis() - start) / 1000f;
         int purple = Color.rgb(132, 62, 255);
-        int cyan = Color.rgb(37, 210, 255);
+        int cyan = Color.rgb(255, 125, 48);
         int orange = Color.rgb(255, 112, 47);
 
         // Névoa suave em movimento, sempre atrás dos cartões.

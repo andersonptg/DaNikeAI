@@ -50,9 +50,11 @@ public class HaveLoginActivity extends Activity {
         tela.setPadding(dp(24), dp(40), dp(24), dp(24));
         tela.setBackgroundColor(Color.BLACK);
 
-        TextView logo = texto("HAVE", 42, Color.WHITE);
-        logo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        logo.setGravity(Gravity.CENTER);
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.nexo_halloween);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        logo.setAdjustViewBounds(true);
+        logo.setContentDescription("NEXO Halloween");
 
         LinearLayout.LayoutParams logoParams =
                 new LinearLayout.LayoutParams(-1, dp(70));
@@ -220,7 +222,6 @@ public class HaveLoginActivity extends Activity {
                             HaveHomeActivity.class
                     );
                     startActivity(intent);
-                    finish();
                 })
                 .addOnFailureListener(erro -> {
 
