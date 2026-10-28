@@ -1277,80 +1277,34 @@ perfilTopoBox.setGravity(Gravity.CENTER_HORIZONTAL);
 
 
 
-        FrameLayout botaoPerfilTopo = new FrameLayout(this);
-        botaoPerfilTopo.setElevation(dp(10));
+TextView botaoPerfilTopo = txt("👤", 20, Color.WHITE);
 
-        GradientDrawable fundoPerfilTopo = new GradientDrawable();
-        fundoPerfilTopo.setShape(GradientDrawable.OVAL);
-        fundoPerfilTopo.setColor(Color.rgb(20, 11, 29));
-        fundoPerfilTopo.setStroke(dp(1), Color.rgb(171, 79, 220));
-        botaoPerfilTopo.setBackground(fundoPerfilTopo);
-        botaoPerfilTopo.setClipToOutline(true);
-        botaoPerfilTopo.setOutlineProvider(new android.view.ViewOutlineProvider() {
-            @Override
-            public void getOutline(android.view.View view, android.graphics.Outline outline) {
-                outline.setOval(0, 0, view.getWidth(), view.getHeight());
-            }
-        });
+botaoPerfilTopo.setGravity(Gravity.CENTER);
 
-        ImageView imagemPerfilTopo = new ImageView(this);
-        imagemPerfilTopo.setImageResource(android.R.drawable.ic_menu_myplaces);
-        imagemPerfilTopo.setColorFilter(Color.WHITE);
-        imagemPerfilTopo.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        imagemPerfilTopo.setClipToOutline(true);
-        imagemPerfilTopo.setContentDescription("Perfil");
 
-        botaoPerfilTopo.addView(
-                imagemPerfilTopo,
-                new FrameLayout.LayoutParams(dp(42), dp(42), Gravity.CENTER)
-        );
 
-        perfilTopoBox.addView(
-                botaoPerfilTopo,
-                new LinearLayout.LayoutParams(dp(42), dp(42))
-        );
+GradientDrawable fundoPerfilTopo = new GradientDrawable();
 
-        String fotoPerfilTopo = getSharedPreferences(
-                "DaNikeAI_Dados",
-                MODE_PRIVATE
-        ).getString("foto_perfil_url", "");
+fundoPerfilTopo.setShape(GradientDrawable.OVAL);
 
-        if (fotoPerfilTopo == null || fotoPerfilTopo.trim().isEmpty()) {
-            com.google.firebase.auth.FirebaseUser usuarioPerfilTopo =
-                    com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+fundoPerfilTopo.setColor(Color.rgb(20, 11, 29));
 
-            if (usuarioPerfilTopo != null) {
-                String uidPerfilTopo = usuarioPerfilTopo.getUid();
+fundoPerfilTopo.setStroke(dp(1), Color.rgb(171, 79, 220));
 
-                com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                        .collection("usuarios")
-                        .document(uidPerfilTopo)
-                        .get()
-                        .addOnSuccessListener(doc -> {
-                            if (!doc.exists()) return;
+botaoPerfilTopo.setBackground(fundoPerfilTopo);
 
-                            String fotoFirebase = doc.getString("fotoUrl");
-                            if (fotoFirebase == null || fotoFirebase.trim().isEmpty()) return;
+botaoPerfilTopo.setElevation(dp(10));
 
-                            getSharedPreferences(
-                                    "DaNikeAI_Dados",
-                                    MODE_PRIVATE
-                            ).edit()
-                                    .putString("foto_perfil_url", fotoFirebase.trim())
-                                    .apply();
 
-                            carregarAvatarHome(
-                                    imagemPerfilTopo,
-                                    fotoFirebase.trim()
-                            );
-                        });
-            }
-        } else {
-            carregarAvatarHome(
-                    imagemPerfilTopo,
-                    fotoPerfilTopo.trim()
-            );
-        }
+
+perfilTopoBox.addView(
+
+        botaoPerfilTopo,
+
+        new LinearLayout.LayoutParams(dp(42), dp(42))
+
+);
+
 
 
 TextView textoPerfilTopo = txt("PERFIL", 9, Color.WHITE);
@@ -3097,19 +3051,13 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-        iaParams.setMargins(0, 0, 0, dp(4));
+        iaParams.setMargins(0, dp(10), 0, dp(14));
 
 
 
         FrameLayout containerIA = new FrameLayout(this);
 
-        
         containerIA.setClipChildren(true);
-        containerIA.setClickable(false);
-        containerIA.setFocusable(false);
-        containerIA.setEnabled(false);
-  containerIA.setClickable(false);
-  containerIA.setFocusable(false);
 
         android.widget.ImageView imagemIA =
                 new android.widget.ImageView(this);
@@ -3152,6 +3100,10 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         ia.setBackground(efeitoToqueIA);
 
+        containerIA.addView(
+                ia,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
 
 
 
@@ -3266,19 +3218,13 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-        historicoParams.setMargins(0, 0, 0, dp(4));
+        historicoParams.setMargins(0, 0, 0, dp(14));
 
 
 
         FrameLayout containerHistorico = new FrameLayout(this);
 
-        
         containerHistorico.setClipChildren(true);
-        containerHistorico.setClickable(false);
-        containerHistorico.setFocusable(false);
-        containerHistorico.setEnabled(false);
-  containerHistorico.setClickable(false);
-  containerHistorico.setFocusable(false);
 
         android.widget.ImageView imagemHistorico =
                 new android.widget.ImageView(this);
@@ -3321,6 +3267,10 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         historico.setBackground(efeitoToqueHistorico);
 
+        containerHistorico.addView(
+                historico,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
 
 
 
@@ -3480,7 +3430,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
 
 
-        raveParams.setMargins(0, 0, 0, dp(4));
+        raveParams.setMargins(0, 0, 0, dp(14));
 
 
 
@@ -3529,6 +3479,10 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         rave.setBackground(efeitoToqueFilmes);
 
+        containerHave.addView(
+                rave,
+                new FrameLayout.LayoutParams(-1, -1)
+        );
 
 
 
@@ -3570,7 +3524,7 @@ botaoPerfilTopo.setOnClickListener(v ->
 
                 new LinearLayout.LayoutParams((int) (getResources().getDisplayMetrics().widthPixels * 0.84f), dp(135));
 
-        compartilharParams.setMargins(0, 0, 0, dp(4));
+        compartilharParams.setMargins(0, 0, 0, dp(14));
 
 
 
@@ -3580,16 +3534,16 @@ botaoPerfilTopo.setOnClickListener(v ->
         imagemCompartilhar.setImageResource(R.drawable.compartilhar_app_home);
         imagemCompartilhar.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);
         imagemCompartilhar.setBackgroundColor(android.graphics.Color.TRANSPARENT);
-        imagemCompartilhar.setClickable(true);
-        imagemCompartilhar.setFocusable(true);
-        imagemCompartilhar.setEnabled(true);
+        imagemCompartilhar.setClickable(false);
+        imagemCompartilhar.setFocusable(false);
+        imagemCompartilhar.setEnabled(false);
 
         FrameLayout containerCompartilhar =
                 new FrameLayout(this);
 
         containerCompartilhar.setClipChildren(true);
-        containerCompartilhar.setClickable(false);
-        containerCompartilhar.setFocusable(false);
+        containerCompartilhar.setClickable(true);
+        containerCompartilhar.setFocusable(true);
 
         containerCompartilhar.addView(
                 imagemCompartilhar,
@@ -3630,6 +3584,68 @@ botaoPerfilTopo.setOnClickListener(v ->
                 new FrameLayout.LayoutParams(-1, -1)
         );
 
+        containerCompartilhar.setOnClickListener(v -> {
+
+            try {
+
+                String versao = getPackageManager()
+
+                        .getPackageInfo(getPackageName(), 0)
+
+                        .versionName;
+
+
+
+                String link = "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk";
+
+
+
+
+
+                String mensagem =
+
+                        "🚀 Baixe o DaNikeAI!\n\n"
+
+                        + "Versão atual: " + versao + "\n\n"
+
+                        + link;
+
+
+
+                Intent compartilhar = new Intent(Intent.ACTION_SEND);
+
+                compartilhar.setType("text/plain");
+
+                compartilhar.putExtra(Intent.EXTRA_TEXT, mensagem);
+
+
+
+                startActivity(Intent.createChooser(
+
+                        compartilhar,
+
+                        "Compartilhar DaNikeAI"
+
+                ));
+
+
+
+            } catch (Exception e) {
+
+                Toast.makeText(
+
+                        MainActivity.this,
+
+                        "Não foi possível compartilhar o app.",
+
+                        Toast.LENGTH_SHORT
+
+                ).show();
+
+            }
+
+        });
+
 
 
 
@@ -3654,29 +3670,7 @@ botaoPerfilTopo.setOnClickListener(v ->
         LinearLayout homeCards = new LinearLayout(this);
         homeCards.setOrientation(LinearLayout.VERTICAL);
         homeCards.setGravity(Gravity.CENTER_HORIZONTAL);
-        int larguraTelaHome = getResources().getDisplayMetrics().widthPixels;
-        int alturaTelaHome = getResources().getDisplayMetrics().heightPixels;
-
-        // Bloco compacto e centralizado.
-        int espacoBotoesResponsivo =
-                larguraTelaHome < dp(600) ? dp(4) : dp(6);
-
-        int alturaBloco =
-                dp(155) + dp(155) + dp(135) + dp(155)
-                + (espacoBotoesResponsivo * 3);
-
-        int topoHomeResponsivo =
-                Math.max(
-                        dp(24),
-                        (alturaTelaHome - alturaBloco) / 2
-                );
-
-        homeCards.setPadding(
-                0,
-                topoHomeResponsivo,
-                0,
-                dp(24)
-        );
+        homeCards.setPadding(0, dp(90), 0, dp(18));
 
         // IA
         if (containerIA.getParent() instanceof android.view.ViewGroup) {
@@ -4383,168 +4377,110 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
         // =========================
 
-        // CLIQUE RESTRITO À ÁREA REALMENTE VISÍVEL DA IMAGEM
-        java.util.function.BiConsumer<android.widget.ImageView, Runnable> cliqueImagem =
-        (imagem, acao) -> {
-
-            // A imagem é o único elemento responsável pelo toque.
-            imagem.setClickable(true);
-            imagem.setFocusable(true);
-            imagem.setEnabled(true);
-
-            imagem.setOnTouchListener((v, event) -> {
-
-                android.graphics.drawable.Drawable drawable =
-                        imagem.getDrawable();
-
-                if (drawable == null) {
-                    return false;
-                }
-
-                float largura = imagem.getWidth();
-                float altura = imagem.getHeight();
-
-                int dw = drawable.getIntrinsicWidth();
-                int dh = drawable.getIntrinsicHeight();
-
-                if (largura <= 0 || altura <= 0 || dw <= 0 || dh <= 0) {
-                    return false;
-                }
-
-                float escala = Math.min(
-                        largura / (float) dw,
-                        altura / (float) dh
-                );
-
-                float larguraVisivel = dw * escala;
-                float alturaVisivel = dh * escala;
-
-                float esquerda =
-                        (largura - larguraVisivel) / 2f;
-
-                float topo =
-                        (altura - alturaVisivel) / 2f;
-
-                boolean dentro =
-                        event.getX() >= esquerda &&
-                        event.getX() <= esquerda + larguraVisivel &&
-                        event.getY() >= topo &&
-                        event.getY() <= topo + alturaVisivel;
-
-                if (!dentro) {
-                    return false;
-                }
-
-                switch (event.getAction()) {
-
-                    case android.view.MotionEvent.ACTION_DOWN:
-                        imagem.setAlpha(0.68f);
-                        return true;
-
-                    case android.view.MotionEvent.ACTION_UP:
-                        imagem.setAlpha(1f);
-                        imagem.performClick();
-                        return true;
-
-                    case android.view.MotionEvent.ACTION_CANCEL:
-                        imagem.setAlpha(1f);
-                        return true;
-                }
-
-                return true;
-            });
-
-            imagem.setOnClickListener(v -> {
-                imagem.setAlpha(1f);
-                acao.run();
-            });
-        };
-
         // CLIQUES
 
         // =========================
 
 
 
+        ia.setOnClickListener(v -> {
 
-        cliqueImagem.accept(imagemIA, () -> {
             abrirAreaComManutencao(
+
                     "ia",
+
                     "IA",
+
                     () -> {
-                        Intent intent = new Intent(
-                                MainActivity.this,
-                                IAActivity.class
-                        );
+
+                        Intent intent =
+
+                                new Intent(
+
+                                        MainActivity.this,
+
+                                        IAActivity.class
+
+                                );
+
                         startActivity(intent);
+
                     }
+
             );
+
         });
 
-        cliqueImagem.accept(imagemHistorico, () -> {
-            abrirAreaComManutencao(
-                    "historico",
-                    "HISTÓRICO",
-                    () -> {
-                        Intent intent = new Intent(
-                                MainActivity.this,
-                                HistoricoActivity.class
-                        );
-                        startActivity(intent);
-                    }
-            );
-        });
 
-        cliqueImagem.accept(imagemFilmesSeries, () -> {
-            abrirAreaComManutencao(
-                    "have",
-                    "HAVE",
-                    () -> {
-                        Intent intent = new Intent(
-                                MainActivity.this,
-                                HaveLoginActivity.class
-                        );
-                        startActivity(intent);
-                    }
-            );
-        });
 
-        cliqueImagem.accept(imagemCompartilhar, () -> {
-            try {
-                String versao = getPackageManager()
-                        .getPackageInfo(getPackageName(), 0)
-                        .versionName;
-
-                String link =
-                        "https://github.com/andersonptg/DaNikeAI/releases/latest/download/NEXO.apk";
-
-                String mensagem =
-                        "🚀 Baixe o DaNikeAI!\n\n" +
-                        "Versão atual: " + versao + "\n\n" +
-                        link;
-
-                Intent compartilhar =
-                        new Intent(Intent.ACTION_SEND);
-
-                compartilhar.setType("text/plain");
-                compartilhar.putExtra(
-                        Intent.EXTRA_TEXT,
-                        mensagem
-                );
-
-                startActivity(Intent.createChooser(
-                        compartilhar,
-                        "Compartilhar DaNikeAI"
-                ));
-
-            } catch (Exception e) {
-                Toast.makeText(
+        filmes.setOnClickListener(v -> {
+            if (!nexoUsuarioProprietario()) {
+                android.widget.Toast.makeText(
                         MainActivity.this,
-                        "Não foi possível compartilhar o app.",
-                        Toast.LENGTH_SHORT
+                        "Área exclusiva do proprietário.",
+                        android.widget.Toast.LENGTH_SHORT
                 ).show();
+                return;
             }
+
+
+            abrirAreaComManutencao(
+
+                    "filmes",
+
+                    "FILMES",
+
+                    () -> {
+
+                        Intent intent =
+
+                                new Intent(
+
+                                        MainActivity.this,
+
+                                        com.danike.ai.nexo.NexoFilmesActivity.class
+
+                                );
+
+                        startActivity(intent);
+
+                    }
+
+            );
+
         });
+
+
+
+        historico.setOnClickListener(v -> {
+
+            abrirAreaComManutencao(
+
+                    "historico",
+
+                    "HISTÓRICO",
+
+                    () -> {
+
+                        Intent intent =
+
+                                new Intent(
+
+                                        MainActivity.this,
+
+                                        HistoricoActivity.class
+
+                                );
+
+                        startActivity(intent);
+
+                    }
+
+            );
+
+        });
+
+
 
         perfil.setOnClickListener(v -> {
 
@@ -4563,6 +4499,36 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
                                         MainActivity.this,
 
                                         PerfilActivity.class
+
+                                );
+
+                        startActivity(intent);
+
+                    }
+
+            );
+
+        });
+
+
+
+        rave.setOnClickListener(v -> {
+
+            abrirAreaComManutencao(
+
+                    "have",
+
+                    "HAVE",
+
+                    () -> {
+
+                        Intent intent =
+
+                                new Intent(
+
+                                        MainActivity.this,
+
+                                        HaveLoginActivity.class
 
                                 );
 
@@ -4666,94 +4632,6 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
     }
 
-
-
-    private void carregarAvatarHome(
-            ImageView imagem,
-            String url
-    ) {
-        new Thread(() -> {
-            try {
-                java.net.URL endereco = new java.net.URL(url);
-                java.net.HttpURLConnection conexao =
-                        (java.net.HttpURLConnection) endereco.openConnection();
-
-                conexao.setConnectTimeout(10000);
-                conexao.setReadTimeout(15000);
-                conexao.setDoInput(true);
-                conexao.connect();
-
-                java.io.InputStream entrada = conexao.getInputStream();
-
-                android.graphics.Bitmap original =
-                        android.graphics.BitmapFactory.decodeStream(entrada);
-
-                entrada.close();
-                conexao.disconnect();
-
-                if (original == null) return;
-
-                int tamanho = Math.min(
-                        original.getWidth(),
-                        original.getHeight()
-                );
-
-                int esquerda = (original.getWidth() - tamanho) / 2;
-                int topo = (original.getHeight() - tamanho) / 2;
-
-                android.graphics.Bitmap quadrado =
-                        android.graphics.Bitmap.createBitmap(
-                                original,
-                                esquerda,
-                                topo,
-                                tamanho,
-                                tamanho
-                        );
-
-                android.graphics.Bitmap circular =
-                        android.graphics.Bitmap.createBitmap(
-                                tamanho,
-                                tamanho,
-                                android.graphics.Bitmap.Config.ARGB_8888
-                        );
-
-                android.graphics.Canvas canvas =
-                        new android.graphics.Canvas(circular);
-
-                android.graphics.Paint paint =
-                        new android.graphics.Paint(
-                                android.graphics.Paint.ANTI_ALIAS_FLAG
-                        );
-
-                android.graphics.BitmapShader shader =
-                        new android.graphics.BitmapShader(
-                                quadrado,
-                                android.graphics.Shader.TileMode.CLAMP,
-                                android.graphics.Shader.TileMode.CLAMP
-                        );
-
-                paint.setShader(shader);
-
-                float centro = tamanho / 2f;
-
-                canvas.drawCircle(
-                        centro,
-                        centro,
-                        centro,
-                        paint
-                );
-
-                imagem.post(() -> {
-                    imagem.clearColorFilter();
-                    imagem.setPadding(0, 0, 0, 0);
-                    imagem.setScaleType(ImageView.ScaleType.CENTER_CROP);
-                    imagem.setImageBitmap(circular);
-                });
-
-            } catch (Exception ignored) {
-            }
-        }).start();
-    }
 
 
     // =========================
