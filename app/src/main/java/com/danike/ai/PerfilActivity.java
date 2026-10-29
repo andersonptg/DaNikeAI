@@ -525,7 +525,23 @@ adicionarBotao(
 );
 
 
-        adicionarBotao(
+        TextView zonaSeguranca = txt(
+                "⚠️  ZONA DE SEGURANÇA",
+                13,
+                Color.rgb(220, 70, 80)
+        );
+        zonaSeguranca.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+        zonaSeguranca.setPadding(dp(4), dp(18), dp(4), dp(2));
+
+        raiz.addView(
+                zonaSeguranca,
+                new LinearLayout.LayoutParams(-1, dp(42))
+        );
+
+        adicionarBotaoRisco(
                 raiz,
                 "REMOVER CONTA DESTE DISPOSITIVO",
                 "Encerra a sessão neste aparelho sem excluir sua conta ou seus dados.",
@@ -872,95 +888,174 @@ String fotoUrl =
         );
     }
 
+
     private void adicionarBotao(
             LinearLayout raiz,
             String titulo,
             String descricao,
             Runnable acao
     ) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(16), dp(12), dp(16), dp(12));
 
-        LinearLayout box =
-                new LinearLayout(this);
-
-        box.setOrientation(
-                LinearLayout.VERTICAL
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setColor(
+                escuro
+                        ? Color.rgb(22, 27, 42)
+                        : Color.rgb(247, 249, 253)
         );
-
-        box.setGravity(
-                Gravity.CENTER_VERTICAL
+        fundo.setCornerRadius(dp(18));
+        fundo.setStroke(
+                dp(1),
+                escuro
+                        ? Color.rgb(48, 60, 86)
+                        : Color.rgb(220, 226, 236)
         );
+        box.setBackground(fundo);
+        box.setElevation(dp(3));
 
-        box.setPadding(
-                dp(18),
-                dp(10),
-                dp(18),
-                dp(10)
+        TextView icone = txt(
+                "›",
+                25,
+                azul()
         );
+        icone.setGravity(Gravity.CENTER);
 
-        box.setBackground(
-                fundoNeon(
-                        painel(),
-                        Color.rgb(55, 130, 245),
-                        24
-                )
+        LinearLayout.LayoutParams iconeParams =
+                new LinearLayout.LayoutParams(dp(34), dp(48));
+
+        box.addView(icone, iconeParams);
+
+        LinearLayout textos = new LinearLayout(this);
+        textos.setOrientation(LinearLayout.VERTICAL);
+        textos.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView t = txt(
+                titulo,
+                15,
+                texto()
         );
+        t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
 
-        TextView t =
-                txt(
-                        titulo,
-                        17,
-                        texto()
-                );
-
-        t.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
+        TextView d = txt(
+                descricao,
+                12,
+                textoSecundario()
         );
+        d.setMaxLines(2);
 
-        TextView d =
-                txt(
-                        descricao,
-                        12,
-                        textoSecundario()
-                );
-
-        box.addView(
+        textos.addView(
                 t,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(32)
-                )
+                new LinearLayout.LayoutParams(-1, dp(25))
         );
 
-        box.addView(
+        textos.addView(
                 d,
+                new LinearLayout.LayoutParams(-1, dp(34))
+        );
+
+        LinearLayout.LayoutParams textosParams =
                 new LinearLayout.LayoutParams(
-                        -1,
-                        dp(30)
-                )
+                        0,
+                        dp(60),
+                        1f
+                );
+
+        box.addView(textos, textosParams);
+
+        LinearLayout.LayoutParams p =
+                new LinearLayout.LayoutParams(-1, dp(84));
+
+        p.setMargins(0, dp(10), 0, 0);
+
+        raiz.addView(box, p);
+
+        box.setOnClickListener(v -> acao.run());
+    }
+
+    private void adicionarBotaoRisco(
+            LinearLayout raiz,
+            String titulo,
+            String descricao,
+            Runnable acao
+    ) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(16), dp(12), dp(16), dp(12));
+
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setColor(
+                escuro
+                        ? Color.rgb(48, 20, 25)
+                        : Color.rgb(255, 246, 247)
+        );
+        fundo.setCornerRadius(dp(18));
+        fundo.setStroke(
+                dp(1),
+                Color.rgb(210, 65, 75)
+        );
+
+        box.setBackground(fundo);
+        box.setElevation(dp(3));
+
+        TextView icone = txt(
+                "!",
+                20,
+                Color.rgb(220, 70, 80)
+        );
+        icone.setGravity(Gravity.CENTER);
+
+        GradientDrawable circulo = new GradientDrawable();
+        circulo.setShape(GradientDrawable.OVAL);
+        circulo.setColor(
+                escuro
+                        ? Color.rgb(75, 28, 35)
+                        : Color.rgb(255, 225, 228)
+        );
+        icone.setBackground(circulo);
+
+        LinearLayout.LayoutParams iconeParams =
+                new LinearLayout.LayoutParams(dp(38), dp(38));
+
+        iconeParams.setMargins(0, 0, dp(12), 0);
+        box.addView(icone, iconeParams);
+
+        LinearLayout textos = new LinearLayout(this);
+        textos.setOrientation(LinearLayout.VERTICAL);
+
+        TextView t = txt(
+                titulo,
+                15,
+                Color.rgb(220, 70, 80)
+        );
+        t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        TextView d = txt(
+                descricao,
+                12,
+                textoSecundario()
+        );
+        d.setMaxLines(2);
+
+        textos.addView(t, new LinearLayout.LayoutParams(-1, dp(25)));
+        textos.addView(d, new LinearLayout.LayoutParams(-1, dp(38)));
+
+        box.addView(
+                textos,
+                new LinearLayout.LayoutParams(0, dp(63), 1f)
         );
 
         LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(78)
-                );
+                new LinearLayout.LayoutParams(-1, dp(86));
 
-        p.setMargins(
-                0,
-                dp(12),
-                0,
-                0
-        );
+        p.setMargins(0, dp(10), 0, 0);
 
-        raiz.addView(
-                box,
-                p
-        );
+        raiz.addView(box, p);
 
-        box.setOnClickListener(
-                v -> acao.run()
-        );
+        box.setOnClickListener(v -> acao.run());
     }
 
     private void adicionarInfo(
@@ -968,81 +1063,50 @@ String fotoUrl =
             String titulo,
             String valor
     ) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+        box.setPadding(dp(16), dp(10), dp(16), dp(10));
 
-        LinearLayout box =
-                new LinearLayout(this);
-
-        box.setOrientation(
-                LinearLayout.VERTICAL
+        GradientDrawable fundo = new GradientDrawable();
+        fundo.setColor(
+                escuro
+                        ? Color.rgb(18, 23, 37)
+                        : Color.rgb(250, 251, 253)
+        );
+        fundo.setCornerRadius(dp(16));
+        fundo.setStroke(
+                dp(1),
+                escuro
+                        ? Color.rgb(42, 52, 73)
+                        : Color.rgb(225, 230, 238)
         );
 
-        box.setPadding(
-                dp(18),
-                dp(8),
-                dp(18),
-                dp(8)
+        box.setBackground(fundo);
+
+        TextView t = txt(
+                titulo,
+                14,
+                texto()
         );
+        t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
 
-        box.setBackground(
-                fundoNeon(
-                        painel(),
-                        Color.rgb(45, 105, 205),
-                        22
-                )
+        TextView v = txt(
+                valor,
+                12,
+                textoSecundario()
         );
+        v.setMaxLines(2);
 
-        TextView t =
-                txt(
-                        titulo,
-                        15,
-                        texto()
-                );
-
-        t.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
-        );
-
-        TextView v =
-                txt(
-                        valor,
-                        12,
-                        textoSecundario()
-                );
-
-        box.addView(
-                t,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(30)
-                )
-        );
-
-        box.addView(
-                v,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(28)
-                )
-        );
+        box.addView(t, new LinearLayout.LayoutParams(-1, dp(27)));
+        box.addView(v, new LinearLayout.LayoutParams(-1, dp(32)));
 
         LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(70)
-                );
+                new LinearLayout.LayoutParams(-1, dp(70));
 
-        p.setMargins(
-                0,
-                dp(10),
-                0,
-                0
-        );
+        p.setMargins(0, dp(8), 0, 0);
 
-        raiz.addView(
-                box,
-                p
-        );
+        raiz.addView(box, p);
     }
 
     private void carregarNome() {
@@ -1060,6 +1124,7 @@ String fotoUrl =
 
 private void editarHandle() {
     EditText campo = new EditText(this);
+    estilizarCampoPerfil(campo);
     campo.setSingleLine(true);
     campo.setHint("@seuusuario");
     campo.setText(prefs.getString("handle", ""));
@@ -1094,6 +1159,7 @@ private void editarHandle() {
 
 private void editarDescricao() {
     EditText campo = new EditText(this);
+    estilizarCampoPerfil(campo);
     campo.setHint("Conte um pouco sobre você");
     campo.setMinLines(3);
     campo.setMaxLines(5);
@@ -1537,6 +1603,35 @@ private void escolherFoto() {
         processarFoto(uri);
     }
 
+
+    private void estilizarCampoPerfil(EditText campo) {
+        campo.setTextColor(texto());
+        campo.setHintTextColor(
+                escuro
+                        ? Color.rgb(145, 155, 175)
+                        : Color.rgb(125, 135, 150)
+        );
+        campo.setTextSize(15);
+        campo.setPadding(dp(16), dp(12), dp(16), dp(12));
+        campo.setSingleLine(false);
+
+        GradientDrawable fundoCampo = new GradientDrawable();
+        fundoCampo.setColor(
+                escuro
+                        ? Color.rgb(18, 23, 37)
+                        : Color.rgb(248, 250, 253)
+        );
+        fundoCampo.setCornerRadius(dp(14));
+        fundoCampo.setStroke(
+                dp(1),
+                escuro
+                        ? Color.rgb(55, 68, 92)
+                        : Color.rgb(215, 222, 232)
+        );
+
+        campo.setBackground(fundoCampo);
+    }
+
     private TextView txt(
             String texto,
             int tamanho,
@@ -1591,13 +1686,40 @@ private void escolherFoto() {
     }
 
     private void confirmarRemocaoConta() {
-        new AlertDialog.Builder(this)
-                .setTitle("Remover conta deste dispositivo?")
-                .setMessage("Você sairá desta conta neste aparelho. Seu perfil, amigos, conversas e sua conta continuarão existindo. Outros dispositivos não serão alterados.")
-                .setNegativeButton("Cancelar", null)
-                .setPositiveButton("Remover conta", (dialog, which) ->
-                        removerContaDoDispositivo())
-                .show();
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("⚠️ Remover conta deste dispositivo?")
+                .setMessage(
+                        "Você sairá desta conta neste aparelho.\\n\\n"
+                        + "Sua conta, perfil, amigos, conversas e seus dados "
+                        + "continuarão existindo na nuvem.\\n\\n"
+                        + "Nenhum outro dispositivo será alterado."
+                )
+                .setNegativeButton("CANCELAR", null)
+                .setPositiveButton(
+                        "REMOVER CONTA",
+                        (d, which) -> removerContaDoDispositivo()
+                )
+                .create();
+
+        dialog.setOnShowListener(d -> {
+            TextView positivo =
+                    dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+
+            positivo.setTextColor(
+                    Color.rgb(220, 70, 80)
+            );
+            positivo.setTypeface(
+                    Typeface.DEFAULT,
+                    Typeface.BOLD
+            );
+
+            TextView negativo =
+                    dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+
+            negativo.setTextColor(azul());
+        });
+
+        dialog.show();
     }
 
     private void removerContaDoDispositivo() {
