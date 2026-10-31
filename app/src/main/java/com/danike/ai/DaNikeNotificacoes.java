@@ -9,6 +9,7 @@ import android.util.Log;
 import org.json.JSONObject;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.messaging.FirebaseMessaging;
@@ -58,6 +59,7 @@ public final class DaNikeNotificacoes {
                     Log.e(TAG, "FCM: salvando no Firestore...");
 
                     salvarToken(token, uid, context);
+                    registrarNaCentral(token, context);
                 })
                 .addOnFailureListener(e -> {
 
@@ -92,6 +94,105 @@ public final class DaNikeNotificacoes {
                 });
     }
 
+    private static void registrarNaCentral(String fcmToken, Context context) {
+        FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
+
+        if (usuario == null) {
+            Log.e(TAG, "CENTRAL DEVICES: nenhum usuario autenticado");
+            return;
+        }
+
+        usuario.getIdToken(true)
+                .addOnSuccessListener(resultado -> {
+                    if (resultado == null || resultado.getToken() == null) {
+                        Log.e(TAG, "CENTRAL DEVICES: Firebase ID Token vazio");
+                        return;
+                    }
+
+                    ExecutorService executor = Executors.newSingleThreadExecutor();
+
+                    executor.execute(() -> {
+                        HttpURLConnection conexao = null;
+
+                        try {
+                            final String endpoint =
+                                    "https://little-nexo-core-hub.base44.app/functions/nexoApi"
+                                            + "?route=/api/v1/devices";
+
+                            JSONObject json = new JSONObject();
+                            json.put("token", fcmToken);
+                            json.put("deviceId",
+                                    android.provider.Settings.Secure.getString(
+                                            context.getContentResolver(),
+                                            android.provider.Settings.Secure.ANDROID_ID
+                                    ));
+                            json.put("platform", "android");
+                            json.put("manufacturer", android.os.Build.MANUFACTURER);
+                            json.put("model", android.os.Build.MODEL);
+                            json.put("appVersion", BuildConfig.VERSION_NAME);
+                            json.put("versionCode", BuildConfig.VERSION_CODE);
+
+                            Log.e(TAG,
+                                    "CENTRAL DEVICES: registrando dispositivo");
+
+                            URL url = new URL(endpoint);
+                            conexao = (HttpURLConnection) url.openConnection();
+
+                            conexao.setRequestMethod("POST");
+                            conexao.setConnectTimeout(15000);
+                            conexao.setReadTimeout(20000);
+                            conexao.setDoOutput(true);
+
+                            conexao.setRequestProperty(
+                                    "Content-Type",
+                                    "application/json"
+                            );
+
+                            conexao.setRequestProperty(
+                                    "Authorization",
+                                    "Bearer " + resultado.getToken()
+                            );
+
+                            byte[] corpo =
+                                    json.toString().getBytes(StandardCharsets.UTF_8);
+
+                            try (OutputStream saida = conexao.getOutputStream()) {
+                                saida.write(corpo);
+                                saida.flush();
+                            }
+
+                            int codigo = conexao.getResponseCode();
+
+                            Log.e(TAG,
+                                    "CENTRAL DEVICES: HTTP " + codigo);
+
+                            if (codigo >= 200 && codigo < 300) {
+                                Log.e(TAG,
+                                        "CENTRAL DEVICES: DISPOSITIVO REGISTRADO");
+                            } else {
+                                Log.e(TAG,
+                                        "CENTRAL DEVICES: FALHA HTTP " + codigo);
+                            }
+
+                        } catch (Exception e) {
+                            Log.e(TAG,
+                                    "CENTRAL DEVICES: ERRO AO REGISTRAR",
+                                    e);
+                        } finally {
+                            if (conexao != null) {
+                                conexao.disconnect();
+                            }
+                            executor.shutdown();
+                        }
+                    });
+                })
+                .addOnFailureListener(e ->
+                        Log.e(TAG,
+                                "CENTRAL DEVICES: erro ao obter Firebase ID Token",
+                                e)
+                );
+    }
+
     public static void enviarNotificacaoImediata(
             String uid,
             String tipo,
@@ -100,150 +201,100 @@ public final class DaNikeNotificacoes {
             String remetenteUid,
             String filaId
     ) {
+        FirebaseUser usuario = FirebaseAuth.getInstance().getCurrentUser();
 
+        if (usuario == null) {
+            Log.e(TAG, "NOTIFICACAO CENTRAL: nenhum usuario autenticado");
+            return;
+        }
 
-        ExecutorService executor = Executors.newSingleThreadExecutor();
-
-        executor.execute(() -> {
-            final String endpoint =
-                    "https://danikeai-brain.onrender.com/notificar";
-
-            String json = "{"
-                    + "\"uid\":\"" + escaparJson(uid) + "\","
-                    + "\"tipo\":\"" + escaparJson(tipo) + "\","
-                    + "\"titulo\":\"" + escaparJson(titulo) + "\","
-                    + "\"texto\":\"" + escaparJson(texto) + "\","
-                    + "\"remetente_uid\":\"" + escaparJson(remetenteUid) + "\","
-                    + "\"fila_id\":\"" + escaparJson(filaId) + "\""
-                    + "}";
-
-            boolean sucesso = false;
-
-            try {
-                /*
-                 * O Render Free pode estar acordando após inatividade.
-                 * Tentamos duas vezes para tolerar cold start.
-                 */
-                for (int tentativa = 1; tentativa <= 2; tentativa++) {
-                    HttpURLConnection conexao = null;
-
-                    try {
-                        Log.e(
-                                TAG,
-                                "NOTIFICACAO IMEDIATA: tentativa "
-                                        + tentativa
-                        );
-
-                        URL url = new URL(endpoint);
-                        conexao = (HttpURLConnection) url.openConnection();
-
-                        conexao.setRequestMethod("POST");
-
-                        /*
-                         * Tempo maior para permitir o cold start
-                         * do serviço no Render.
-                         */
-                        conexao.setConnectTimeout(90000);
-                        conexao.setReadTimeout(90000);
-
-                        conexao.setDoOutput(true);
-
-                        conexao.setRequestProperty(
-                                "Content-Type",
-                                "application/json"
-                        );
-
-                        conexao.setRequestProperty(
-                                "X-DaNikeAI-Secret",
-                                new String(
-                                        java.util.Base64.getDecoder().decode(
-                                                "UWgxSFBEX25xNUhpUTB4Y0JSQXRWVmU5N0RhMWJrUG5NN2JpZHpIX0d0QSAgICAgICAgICAg"
-                                        ),
-                                        StandardCharsets.UTF_8
-                                )
-                        );
-
-                        try (OutputStream saida =
-                                     conexao.getOutputStream()) {
-                            saida.write(
-                                    json.getBytes(
-                                            StandardCharsets.UTF_8
-                                    )
-                            );
-                            saida.flush();
-                        }
-
-                        int codigo = conexao.getResponseCode();
-
-                        Log.e(
-                                TAG,
-                                "NOTIFICACAO IMEDIATA: HTTP "
-                                        + codigo
-                                        + " tentativa="
-                                        + tentativa
-                        );
-
-                        if (codigo >= 200 && codigo < 300) {
-                            sucesso = true;
-                            break;
-                        }
-
-                        /*
-                         * Erros 4xx normalmente são definitivos.
-                         * Não repetir nesses casos.
-                         */
-                        if (codigo >= 400 && codigo < 500) {
-                            break;
-                        }
-
-                    } catch (java.net.SocketTimeoutException e) {
-                        Log.e(
-                                TAG,
-                                "NOTIFICACAO IMEDIATA: TIMEOUT tentativa="
-                                        + tentativa,
-                                e
-                        );
-
-                    } catch (Exception e) {
-                        Log.e(
-                                TAG,
-                                "NOTIFICACAO IMEDIATA: ERRO tentativa="
-                                        + tentativa,
-                                e
-                        );
-
-                    } finally {
-                        if (conexao != null) {
-                            conexao.disconnect();
-                        }
+        usuario.getIdToken(true)
+                .addOnSuccessListener(resultado -> {
+                    if (resultado == null || resultado.getToken() == null) {
+                        Log.e(TAG, "NOTIFICACAO CENTRAL: ID TOKEN vazio");
+                        return;
                     }
 
-                    if (!sucesso && tentativa < 2) {
+                    String token = resultado.getToken();
+
+                    ExecutorService executor = Executors.newSingleThreadExecutor();
+
+                    executor.execute(() -> {
+                        HttpURLConnection conexao = null;
+
                         try {
-                            Thread.sleep(3000);
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            break;
+                            final String endpoint =
+                                    "https://little-nexo-core-hub.base44.app/functions/nexoApi"
+                                            + "?route=/api/v1/notifications/send";
+
+                            String json = "{"
+                                    + "\"uid\":\"" + escaparJson(uid) + "\","
+                                    + "\"tipo\":\"" + escaparJson(tipo) + "\","
+                                    + "\"titulo\":\"" + escaparJson(titulo) + "\","
+                                    + "\"texto\":\"" + escaparJson(texto) + "\","
+                                    + "\"remetente_uid\":\"" + escaparJson(remetenteUid) + "\","
+                                    + "\"fila_id\":\"" + escaparJson(filaId) + "\""
+                                    + "}";
+
+                            Log.e(TAG,
+                                    "NOTIFICACAO CENTRAL: enviando para UID=" + uid);
+
+                            URL url = new URL(endpoint);
+                            conexao = (HttpURLConnection) url.openConnection();
+
+                            conexao.setRequestMethod("POST");
+                            conexao.setConnectTimeout(15000);
+                            conexao.setReadTimeout(20000);
+                            conexao.setDoOutput(true);
+
+                            conexao.setRequestProperty(
+                                    "Content-Type",
+                                    "application/json"
+                            );
+
+                            conexao.setRequestProperty(
+                                    "Authorization",
+                                    "Bearer " + token
+                            );
+
+                            try (OutputStream saida = conexao.getOutputStream()) {
+                                saida.write(
+                                        json.getBytes(StandardCharsets.UTF_8)
+                                );
+                                saida.flush();
+                            }
+
+                            int codigo = conexao.getResponseCode();
+
+                            Log.e(TAG,
+                                    "NOTIFICACAO CENTRAL: HTTP " + codigo);
+
+                            if (codigo >= 200 && codigo < 300) {
+                                Log.e(TAG,
+                                        "NOTIFICACAO CENTRAL: SUCESSO");
+                            } else {
+                                Log.e(TAG,
+                                        "NOTIFICACAO CENTRAL: FALHA HTTP "
+                                                + codigo);
+                            }
+
+                        } catch (Exception e) {
+                            Log.e(TAG,
+                                    "NOTIFICACAO CENTRAL: ERRO",
+                                    e);
+                        } finally {
+                            if (conexao != null) {
+                                conexao.disconnect();
+                            }
+                            executor.shutdown();
                         }
-                    }
-                }
-
-                if (sucesso) {
-                    Log.e(
-                            TAG,
-                            "NOTIFICACAO IMEDIATA: SUCESSO"
-                    );
-                } else {
-                    Log.e(
-                            TAG,
-                            "NOTIFICACAO IMEDIATA: FALHA APOS TENTATIVAS"
-                    );
-                }
-
-            } finally {
-                executor.shutdown();
-            }
-        });
+                    });
+                })
+                .addOnFailureListener(e ->
+                        Log.e(TAG,
+                                "NOTIFICACAO CENTRAL: erro ao obter Firebase ID Token",
+                                e)
+                );
     }
 
     private static String escaparJson(String valor) {

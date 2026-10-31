@@ -1,4 +1,5 @@
 package com.danike.ai;
+import android.util.Log;
 
 import com.danike.ai.NexoAppObserver;
 
@@ -1039,7 +1040,30 @@ public class MainActivity extends Activity {
 
         super.onCreate(b);
 
+        NexoCentralApi.verificarAutenticacao(
+                this,
+                new NexoCentralApi.Callback() {
+                    @Override
+                    public void sucesso(int codigo, String resposta) {
+                        Log.d(
+                                "NexoCentralApi",
+                                "Autenticação Central OK: HTTP " + codigo
+                        );
+                    }
 
+
+
+                    @Override
+                    public void erro(Exception erro) {
+                        Log.w(
+                                "NexoCentralApi",
+                                "Falha na autenticação Central: "
+                                        + erro.getClass().getSimpleName()
+                        );
+                    }
+
+                }
+        );
 
         prefs = getSharedPreferences("DaNikeAI_Dados", 0);
 
@@ -3901,6 +3925,16 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
                 txt("✦\nAPPS", 12, Color.WHITE);
 
+        TextView botaoSuporte =
+                txt("🛟\nSuporte", 12, Color.WHITE);
+
+        botaoSuporte.setGravity(Gravity.CENTER);
+
+        botaoSuporte.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
+
         botaoMais.setGravity(Gravity.CENTER);
 
         botaoMais.setTypeface(
@@ -4093,7 +4127,7 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
                 ? new TextView[]{
 
-                        botaoHome, botaoConexoes, botaoMais,
+                        botaoHome, botaoConexoes, botaoMais, botaoSuporte,
 
                         botaoAdm
 
@@ -4101,7 +4135,7 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
                 : new TextView[]{
 
-                        botaoHome, botaoConexoes, botaoMais
+                        botaoHome, botaoConexoes, botaoMais, botaoSuporte
 
                 };
 
@@ -4215,6 +4249,13 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
         botaoPerfil.setBackground(fundoPerfil);
 
         botaoPerfil.setElevation(dp(10));
+        
+        GradientDrawable fundoSuporte = new GradientDrawable();
+        fundoSuporte.setColor(Color.rgb(20, 35, 70));
+        fundoSuporte.setCornerRadius(dp(18));
+        fundoSuporte.setStroke(dp(1), Color.rgb(70, 145, 255));
+        botaoSuporte.setBackground(fundoSuporte);
+        botaoSuporte.setElevation(dp(10));
 
 
 
@@ -4234,6 +4275,15 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
 
 
+
+        botaoSuporte.setOnClickListener(v -> {
+        startActivity(
+                new Intent(
+                        MainActivity.this,
+                        SuporteActivity.class
+                )
+        );
+    });
 
         botaoConexoes.setOnClickListener(v ->
 
