@@ -15,7 +15,7 @@ public class FundoConversaHelper {
     private static final String PREFS = "preferencias_conversa";
     private static final String CHAVE = "fundo_conversa";
 
-    public static final String PADRAO = "danike";
+    public static final String PADRAO = "nexo_premium";
 
     public static final String[] CHAVES = {
             "danike",
@@ -29,7 +29,8 @@ public class FundoConversaHelper {
             "dourado",
             "galaxia",
             "noturno",
-            "cinza"
+            "cinza",
+            "nexo_premium"
     };
 
     public static final String[] NOMES = {
@@ -44,7 +45,8 @@ public class FundoConversaHelper {
             "Dourado",
             "Galáxia",
             "Noturno",
-            "Cinza"
+            "Cinza",
+            "NEXO Premium"
     };
 
     public static void salvar(Context context, String valor) {
@@ -52,6 +54,22 @@ public class FundoConversaHelper {
                 .edit()
                 .putString(CHAVE, valor)
                 .apply();
+    }
+
+    // NEXO_PREMIUM_ETAPA1: papel de parede independente por conversa.
+    public static void salvar(Context context, String valor, String conversaId) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit().putString(CHAVE + "_" + conversaId, valor).apply();
+    }
+
+    public static String obter(Context context, String conversaId) {
+        return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .getString(CHAVE + "_" + conversaId, "nexo_premium");
+    }
+
+    public static void aplicar(Context context, View view, String conversaId) {
+        Drawable fundo = criar(context, obter(context, conversaId));
+        if (fundo != null) view.setBackground(fundo);
     }
 
     public static String obter(Context context) {
@@ -107,7 +125,18 @@ public class FundoConversaHelper {
 
         int[] cores;
 
+        if ("nexo_premium".equals(valor)) {
+            return new NexoPremiumWallpaperDrawable();
+        }
         switch (valor) {
+            case "nexo_premium":
+                cores = new int[]{
+                        Color.rgb(1, 8, 19),
+                        Color.rgb(9, 22, 45),
+                        Color.rgb(1, 6, 16)
+                };
+                break;
+
 
             case "azul":
                 cores = new int[]{

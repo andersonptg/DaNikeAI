@@ -16,6 +16,15 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import android.widget.*;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.media.MediaRecorder;
+import android.media.MediaPlayer;
+import android.net.Uri;
+import android.os.SystemClock;
+import java.io.File;
+import com.google.firebase.storage.FirebaseStorage;
+import com.google.firebase.storage.StorageReference;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.*;
@@ -35,6 +44,18 @@ public class ChatGrupoActivity extends Activity {
     private LinearLayout listaMensagens;
     private EditText campoMensagem;
     private ListenerRegistration listenerMensagens;
+
+    private MediaRecorder audioRecorder;
+    private MediaPlayer audioPlayer;
+    private File arquivoAudioTemporario;
+    private TextView botaoMicrofone;
+    private boolean gravandoAudio = false;
+    private long inicioGravacao = 0L;
+    private static final int REQUEST_AUDIO_PERMISSION = 9201;
+    private static final int REQUEST_IMAGEM_GRUPO = 9202;
+    private LinearLayout tecladoGrupoNexo;
+    private ScrollView scrollGrupo;
+    private boolean tecladoGrupoAberto = false;
 
     private int fundo = Color.rgb(4, 6, 11);
     private int card = Color.rgb(13, 17, 25);
@@ -281,13 +302,11 @@ public class ChatGrupoActivity extends Activity {
                 Typeface.BOLD
         );
 
-        informacoes.addView(
-                titulo,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(30)
-                )
-        );
+        // NEXO_RESPONSIVO_V4: título do grupo quebra em até 2 linhas.
+        titulo.setSingleLine(false);
+        titulo.setMaxLines(2);
+        informacoes.addView(titulo,
+                new LinearLayout.LayoutParams(-1, -2));
 
         TextView subtitulo =
                 texto(
@@ -303,15 +322,11 @@ public class ChatGrupoActivity extends Activity {
                         dp(22)
                 )
         );
+        // NEXO_PREMIUM_V3: toque no cabeçalho mostra membros e administração.
+        informacoes.setOnClickListener(v -> abrirPainelGrupoNexo());
 
-        topo.addView(
-                informacoes,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(58),
-                        1
-                )
-        );
+        topo.addView(informacoes,
+                new LinearLayout.LayoutParams(0, -2, 1));
 
         TextView menu =
                 texto(
@@ -333,15 +348,25 @@ public class ChatGrupoActivity extends Activity {
         menu.setOnClickListener(v -> {
             PopupMenu popup = new PopupMenu(this, menu);
 
-            popup.getMenu().add("SILENCIAR");
+            // Sem botão fictício de silenciar: requer configuração de push.
             popup.getMenu().add("PESQUISAR");
             popup.getMenu().add("FUNDO DA CONVERSA");
+            popup.getMenu().add("👥 PARTICIPANTES E ADM");
+            popup.getMenu().add("☑ SELECIONAR MENSAGENS");
 
             popup.setOnMenuItemClickListener(item -> {
                 String opcao = item.getTitle().toString();
 
+                if ("👥 PARTICIPANTES E ADM".equals(opcao)) {
+                    abrirPainelGrupoNexo();
+                    return true;
+                }
+                if ("☑ SELECIONAR MENSAGENS".equals(opcao)) {
+                    selecionarMensagensGrupoNexo();
+                    return true;
+                }
                 if ("FUNDO DA CONVERSA".equals(opcao)) {
-                    abrirSeletorFundo();
+                    escolherFundoGrupoNexo();
                     return true;
                 }
 
@@ -355,11 +380,7 @@ public class ChatGrupoActivity extends Activity {
                 }
 
                 if ("PESQUISAR".equals(opcao)) {
-                    Toast.makeText(
-                            this,
-                            "Pesquisa da conversa será aberta aqui.",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                    buscarMensagemGrupoNexo();
                     return true;
                 }
 
@@ -369,16 +390,13 @@ public class ChatGrupoActivity extends Activity {
             popup.show();
         });
 
-        raiz.addView(
-                topo,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(74)
-                )
-        );
+        topo.setMinimumHeight(dp(74));
+        raiz.addView(topo,
+                new LinearLayout.LayoutParams(-1, -2));
 
         ScrollView scroll =
                 new ScrollView(this);
+        scrollGrupo = scroll;
 
         scroll.setFillViewport(true);
 
@@ -396,10 +414,7 @@ public class ChatGrupoActivity extends Activity {
                 dp(14)
         );
 
-        FundoConversaHelper.aplicar(
-                this,
-                listaMensagens
-        );
+        FundoConversaHelper.aplicar(this, listaMensagens, grupoId);
 
         scroll.addView(listaMensagens);
 
@@ -441,13 +456,18 @@ public class ChatGrupoActivity extends Activity {
                 Gravity.CENTER
         );
 
+        anexo.setContentDescription("Anexar imagem do grupo");
+        anexo.setOnClickListener(v -> abrirImagemGrupo());
         areaEnviar.addView(
                 anexo,
-                new LinearLayout.LayoutParams(
-                        dp(45),
-                        dp(52)
-                )
+                new LinearLayout.LayoutParams(dp(43), dp(52))
         );
+        TextView teclaNexo = texto("⌨", 23, Color.rgb(62, 190, 255));
+        teclaNexo.setGravity(Gravity.CENTER);
+        teclaNexo.setContentDescription("Abrir ou fechar teclado oficial NEXO");
+        areaEnviar.addView(teclaNexo,
+                new LinearLayout.LayoutParams(dp(39), dp(52)));
+        teclaNexo.setOnClickListener(v -> alternarTecladoGrupoNexo());
 
         campoMensagem =
                 new EditText(this);
@@ -500,6 +520,44 @@ public class ChatGrupoActivity extends Activity {
                         0,
                         dp(52),
                         1
+                )
+        );
+
+
+        botaoMicrofone = texto(
+                "🎙️",
+                21,
+                Color.WHITE
+        );
+
+        botaoMicrofone.setGravity(
+                Gravity.CENTER
+        );
+
+        GradientDrawable fundoMicrofone =
+                new GradientDrawable();
+
+        fundoMicrofone.setShape(
+                GradientDrawable.OVAL
+        );
+
+        fundoMicrofone.setColor(
+                Color.rgb(15, 45, 70)
+        );
+
+        botaoMicrofone.setBackground(
+                fundoMicrofone
+        );
+
+        botaoMicrofone.setOnClickListener(
+                v -> alternarGravacaoAudio()
+        );
+
+        areaEnviar.addView(
+                botaoMicrofone,
+                new LinearLayout.LayoutParams(
+                        dp(48),
+                        dp(48)
                 )
         );
 
@@ -557,7 +615,90 @@ public class ChatGrupoActivity extends Activity {
                 )
         );
 
+        // O campo de digitação fica ACIMA do teclado NEXO, como no chat individual.
+        tecladoGrupoNexo = new LinearLayout(this);
+        tecladoGrupoNexo.setVisibility(View.GONE);
+        tecladoGrupoNexo.setOrientation(LinearLayout.VERTICAL);
+        raiz.addView(tecladoGrupoNexo, new LinearLayout.LayoutParams(-1, -2));
         setContentView(raiz);
+    }
+
+    private void alternarTecladoGrupoNexo() {
+        tecladoGrupoAberto = !tecladoGrupoAberto;
+        tecladoGrupoNexo.setVisibility(tecladoGrupoAberto ? View.VISIBLE : View.GONE);
+        campoMensagem.setShowSoftInputOnFocus(!tecladoGrupoAberto);
+        if (tecladoGrupoAberto) {
+            InputMethodManager imm = (InputMethodManager)
+                    getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) imm.hideSoftInputFromWindow(campoMensagem.getWindowToken(), 0);
+            campoMensagem.requestFocus();
+            NexoTecladoGrupo.render(this, tecladoGrupoNexo, campoMensagem,
+                    () -> { tecladoGrupoAberto = false;
+                        tecladoGrupoNexo.setVisibility(View.GONE);
+                        campoMensagem.setShowSoftInputOnFocus(true);
+                        campoMensagem.requestFocus();
+                        InputMethodManager ime = (InputMethodManager)
+                                getSystemService(Context.INPUT_METHOD_SERVICE);
+                        if (ime != null) ime.showSoftInput(campoMensagem,
+                                InputMethodManager.SHOW_IMPLICIT);
+                    });
+        }
+    }
+
+    private void abrirPainelGrupoNexo() {
+        NexoGrupoPainel.abrir(this, db, grupoId, () -> finish());
+    }
+
+    private void selecionarMensagensGrupoNexo() {
+        if (auth.getCurrentUser() != null) {
+            NexoMensagensLote.selecionar(this, db, "grupos/" + grupoId,
+                    auth.getCurrentUser().getUid());
+        }
+    }
+
+    private void escolherFundoGrupoNexo() {
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Papel de parede · Grupo NEXO")
+            .setItems(FundoConversaHelper.NOMES, (d,i) -> {
+                FundoConversaHelper.salvar(this,FundoConversaHelper.CHAVES[i],grupoId);
+                FundoConversaHelper.aplicar(this,listaMensagens,grupoId);
+                Toast.makeText(this,"Fundo escolhido para este grupo.",Toast.LENGTH_SHORT).show();
+            }).setNegativeButton("Cancelar",null).show();
+    }
+
+    private boolean contemTextoGrupo(View v,String alvo) {
+        if(v instanceof TextView && ((TextView)v).getText().toString()
+                .toLowerCase(java.util.Locale.ROOT).contains(alvo)) return true;
+        if(v instanceof android.view.ViewGroup) {
+            android.view.ViewGroup g=(android.view.ViewGroup)v;
+            for(int i=0;i<g.getChildCount();i++) if(contemTextoGrupo(g.getChildAt(i),alvo)) return true;
+        }
+        return false;
+    }
+
+    private void buscarMensagemGrupoNexo() {
+        EditText busca=new EditText(this); busca.setSingleLine(true);
+        busca.setHint("Pesquisar texto no grupo");
+        new android.app.AlertDialog.Builder(this).setTitle("Buscar mensagens")
+            .setView(busca).setNegativeButton("Cancelar",null)
+            .setPositiveButton("Buscar",(d,w)->{
+                String alvo=busca.getText().toString().trim()
+                        .toLowerCase(java.util.Locale.ROOT);
+                if(alvo.isEmpty())return;
+                for(int i=0;i<listaMensagens.getChildCount();i++) {
+                    View linha=listaMensagens.getChildAt(i);
+                    if(contemTextoGrupo(linha,alvo)) {
+                        final View achada=linha;
+                        if(scrollGrupo!=null)scrollGrupo.post(()->
+                            scrollGrupo.smoothScrollTo(0,achada.getTop()));
+                        achada.animate().alpha(.5f).setDuration(180).withEndAction(()->
+                            achada.animate().alpha(1f).setDuration(200).start()).start();
+                        return;
+                    }
+                }
+                Toast.makeText(this,"Nenhuma mensagem encontrada nesta conversa.",
+                        Toast.LENGTH_SHORT).show();
+            }).show();
     }
 
     private void ouvirMensagens() {
@@ -585,14 +726,13 @@ public class ChatGrupoActivity extends Activity {
                                     listaMensagens
                                             .removeAllViews();
 
-                                    for (
-                                            DocumentSnapshot doc
-                                            : snapshot.getDocuments()
-                                    ) {
-
-                                        adicionarMensagem(
-                                                doc
-                                        );
+                                    for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                                        Object apagado = doc.get("apagadoPara");
+                                        if (apagado instanceof java.util.List &&
+                                                auth.getCurrentUser() != null &&
+                                                ((java.util.List<?>) apagado).contains(
+                                                        auth.getCurrentUser().getUid())) continue;
+                                        adicionarMensagem(doc);
                                     }
                                 }
                         );
@@ -630,12 +770,42 @@ public class ChatGrupoActivity extends Activity {
                         : Gravity.LEFT
         );
 
-        TextView mensagem =
-                texto(
-                        texto,
-                        15,
-                        Color.WHITE
-                );
+        String tipo =
+                doc.getString("tipo");
+
+        TextView mensagem;
+
+        if ("imagem".equals(tipo)) {
+            mensagem=texto("🖼  IMAGEM  •  Toque para ampliar" +
+                    (texto.isEmpty()?"":"\n"+texto),15,Color.WHITE);
+            String path=doc.getString("imagemPath");
+            mensagem.setOnClickListener(v->abrirImagemRecebidaGrupo(path));
+        } else if ("audio".equals(tipo)) {
+            mensagem =
+                    texto(
+                            "🎙️  Mensagem de voz\n▶️  Toque para reproduzir",
+                            14,
+                            Color.WHITE
+                    );
+
+            String audioUrl =
+                    doc.getString("audioUrl");
+
+            mensagem.setOnClickListener(
+                    v -> reproduzirAudio(
+                            audioUrl,
+                            mensagem
+                    )
+            );
+
+        } else {
+            mensagem =
+                    texto(
+                            texto,
+                            15,
+                            Color.WHITE
+                    );
+        }
 
         mensagem.setPadding(
                 dp(14),
@@ -759,6 +929,346 @@ public class ChatGrupoActivity extends Activity {
         );
     }
 
+
+    private void alternarGravacaoAudio() {
+        if (gravandoAudio) {
+            finalizarGravacaoAudio(true);
+            return;
+        }
+
+        if (android.os.Build.VERSION.SDK_INT >= 23
+                && checkSelfPermission(
+                        Manifest.permission.RECORD_AUDIO
+                ) != PackageManager.PERMISSION_GRANTED) {
+
+            requestPermissions(
+                    new String[]{
+                            Manifest.permission.RECORD_AUDIO
+                    },
+                    REQUEST_AUDIO_PERMISSION
+            );
+
+            return;
+        }
+
+        iniciarGravacaoAudio();
+    }
+
+    private void iniciarGravacaoAudio() {
+        try {
+            arquivoAudioTemporario =
+                    new File(
+                            getCacheDir(),
+                            "grupo_audio_"
+                                    + System.currentTimeMillis()
+                                    + ".m4a"
+                    );
+
+            audioRecorder =
+                    new MediaRecorder();
+
+            audioRecorder.setAudioSource(
+                    MediaRecorder.AudioSource.MIC
+            );
+
+            audioRecorder.setOutputFormat(
+                    MediaRecorder.OutputFormat.MPEG_4
+            );
+
+            audioRecorder.setAudioEncoder(
+                    MediaRecorder.AudioEncoder.AAC
+            );
+
+            audioRecorder.setAudioEncodingBitRate(
+                    96000
+            );
+
+            audioRecorder.setAudioSamplingRate(
+                    44100
+            );
+
+            audioRecorder.setOutputFile(
+                    arquivoAudioTemporario.getAbsolutePath()
+            );
+
+            audioRecorder.prepare();
+            audioRecorder.start();
+
+            gravandoAudio = true;
+            inicioGravacao =
+                    SystemClock.elapsedRealtime();
+
+            botaoMicrofone.setText("⏹️");
+
+            Toast.makeText(
+                    this,
+                    "Gravando áudio...",
+                    Toast.LENGTH_SHORT
+            ).show();
+
+        } catch (Exception e) {
+            android.util.Log.e(
+                    "DaNikeAI_AUDIO",
+                    "Erro grupo",
+                    e
+            );
+
+            gravandoAudio = false;
+
+            Toast.makeText(
+                    this,
+                    "Não foi possível gravar.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
+    }
+
+    private void finalizarGravacaoAudio(boolean enviar) {
+        if (!gravandoAudio) {
+            return;
+        }
+
+        try {
+            audioRecorder.stop();
+        } catch (Exception ignored) {
+        }
+
+        try {
+            audioRecorder.release();
+        } catch (Exception ignored) {
+        }
+
+        audioRecorder = null;
+        gravandoAudio = false;
+
+        botaoMicrofone.setText("🎙️");
+
+        if (!enviar ||
+                arquivoAudioTemporario == null ||
+                !arquivoAudioTemporario.exists()) {
+
+            if (arquivoAudioTemporario != null) {
+                arquivoAudioTemporario.delete();
+            }
+
+            return;
+        }
+
+        enviarAudioGrupo();
+    }
+
+    private void enviarAudioGrupo() {
+        if (auth.getCurrentUser() == null
+                || grupoId == null
+                || grupoId.trim().isEmpty()) {
+            return;
+        }
+
+        String uid =
+                auth.getCurrentUser().getUid();
+
+        String nome =
+                System.currentTimeMillis()
+                        + "_"
+                        + uid
+                        + ".m4a";
+
+        StorageReference ref =
+                FirebaseStorage
+                        .getInstance()
+                        .getReference()
+                        .child("group_audio")
+                        .child(grupoId)
+                        .child(uid)
+                        .child(nome);
+
+        Toast.makeText(
+                this,
+                "Enviando áudio...",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        ref.putFile(
+                Uri.fromFile(
+                        arquivoAudioTemporario
+                )
+        ).addOnSuccessListener(v ->
+                ref.getDownloadUrl()
+                        .addOnSuccessListener(url -> {
+                            Map<String, Object> mensagem =
+                                    ChatModelo.mensagem(
+                                            uid,
+                                            "🎙️ Mensagem de voz",
+                                            "audio"
+                                    );
+
+                            mensagem.put("autorUid", uid);
+                            mensagem.put(
+                                    "audioUrl",
+                                    url.toString()
+                            );
+
+                            mensagem.put(
+                                    "duracaoMs",
+                                    SystemClock.elapsedRealtime()
+                                            - inicioGravacao
+                            );
+
+                            db.collection("grupos")
+                                    .document(grupoId)
+                                    .collection("mensagens")
+                                    .add(mensagem)
+                                    .addOnSuccessListener(x -> {
+                                        arquivoAudioTemporario.delete();
+
+                                        Toast.makeText(
+                                                this,
+                                                "Áudio enviado.",
+                                                Toast.LENGTH_SHORT
+                                        ).show();
+                                    });
+                        })
+        ).addOnFailureListener(e ->
+                Toast.makeText(
+                        this,
+                        "Não foi possível enviar o áudio.",
+                        Toast.LENGTH_LONG
+                ).show()
+        );
+    }
+
+    private void reproduzirAudio(
+            String url,
+            TextView botao
+    ) {
+        if (url == null || url.trim().isEmpty()) {
+            return;
+        }
+
+        try {
+            if (audioPlayer != null) {
+                audioPlayer.release();
+            }
+
+            audioPlayer =
+                    new MediaPlayer();
+
+            audioPlayer.setDataSource(url);
+
+            audioPlayer.setOnPreparedListener(
+                    mp -> {
+                        mp.start();
+                        botao.setText(
+                                "⏸️  Reproduzindo..."
+                        );
+                    }
+            );
+
+            audioPlayer.setOnCompletionListener(
+                    mp -> {
+                        botao.setText(
+                                "🎙️  Mensagem de voz\\n▶️  Toque para reproduzir"
+                        );
+                        mp.release();
+                        audioPlayer = null;
+                    }
+            );
+
+            audioPlayer.prepareAsync();
+
+        } catch (Exception e) {
+            Toast.makeText(
+                    this,
+                    "Áudio indisponível.",
+                    Toast.LENGTH_SHORT
+            ).show();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(
+            int requestCode,
+            String[] permissions,
+            int[] grantResults
+    ) {
+        super.onRequestPermissionsResult(
+                requestCode,
+                permissions,
+                grantResults
+        );
+
+        if (requestCode == REQUEST_AUDIO_PERMISSION
+                && grantResults.length > 0
+                && grantResults[0]
+                == PackageManager.PERMISSION_GRANTED) {
+
+            iniciarGravacaoAudio();
+        }
+    }
+
+    private void abrirImagemGrupo() {
+        android.content.Intent intent=new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+        intent.setType("image/*");startActivityForResult(intent,REQUEST_IMAGEM_GRUPO);
+    }
+    @Override protected void onActivityResult(int codigo,int resultado,android.content.Intent dados) {
+        super.onActivityResult(codigo,resultado,dados);
+        if(codigo==REQUEST_IMAGEM_GRUPO&&resultado==RESULT_OK&&dados!=null)
+            enviarImagemGrupo(dados.getData());
+    }
+    private void enviarImagemGrupo(Uri uri) {
+        if(uri==null||grupoId.isEmpty()||auth.getCurrentUser()==null)return;
+        String mime=getContentResolver().getType(uri);
+        if(mime==null||!mime.startsWith("image/"))return;
+        try(android.database.Cursor c=getContentResolver().query(uri,
+            new String[]{android.provider.OpenableColumns.SIZE},null,null,null)){
+            if(c!=null&&c.moveToFirst()){
+                int n=c.getColumnIndex(android.provider.OpenableColumns.SIZE);
+                if(n>=0&&!c.isNull(n)&&c.getLong(n)>8L*1024*1024){
+                    Toast.makeText(this,"Limite de 8 MB.",Toast.LENGTH_LONG).show();return;
+                }
+            }
+        }catch(Exception ignored){}
+        String uid=auth.getCurrentUser().getUid();
+        String path="group_images/"+grupoId+"/"+uid+"/"+
+            java.util.UUID.randomUUID().toString()+".jpg";
+        StorageReference ref=FirebaseStorage.getInstance().getReference().child(path);
+        ref.putFile(uri,new com.google.firebase.storage.StorageMetadata.Builder()
+            .setContentType(mime).build())
+            .addOnSuccessListener(x->{
+                Map<String,Object> mensagem=ChatModelo.mensagem(uid,"","imagem");
+                mensagem.put("autorUid",uid);
+                mensagem.put("imagemPath",path);
+                db.collection("grupos").document(grupoId).collection("mensagens")
+                  .add(mensagem)
+                  .addOnSuccessListener(v->Toast.makeText(this,"Imagem enviada.",Toast.LENGTH_SHORT).show())
+                  .addOnFailureListener(e->{ref.delete();Toast.makeText(this,
+                    "Mensagem de imagem recusada pelo Firestore.",Toast.LENGTH_LONG).show();});
+            }).addOnFailureListener(e->Toast.makeText(this,
+                "Erro no upload de imagem.",Toast.LENGTH_LONG).show());
+    }
+    private void abrirImagemRecebidaGrupo(String path) {
+        if(path==null||!path.startsWith("group_images/"+grupoId+"/"))return;
+        FirebaseStorage.getInstance().getReference().child(path).getBytes(8L*1024*1024)
+            .addOnSuccessListener(bytes->{
+                android.graphics.BitmapFactory.Options opts=new android.graphics.BitmapFactory.Options();
+                opts.inJustDecodeBounds=true;
+                android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.length,opts);
+                int max=Math.max(opts.outWidth,opts.outHeight);
+                opts.inSampleSize=1;while(max/opts.inSampleSize>1400)opts.inSampleSize*=2;
+                opts.inJustDecodeBounds=false;
+                android.graphics.Bitmap bmp=android.graphics.BitmapFactory.decodeByteArray(bytes,0,bytes.length,opts);
+                if(bmp==null)return;
+                Dialog dialog=new Dialog(this);ImageView foto=new ImageView(this);
+                foto.setImageBitmap(bmp);foto.setBackgroundColor(Color.rgb(2,9,22));
+                foto.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                dialog.setContentView(foto);dialog.show();
+                Window window=dialog.getWindow();if(window!=null)window.setLayout(-1,-1);
+                foto.setOnClickListener(v->dialog.dismiss());
+            }).addOnFailureListener(e->Toast.makeText(this,
+                "Imagem indisponível.",Toast.LENGTH_SHORT).show());
+    }
+
     private void enviarMensagem() {
 
         String texto =
@@ -789,6 +1299,7 @@ public class ChatGrupoActivity extends Activity {
                         "texto"
                 );
 
+        mensagem.put("autorUid", meuUid);
         db.collection("grupos")
                 .document(grupoId)
                 .collection("mensagens")

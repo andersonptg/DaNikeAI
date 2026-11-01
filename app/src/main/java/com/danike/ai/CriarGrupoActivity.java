@@ -77,12 +77,9 @@ public class CriarGrupoActivity extends Activity {
         TextView titulo = texto("Criar grupo", 23, Color.WHITE);
         titulo.setTypeface(null, android.graphics.Typeface.BOLD);
 
+        titulo.setMaxLines(2);
         topo.addView(titulo,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(55),
-                        1
-                ));
+                new LinearLayout.LayoutParams(0, -2, 1));
 
         principal.addView(topo);
 
@@ -115,22 +112,15 @@ public class CriarGrupoActivity extends Activity {
         );
         toqueFoto.setGravity(Gravity.CENTER);
 
-        principal.addView(
-                toqueFoto,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(42)
-                )
-        );
+        toqueFoto.setMinimumHeight(dp(42));
+        principal.addView(toqueFoto,
+                new LinearLayout.LayoutParams(-1, -2));
 
         campoNome = campo("Nome do grupo");
-        principal.addView(
-                campoNome,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(58)
-                )
-        );
+        campoNome.setMinHeight(dp(58));
+        campoNome.setMaxLines(2);
+        principal.addView(campoNome,
+                new LinearLayout.LayoutParams(-1, -2));
 
         Space espacoNome = new Space(this);
         principal.addView(
@@ -144,13 +134,9 @@ public class CriarGrupoActivity extends Activity {
                 Gravity.TOP | Gravity.START
         );
 
-        principal.addView(
-                campoDescricao,
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(95)
-                )
-        );
+        campoDescricao.setMinHeight(dp(95));
+        principal.addView(campoDescricao,
+                new LinearLayout.LayoutParams(-1, -2));
 
         Space espacoDescricao = new Space(this);
         principal.addView(
@@ -301,14 +287,10 @@ public class CriarGrupoActivity extends Activity {
                 0
         );
 
-        linha.addView(
-                nomeView,
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(60),
-                        1
-                )
-        );
+        nomeView.setSingleLine(false);
+        nomeView.setMaxLines(3);
+        linha.addView(nomeView,
+                new LinearLayout.LayoutParams(0, -2, 1));
 
         CheckBox check = new CheckBox(this);
         check.setButtonTintList(
@@ -345,11 +327,9 @@ public class CriarGrupoActivity extends Activity {
                 )
         );
 
+        linha.setMinimumHeight(dp(76));
         LinearLayout.LayoutParams linhaParams =
-                new LinearLayout.LayoutParams(
-                        -1,
-                        dp(76)
-                );
+                new LinearLayout.LayoutParams(-1, -2);
 
         linhaParams.bottomMargin = dp(9);
 

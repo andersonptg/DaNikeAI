@@ -93,14 +93,19 @@ public class PerfilActivity extends Activity {
                 MODE_PRIVATE
         );
 
-        escuro = prefs.getBoolean(
-                "modo_escuro",
-                true
-        );
+        escuro = NexoTemaGlobal.escuro(this);
 
-        aplicarSistema();
+        NexoTemaGlobal.aplicarJanela(this);
         montar();
         carregarPerfilFirebase();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (NexoTemaGlobal.escuro(this) != escuro) {
+            recreate();
+        }
     }
 
     private void aplicarSistema() {
@@ -123,7 +128,7 @@ public class PerfilActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
-        scroll.setBackgroundColor(fundo());
+        scroll.setBackground(NexoTemaGlobal.superficie(this, 0));
 
         LinearLayout raiz = new LinearLayout(this);
         raiz.setOrientation(LinearLayout.VERTICAL);
@@ -167,8 +172,8 @@ public class PerfilActivity extends Activity {
         );
 
         TextView titulo = txt(
-                "MEU PERFIL",
-                23,
+                "NEXO  |  MEU PERFIL",
+                20,
                 texto()
         );
 
@@ -229,24 +234,12 @@ public class PerfilActivity extends Activity {
                 )
         );
 
-        modo.setOnClickListener(v -> {
-
-            escuro = !escuro;
-
-            prefs.edit()
-                    .putBoolean(
-                            "modo_escuro",
-                            escuro
-                    )
-                    .apply();
-
-            recreate();
-        });
+        modo.setOnClickListener(v -> NexoTemaGlobal.selecionar(this, () -> recreate()));
 
         raiz.addView(topo);
 
         TextView subtitulo = txt(
-                "Sua conta no DaNikeAI",
+                "Sua conta no NEXO",
                 13,
                 textoSecundario()
         );
@@ -481,26 +474,38 @@ statusView = txt(
                 () -> editarNome()
         );
 
-        adicionarInfo(raiz,
+        adicionarBotao(raiz,
                 "🪪  IDENTIFICADOR PÚBLICO",
-                "Toque no código acima para revelar ou ocultar.");
+                "Entenda como compartilhar ou ocultar seu código público.",
+                () -> NexoDialogPremium.explicar(this, "Identificador público",
+                        "É o código que permite encontrar seu perfil nas Conexões. "
+                        + "Toque no código na parte superior para revelar ou ocultar. "
+                        + "Compartilhe apenas quando desejar."));
         adicionarBotao(raiz,
                 "❕  SOBRE O IDENTIFICADOR",
                 "Código público para ser encontrado nas Conexões.",
-                () -> new AlertDialog.Builder(this)
-                    .setTitle("Identificador público")
-                    .setMessage("Este código identifica seu perfil nas Conexões. "
-                        + "Ele é diferente do ID interno da conta, que não deve "
-                        + "ser compartilhado publicamente.")
-                    .setPositiveButton("Entendi", null)
-                    .show());
+                () -> NexoDialogPremium.explicar(this,
+                    "Sobre o identificador",
+                    "Seu código público ajuda outras pessoas a encontrarem você nas "
+                    + "Conexões. Ele é diferente do ID interno, que é privado."));
 
-        adicionarInfo(raiz,
+        adicionarBotao(raiz,
                 "🔒  ID INTERNO DA CONTA",
-                "••••••••••  Protegido; não é público.");
-        adicionarInfo(raiz,
+                "Protegido; não é público.",
+                () -> NexoDialogPremium.explicar(this,
+                    "Identificador interno",
+                    "Esse identificador é usado internamente para vincular os dados "
+                    + "da conta. Por segurança, ele permanece oculto e não é "
+                    + "necessário compartilhá-lo com outras pessoas."));
+        adicionarBotao(raiz,
                 "🛡️  PRIVACIDADE",
-                "O ID interno fica oculto nesta tela e não deve ser divulgado.");
+                "Entenda os dados públicos e privados do perfil.",
+                () -> NexoDialogPremium.explicar(this,
+                    "Privacidade do perfil",
+                    "Seu nome, @usuário e descrição podem aparecer para outras "
+                    + "pessoas conforme a visibilidade escolhida. O ID interno "
+                    + "continua protegido. A opção Visibilidade do perfil permite "
+                    + "controlar sua presença no GLOBAL."));
 
 
 adicionarBotao(
@@ -898,82 +903,37 @@ String fotoUrl =
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.HORIZONTAL);
         box.setGravity(Gravity.CENTER_VERTICAL);
-        box.setPadding(dp(16), dp(12), dp(16), dp(12));
-
-        GradientDrawable fundo = new GradientDrawable();
-        fundo.setColor(
-                escuro
-                        ? Color.rgb(22, 27, 42)
-                        : Color.rgb(247, 249, 253)
-        );
-        fundo.setCornerRadius(dp(18));
-        fundo.setStroke(
-                dp(1),
-                escuro
-                        ? Color.rgb(48, 60, 86)
-                        : Color.rgb(220, 226, 236)
-        );
-        box.setBackground(fundo);
+        box.setMinimumHeight(dp(76));
+        box.setPadding(dp(14), dp(12), dp(14), dp(12));
+        box.setBackground(NexoTemaGlobal.superficie(this, 19));
         box.setElevation(dp(3));
 
-        TextView icone = txt(
-                "›",
-                25,
-                azul()
-        );
-        icone.setGravity(Gravity.CENTER);
-
-        LinearLayout.LayoutParams iconeParams =
-                new LinearLayout.LayoutParams(dp(34), dp(48));
-
-        box.addView(icone, iconeParams);
-
+        // Icone real fica junto ao titulo, seta aponta para a acao.
         LinearLayout textos = new LinearLayout(this);
         textos.setOrientation(LinearLayout.VERTICAL);
         textos.setGravity(Gravity.CENTER_VERTICAL);
-
-        TextView t = txt(
-                titulo,
-                15,
-                texto()
-        );
+        TextView t = txt(titulo, 15, texto());
         t.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        t.setMaxLines(3);
+        TextView d = txt(descricao, 12, textoSecundario());
+        textos.addView(t, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams dpDesc = new LinearLayout.LayoutParams(-1, -2);
+        dpDesc.topMargin = dp(3);
+        textos.addView(d, dpDesc);
+        box.addView(textos, new LinearLayout.LayoutParams(0, -2, 1f));
 
-        TextView d = txt(
-                descricao,
-                12,
-                textoSecundario()
-        );
-        d.setMaxLines(2);
+        TextView seta = txt("›", 28, azul());
+        seta.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams setaP = new LinearLayout.LayoutParams(dp(30), dp(44));
+        setaP.leftMargin = dp(6);
+        box.addView(seta, setaP);
 
-        textos.addView(
-                t,
-                new LinearLayout.LayoutParams(-1, dp(25))
-        );
-
-        textos.addView(
-                d,
-                new LinearLayout.LayoutParams(-1, dp(34))
-        );
-
-        LinearLayout.LayoutParams textosParams =
-                new LinearLayout.LayoutParams(
-                        0,
-                        dp(60),
-                        1f
-                );
-
-        box.addView(textos, textosParams);
-
-        LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(-1, dp(84));
-
-        p.setMargins(0, dp(10), 0, 0);
-
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.topMargin = dp(9);
         raiz.addView(box, p);
-
         box.setOnClickListener(v -> acao.run());
     }
+
 
     private void adicionarBotaoRisco(
             LinearLayout raiz,
@@ -1040,16 +1000,16 @@ String fotoUrl =
         );
         d.setMaxLines(2);
 
-        textos.addView(t, new LinearLayout.LayoutParams(-1, dp(25)));
-        textos.addView(d, new LinearLayout.LayoutParams(-1, dp(38)));
+        textos.addView(t, new LinearLayout.LayoutParams(-1, -2));
+        textos.addView(d, new LinearLayout.LayoutParams(-1, -2));
 
         box.addView(
                 textos,
-                new LinearLayout.LayoutParams(0, dp(63), 1f)
+                new LinearLayout.LayoutParams(0, -2, 1f)
         );
 
         LinearLayout.LayoutParams p =
-                new LinearLayout.LayoutParams(-1, dp(86));
+                new LinearLayout.LayoutParams(-1, -2);
 
         p.setMargins(0, dp(10), 0, 0);
 

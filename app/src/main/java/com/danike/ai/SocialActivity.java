@@ -52,6 +52,7 @@ import android.content.Intent;
 
 
 
+import android.app.AlertDialog;
 import android.app.Activity;
 
 import android.os.Bundle;
@@ -79,6 +80,7 @@ import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 
 import android.widget.ScrollView;
+import android.widget.Space;
 
 import android.widget.TextView;
 
@@ -95,6 +97,7 @@ import com.google.firebase.Timestamp;
 import com.google.firebase.firestore.FieldValue;
 
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.WriteBatch;
 
 import com.google.firebase.firestore.ListenerRegistration;
 
@@ -204,11 +207,29 @@ private LinearLayout barraInferior;
 
         raiz = new FrameLayout(this);
 
-        raiz.setBackgroundColor(Color.rgb(13, 17, 23));
+        GradientDrawable fundoSocial = new GradientDrawable(
+        GradientDrawable.Orientation.TL_BR,
+        new int[]{
+                Color.rgb(4, 7, 18),
+                Color.rgb(7, 13, 30),
+                Color.rgb(10, 18, 42),
+                Color.rgb(5, 8, 20)
+        }
+);
+fundoSocial.setCornerRadius(dp(0));
+raiz.setBackground(fundoSocial);
 
 
 
         setContentView(raiz);
+        if (android.os.Build.VERSION.SDK_INT >= 35) {
+            raiz.setOnApplyWindowInsetsListener((v,insets)->{
+                int superior=insets.getInsets(android.view.WindowInsets.Type.statusBars()).top;
+                int inferior=insets.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom;
+                raiz.setPadding(0,superior,0,inferior);
+                return insets;
+            });
+        }
 
 
 
@@ -864,7 +885,7 @@ private LinearLayout barraInferior;
 
         );
 
-        titulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        titulo.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
 
         titulo.setGravity(Gravity.CENTER);
 
@@ -1994,7 +2015,7 @@ private LinearLayout barraInferior;
 
         campoBuscaSocial = new EditText(this);
 
-        campoBuscaSocial.setTextSize(14);
+        campoBuscaSocial.setTextSize(15);
 
         campoBuscaSocial.setTextColor(Color.rgb(240, 246, 252));
 
@@ -2076,11 +2097,11 @@ barraBuscaSocial.setVisibility(View.GONE);
 
                 new int[]{
 
-                        Color.rgb(22, 27, 34),
+                        Color.rgb(6, 19, 42),
 
-                        Color.rgb(22, 27, 34),
+                        Color.rgb(6, 19, 42),
 
-                        Color.rgb(22, 27, 34)
+                        Color.rgb(6, 19, 42)
 
                 }
 
@@ -2098,188 +2119,172 @@ barraBuscaSocial.setVisibility(View.GONE);
 
                 new FrameLayout.LayoutParams(-1, -1);
 
-        conteudoParamsSocial.setMargins(0, dp(94), 0, dp(108));
+        conteudoParamsSocial.setMargins(0, dp(94), 0, dp(88));
 
         raiz.addView(conteudo, conteudoParamsSocial);
 
 
 
         android.widget.HorizontalScrollView scrollAbas =
-
                 new android.widget.HorizontalScrollView(this);
 
         scrollAbas.setHorizontalScrollBarEnabled(false);
-
-        scrollAbas.setFillViewport(false);
-
+        scrollAbas.setFillViewport(true);
         scrollAbas.setOverScrollMode(View.OVER_SCROLL_NEVER);
-
-
+        scrollAbas.setClipChildren(false);
+        scrollAbas.setClipToPadding(false);
 
         barraInferior = new LinearLayout(this);
-
         barraInferior.setOrientation(LinearLayout.HORIZONTAL);
-
         barraInferior.setGravity(Gravity.CENTER_VERTICAL);
-
-        barraInferior.setPadding(dp(7), dp(7), dp(7), dp(7));
-
-
+        barraInferior.setPadding(dp(5), dp(5), dp(5), dp(5));
+        barraInferior.setClipChildren(false);
+        barraInferior.setClipToPadding(false);
 
         GradientDrawable fundoBarra = new GradientDrawable();
-
-        fundoBarra.setColor(Color.rgb(22, 27, 34));
-
+        fundoBarra.setColor(Color.rgb(3, 14, 32));
         fundoBarra.setCornerRadius(dp(22));
-
-        fundoBarra.setStroke(dp(1), Color.rgb(48, 54, 61));
-
+        fundoBarra.setStroke(dp(1), Color.rgb(38, 91, 145));
         barraInferior.setBackground(fundoBarra);
-
-
+        barraInferior.setElevation(dp(8));
 
         botoes = new TextView[]{
-
                 botao("🌎\nGLOBAL"),
-
-                botao("👥\nCONEXÕES"),
-
                 botao("💌\nSOLICITAÇÕES"),
-
+                botao("👥\nAMIGOS"),
                 botao("💬\nMENSAGENS"),
-
                 botao("👥\nGRUPOS"),
-
                 botao("⭕\nSTATUS")
-
         };
-
-
 
         for (int i = 0; i < botoes.length; i++) {
 
             final int posicao = i;
-
             TextView botaoAtual = botoes[i];
 
-
-
             GradientDrawable fundoBotao = new GradientDrawable();
-
-            fundoBotao.setColor(Color.TRANSPARENT);
-
-            fundoBotao.setCornerRadius(dp(16));
-
-            fundoBotao.setStroke(dp(1), Color.rgb(48, 54, 61));
+            fundoBotao.setColor(Color.rgb(7, 20, 42));
+            fundoBotao.setCornerRadius(dp(15));
+            fundoBotao.setStroke(dp(1), Color.rgb(42, 55, 72));
 
             botaoAtual.setBackground(fundoBotao);
-
-            botaoAtual.setTextColor(Color.rgb(139, 148, 158));
-
-            botaoAtual.setTextSize(11);
-
+            botaoAtual.setTextColor(Color.rgb(155, 168, 184));
+            botaoAtual.setTextSize(
+                getResources().getConfiguration().screenWidthDp>=600?11f:9f);
             botaoAtual.setGravity(Gravity.CENTER);
-
             botaoAtual.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-            botaoAtual.setPadding(dp(8), dp(4), dp(8), dp(4));
-
-            botaoAtual.setMinWidth(dp(108));
-
-            botaoAtual.setMinimumWidth(dp(108));
-
+            botaoAtual.setPadding(dp(1), dp(2), dp(1), dp(2));
+            botaoAtual.setMinWidth(0);
+            botaoAtual.setMinimumWidth(0);
             botaoAtual.setVisibility(View.VISIBLE);
-
-
+            // NEXO_RESPONSIVO_V4: não cortar texto em telas estreitas.
+            botaoAtual.setMaxLines(3);
+            botaoAtual.setSingleLine(false);
+            botaoAtual.setMinHeight(0);
+            botaoAtual.setMinimumHeight(0);
+            botaoAtual.setIncludeFontPadding(false);
+            if (android.os.Build.VERSION.SDK_INT >= 26) {
+                botaoAtual.setAutoSizeTextTypeUniformWithConfiguration(
+                        6, 11, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
+            }
 
             LinearLayout.LayoutParams botaoParams =
+                    new LinearLayout.LayoutParams(
+                            0,
+                            dp(58),
+                            1f
+                    );
 
-                    new LinearLayout.LayoutParams(dp(108), dp(62));
-
-            botaoParams.setMargins(dp(4), 0, dp(4), 0);
-
-
+            botaoParams.setMargins(dp(2), 0, dp(2), 0);
 
             FrameLayout recipienteBotao = new FrameLayout(this);
-
             recipienteBotao.setClipChildren(false);
-
             recipienteBotao.setClipToPadding(false);
 
             recipienteBotao.addView(
-
                     botaoAtual,
-
-                    new FrameLayout.LayoutParams(-1, -1)
-
+                    new FrameLayout.LayoutParams(
+                            -1,
+                            -1
+                    )
             );
 
-
-
             TextView indicador = new TextView(this);
-
             indicador.setTag("indicadorNotificacao_" + posicao);
-
             indicador.setVisibility(View.GONE);
 
-
-
             GradientDrawable fundoIndicador = new GradientDrawable();
-
             fundoIndicador.setShape(GradientDrawable.OVAL);
-
             fundoIndicador.setColor(Color.rgb(255, 35, 65));
-
-            fundoIndicador.setStroke(dp(1), Color.rgb(255, 120, 135));
+            fundoIndicador.setStroke(
+                    dp(1),
+                    Color.rgb(255, 145, 155)
+            );
 
             indicador.setBackground(fundoIndicador);
-
-
+            indicador.setElevation(dp(6));
 
             FrameLayout.LayoutParams indicadorParams =
-
                     new FrameLayout.LayoutParams(
+                            dp(11),
+                            dp(11),
+                            Gravity.TOP | Gravity.RIGHT
+                    );
 
-                            dp(11), dp(11), Gravity.TOP | Gravity.RIGHT);
+            indicadorParams.setMargins(
+                    0,
+                    dp(-2),
+                    dp(-2),
+                    0
+            );
 
-            indicadorParams.setMargins(0, dp(-3), dp(-3), 0);
+            recipienteBotao.addView(
+                    indicador,
+                    indicadorParams
+            );
 
-            recipienteBotao.addView(indicador, indicadorParams);
+            barraInferior.addView(
+                    recipienteBotao,
+                    botaoParams
+            );
 
-            barraInferior.addView(recipienteBotao, botaoParams);
-
-            botaoAtual.setOnClickListener(v -> selecionar(posicao));
-
+            botaoAtual.setOnClickListener(
+                    v -> selecionar(posicao)
+            );
         }
 
-
-
         scrollAbas.addView(
-
                 barraInferior,
-
-                new android.widget.FrameLayout.LayoutParams(-2, dp(76))
-
+                new android.widget.FrameLayout.LayoutParams(
+                        -1,
+                        dp(68)
+                )
         );
 
-
-
         FrameLayout.LayoutParams barraParams =
+                new FrameLayout.LayoutParams(
+                        -1,
+                        dp(72),
+                        Gravity.BOTTOM
+                );
 
-                new FrameLayout.LayoutParams(-1, dp(78), Gravity.BOTTOM);
+        barraParams.setMargins(
+                dp(5),
+                0,
+                dp(5),
+                dp(18)
+        );
 
-        barraParams.setMargins(dp(6), 0, dp(6), dp(8));
-
-        raiz.addView(scrollAbas, barraParams);
+        raiz.addView(
+                scrollAbas,
+                barraParams
+        );
 
         scrollAbas.setVisibility(View.VISIBLE);
-
         scrollAbas.bringToFront();
-
         scrollAbas.setZ(1000f);
 
     }
-
 
 
     private void atualizarIndicadorNotificacao(
@@ -2514,7 +2519,7 @@ barraBuscaSocial.setVisibility(View.GONE);
 
         atualizarIndicadorNotificacao(
 
-                2,
+                1,
 
                 quantidade > 0
 
@@ -2534,7 +2539,7 @@ barraBuscaSocial.setVisibility(View.GONE);
 
         if (barraBuscaSocial != null) {
 
-            boolean mostrarBusca = (posicao == 1 || posicao == 3);
+            boolean mostrarBusca = (posicao == 2 || posicao == 3);
 
             barraBuscaSocial.setVisibility(
 
@@ -2631,30 +2636,19 @@ barraBuscaSocial.setVisibility(View.GONE);
 
 
         } else if (posicao == 1) {
-
-            titulo.setText("CONEXÕES");
-
-            pararListenerConversas();
-
-            mostrarConexao();
-
-
-
-        } else if (posicao == 2) {
-
-            atualizarIndicadorNotificacao(2, false);
-
+            atualizarIndicadorNotificacao(1, false);
             titulo.setText("SOLICITAÇÕES");
-
             pararListenerConversas();
-
             pararListenerPerfis();
-
             mostrarSolicitacoes();
 
+        } else if (posicao == 2) {
+            titulo.setText("AMIGOS");
+            pararListenerConversas();
+            pararListenerPerfis();
+            mostrarConexao();
 
-
-        } else if (posicao == 3) {
+} else if (posicao == 3) {
 
             atualizarIndicadorNotificacao(3, false);
 
@@ -2681,6 +2675,8 @@ barraBuscaSocial.setVisibility(View.GONE);
 
 
         } else if (posicao == 5) {
+
+            atualizarIndicadorNotificacao(5, false);
 
             titulo.setText("STATUS");
 
@@ -3732,52 +3728,124 @@ barraBuscaSocial.setVisibility(View.GONE);
 
 
 
+        LinearLayout cabecalhoConexoes =
+                new LinearLayout(this);
+
+        cabecalhoConexoes.setOrientation(
+                LinearLayout.VERTICAL
+        );
+
+        cabecalhoConexoes.setPadding(
+                dp(16),
+                dp(12),
+                dp(16),
+                dp(10)
+        );
+
+
+        GradientDrawable fundoCabecalho =
+                new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{
+                                Color.rgb(10, 25, 52),
+                                Color.rgb(18, 23, 52),
+                                Color.rgb(28, 17, 52)
+                        }
+                );
+
+        fundoCabecalho.setCornerRadius(dp(18));
+
+        fundoCabecalho.setStroke(
+                dp(1),
+                Color.rgb(48, 104, 170)
+        );
+
+        cabecalhoConexoes.setBackground(
+                fundoCabecalho
+        );
+
+        cabecalhoConexoes.setElevation(dp(5));
+
+
         TextView subtitulo = texto(
-
-            "🌎 PESSOAS PARA CONHECER",
-
-            14,
-
-            Color.rgb(100, 190, 255)
-
+                "MINHAS CONEXÕES",
+                17,
+                Color.rgb(225, 240, 255)
         );
 
-        subtitulo.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-
-
-        principal.addView(
-
-            subtitulo,
-
-            new LinearLayout.LayoutParams(-1, dp(35))
-
+        subtitulo.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
         );
 
+        subtitulo.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
+
+
+        TextView linhaAcento = texto(
+                "●  AMIGOS CONECTADOS",
+                10,
+                Color.rgb(80, 190, 255)
+        );
+
+        linhaAcento.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
 
 
         TextView explicacao = texto(
-
-            "Pessoas que ainda não fazem parte das suas conexões.",
-
-            13,
-
-            Color.rgb(135, 150, 175)
-
+                "Aqui aparecem somente as pessoas que aceitaram sua conexão.",
+                12,
+                Color.rgb(155, 170, 195)
         );
 
-        explicacao.setPadding(0, 0, 0, dp(12));
+        explicacao.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
 
 
+        cabecalhoConexoes.addView(
+                subtitulo,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(28)
+                )
+        );
+
+        cabecalhoConexoes.addView(
+                linhaAcento,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(22)
+                )
+        );
+
+        explicacao.setMaxLines(Integer.MAX_VALUE);
+        cabecalhoConexoes.addView(
+                explicacao,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
+
+
+        LinearLayout.LayoutParams cabecalhoParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        cabecalhoParams.setMargins(
+                0,
+                0,
+                0,
+                dp(14)
+        );
 
         principal.addView(
-
-            explicacao,
-
-            new LinearLayout.LayoutParams(-1, dp(42))
-
+                cabecalhoConexoes,
+                cabecalhoParams
         );
-
 
 
         ScrollView scroll = new ScrollView(this);
@@ -5406,19 +5474,8 @@ barraBuscaSocial.setVisibility(View.GONE);
 
 
 
-                    card.addView(
-
-                            topoCard,
-
-                            new LinearLayout.LayoutParams(
-
-                                    -1,
-
-                                    dp(78)
-
-                            )
-
-                    );
+                    card.addView(topoCard,
+                            new LinearLayout.LayoutParams(-1, -2));
 
 
 
@@ -5568,15 +5625,9 @@ barraBuscaSocial.setVisibility(View.GONE);
 
 
 
+                    card.setMinimumHeight(dp(144));
                     LinearLayout.LayoutParams cardParams =
-
-                            new LinearLayout.LayoutParams(
-
-                                    -1,
-
-                                    dp(144)
-
-                            );
+                            new LinearLayout.LayoutParams(-1, -2);
 
 
 
@@ -5864,97 +5915,254 @@ barraBuscaSocial.setVisibility(View.GONE);
 
 
 
-    private void criarConexao(String outroUid) {
 
+    private void desfazerAmizade(String outroUid, String nomeOutro, View card) {
+        if (meuUid == null || meuUid.trim().isEmpty()
+                || outroUid == null || outroUid.trim().isEmpty()) {
+            return;
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Desfazer amizade?")
+                .setMessage(
+                        "Você realmente deseja desfazer a amizade com "
+                                + (nomeOutro == null || nomeOutro.trim().isEmpty()
+                                ? "esta pessoa"
+                                : nomeOutro)
+                                + "?\n\n"
+                                + "A conexão será removida para os dois usuários."
+                )
+                .setNegativeButton("CANCELAR", null)
+                .setPositiveButton("DESFAZER AMIZADE", (dialog, which) -> {
+
+                    DocumentReference minhaConexao =
+                            db.collection("conexoes")
+                                    .document(meuUid)
+                                    .collection("usuarios")
+                                    .document(outroUid);
+
+                    DocumentReference conexaoDoOutro =
+                            db.collection("conexoes")
+                                    .document(outroUid)
+                                    .collection("usuarios")
+                                    .document(meuUid);
+
+                    DocumentReference conviteMeu =
+                            db.collection("convites")
+                                    .document(outroUid)
+                                    .collection("recebidos")
+                                    .document(meuUid);
+
+                    DocumentReference conviteOutro =
+                            db.collection("convites")
+                                    .document(meuUid)
+                                    .collection("recebidos")
+                                    .document(outroUid);
+
+                    String conversaId =
+                            meuUid.compareTo(outroUid) < 0
+                                    ? meuUid + "_" + outroUid
+                                    : outroUid + "_" + meuUid;
+
+                    DocumentReference conversa =
+                            db.collection("chats")
+                                    .document(conversaId);
+
+                    final Runnable removerSemChat = () -> {
+
+                        WriteBatch batch = db.batch();
+
+                        batch.delete(minhaConexao);
+                        batch.delete(conexaoDoOutro);
+                        batch.delete(conviteMeu);
+                        batch.delete(conviteOutro);
+
+                        batch.commit()
+                                .addOnSuccessListener(v -> {
+
+                                    Toast.makeText(
+                                            this,
+                                            "Amizade desfeita.",
+                                            Toast.LENGTH_SHORT
+                                    ).show();
+
+                                    if (card != null) {
+                                        card.setVisibility(View.GONE);
+                                    }
+
+                                    mostrarConexao();
+                                })
+                                .addOnFailureListener(e -> {
+
+                                    android.util.Log.e(
+                                            "DaNikeAI",
+                                            "Falha ao desfazer amizade",
+                                            e
+                                    );
+
+                                    Toast.makeText(
+                                            this,
+                                            "Não foi possível concluir a remoção.",
+                                            Toast.LENGTH_LONG
+                                    ).show();
+                                });
+                    };
+
+                    conversa.get()
+                            .addOnSuccessListener(doc -> {
+
+                                if (!doc.exists()) {
+                                    removerSemChat.run();
+                                    return;
+                                }
+
+                                Object participantesObj =
+                                        doc.get("participantes");
+
+                                boolean chatValido =
+                                        participantesObj instanceof List
+                                                && ((List<?>) participantesObj)
+                                                .contains(meuUid)
+                                                && ((List<?>) participantesObj)
+                                                .contains(outroUid);
+
+                                if (!chatValido) {
+                                    removerSemChat.run();
+                                    return;
+                                }
+
+                                conversa.collection("mensagens")
+                                        .get()
+                                        .addOnSuccessListener(snapshot -> {
+
+                                            WriteBatch batch = db.batch();
+
+                                            for (DocumentSnapshot mensagem
+                                                    : snapshot.getDocuments()) {
+                                                batch.delete(
+                                                        mensagem.getReference()
+                                                );
+                                            }
+
+                                            batch.delete(conversa);
+                                            batch.delete(minhaConexao);
+                                            batch.delete(conexaoDoOutro);
+                                            batch.delete(conviteMeu);
+                                            batch.delete(conviteOutro);
+
+                                            batch.commit()
+                                                    .addOnSuccessListener(v -> {
+
+                                                        Toast.makeText(
+                                                                this,
+                                                                "Amizade desfeita.",
+                                                                Toast.LENGTH_SHORT
+                                                        ).show();
+
+                                                        if (card != null) {
+                                                            card.setVisibility(View.GONE);
+                                                        }
+
+                                                        mostrarConexao();
+                                                    })
+                                                    .addOnFailureListener(e -> {
+                                                        android.util.Log.e(
+                                                                "DaNikeAI",
+                                                                "Falha ao apagar amizade/chat",
+                                                                e
+                                                        );
+
+                                                        Toast.makeText(
+                                                                this,
+                                                                "Não foi possível concluir a remoção.",
+                                                                Toast.LENGTH_LONG
+                                                        ).show();
+                                                    });
+                                        })
+                                        .addOnFailureListener(e ->
+                                                removerSemChat.run()
+                                        );
+                            })
+                            .addOnFailureListener(e ->
+                                    removerSemChat.run()
+                            );
+                })
+                .show();
+    }
+
+private void criarConexao(String outroUid) {
         criarConexao(outroUid, null, null);
-
     }
 
 
-
     private void criarConexao(
-
             String outroUid,
-
             Runnable aoSucesso,
-
             Runnable aoFalhar
-
     ) {
 
-        if (outroUid == null || outroUid.trim().isEmpty()
-
-                || meuUid == null || meuUid.trim().isEmpty()) {
+        if (meuUid == null || meuUid.trim().isEmpty()
+                || outroUid == null || outroUid.trim().isEmpty()
+                || meuUid.equals(outroUid)) {
 
             if (aoFalhar != null) {
-
                 aoFalhar.run();
-
             }
 
             return;
-
         }
-
-
 
         Map<String, Object> dados = new HashMap<>();
 
         dados.put("uid", outroUid);
-
         dados.put("criadoEm", FieldValue.serverTimestamp());
+        dados.put("tipo", "amigo");
 
+        // A conexão é bilateral:
+        // meuUid -> outroUid
+        // outroUid -> meuUid
+        DocumentReference minhaConexao =
+                db.collection("conexoes")
+                        .document(meuUid)
+                        .collection("usuarios")
+                        .document(outroUid);
 
+        DocumentReference conexaoDoOutro =
+                db.collection("conexoes")
+                        .document(outroUid)
+                        .collection("usuarios")
+                        .document(meuUid);
 
-        // Cada usuário grava somente a própria lista de conexões.
+        WriteBatch batch = db.batch();
 
-        db.collection("conexoes")
+        batch.set(minhaConexao, dados, SetOptions.merge());
 
-                .document(meuUid)
+        Map<String, Object> dadosOutro = new HashMap<>(dados);
+        dadosOutro.put("uid", meuUid);
 
-                .collection("usuarios")
+        batch.set(conexaoDoOutro, dadosOutro, SetOptions.merge());
 
-                .document(outroUid)
-
-                .set(dados, SetOptions.merge())
-
+        batch.commit()
                 .addOnSuccessListener(v -> {
-
                     if (aoSucesso != null) {
-
                         aoSucesso.run();
-
                     }
-
                 })
-
                 .addOnFailureListener(e -> {
-
                     if (aoFalhar != null) {
-
                         aoFalhar.run();
-
                     } else {
-
                         Toast.makeText(
-
                                 this,
-
                                 "Não foi possível salvar a conexão.",
-
                                 Toast.LENGTH_SHORT
-
                         ).show();
-
                     }
-
                 });
-
     }
 
 
-
-private void iniciarListenerGrupos() {
+    private void iniciarListenerGrupos() {
 
     if (meuUid == null || meuUid.trim().isEmpty()) {
 
@@ -6634,19 +6842,9 @@ private void mostrarGrupos() {
 
 
 
-        centro.addView(
-
-                nomeView,
-
-                new LinearLayout.LayoutParams(
-
-                        -1,
-
-                        dp(28)
-
-                )
-
-        );
+        nomeView.setMaxLines(3);
+        nomeView.setSingleLine(false);
+        centro.addView(nomeView, new LinearLayout.LayoutParams(-1, -2));
 
 
 
@@ -6674,19 +6872,9 @@ private void mostrarGrupos() {
 
 
 
-        centro.addView(
-
-                descricaoView,
-
-                new LinearLayout.LayoutParams(
-
-                        -1,
-
-                        dp(24)
-
-                )
-
-        );
+        descricaoView.setMaxLines(4);
+        descricaoView.setSingleLine(false);
+        centro.addView(descricaoView, new LinearLayout.LayoutParams(-1, -2));
 
 
 
@@ -6763,6 +6951,36 @@ private void mostrarGrupos() {
 
 
         final String nomeGrupoFinal = nome;
+        // Três pontinhos disponíveis sem precisar entrar no grupo.
+        TextView menuGrupo = texto("⋮", 26, Color.rgb(84, 187, 252));
+        menuGrupo.setGravity(Gravity.CENTER);
+        card.addView(menuGrupo, new LinearLayout.LayoutParams(dp(42), dp(52)));
+        menuGrupo.setOnClickListener(v -> {
+            String tipoGrupo=doc.getString("tipo");
+            String streaming=doc.getString("servicoHave");
+            if ("HAVE".equalsIgnoreCase(tipoGrupo) ||
+                    (streaming!=null&&!streaming.isEmpty())) {
+                Toast.makeText(this,"Esta sala pertence à área HAVE.",Toast.LENGTH_LONG).show();
+            } else {
+                NexoGrupoPainel.abrir(this,db,doc.getId(),() -> mostrarGrupos());
+            }
+        });
+        // NEXO_PREMIUM_V3: segurar o card abre participantes/admin.
+        // Salas HAVE continuam sendo gerenciadas na área HAVE.
+        card.setOnLongClickListener(v -> {
+            String tipo = doc.getString("tipo");
+            if ("HAVE".equalsIgnoreCase(tipo) ||
+                    (doc.getString("servicoHave") != null &&
+                     !doc.getString("servicoHave").isEmpty())) {
+                Toast.makeText(this, "Gerencie salas de streaming na área HAVE.",
+                        Toast.LENGTH_LONG).show();
+            } else {
+                NexoGrupoPainel.abrir(this, db, doc.getId(),
+                        () -> mostrarGrupos());
+            }
+            return true;
+        });
+        
 
         card.setOnClickListener(v -> {
 
@@ -6806,15 +7024,9 @@ private void mostrarGrupos() {
 
 
 
+        card.setMinimumHeight(dp(92));
         LinearLayout.LayoutParams cardParams =
-
-                new LinearLayout.LayoutParams(
-
-                        -1,
-
-                        dp(92)
-
-                );
+                new LinearLayout.LayoutParams(-1, -2);
 
 
 
@@ -6864,74 +7076,118 @@ private void mostrarGrupos() {
 
 
 
-        TextView subtitulo = texto(
+        LinearLayout cabecalhoConexoes =
+                new LinearLayout(this);
 
-                "MINHAS CONEXÕES",
-
-                14,
-
-                Color.rgb(100, 190, 255)
-
+        cabecalhoConexoes.setOrientation(
+                LinearLayout.VERTICAL
         );
 
+        cabecalhoConexoes.setPadding(
+                dp(16),
+                dp(12),
+                dp(16),
+                dp(10)
+        );
 
+        GradientDrawable fundoCabecalho =
+                new GradientDrawable(
+                        GradientDrawable.Orientation.TL_BR,
+                        new int[]{
+                                Color.rgb(10, 25, 52),
+                                Color.rgb(18, 23, 52),
+                                Color.rgb(28, 17, 52)
+                        }
+                );
+
+        fundoCabecalho.setCornerRadius(dp(18));
+
+        fundoCabecalho.setStroke(
+                dp(1),
+                Color.rgb(48, 104, 170)
+        );
+
+        cabecalhoConexoes.setBackground(
+                fundoCabecalho
+        );
+
+        cabecalhoConexoes.setElevation(dp(5));
+
+        TextView subtitulo = texto(
+                "MINHAS CONEXÕES",
+                17,
+                Color.rgb(225, 240, 255)
+        );
 
         subtitulo.setTypeface(
-
                 Typeface.DEFAULT,
-
                 Typeface.BOLD
-
         );
 
-
-
-        principal.addView(
-
-                subtitulo,
-
-                new LinearLayout.LayoutParams(
-
-                        -1,
-
-                        dp(35)
-
-                )
-
+        subtitulo.setGravity(
+                Gravity.CENTER_VERTICAL
         );
 
+        TextView linhaAcento = texto(
+                "●  AMIGOS CONECTADOS",
+                10,
+                Color.rgb(80, 190, 255)
+        );
 
+        linhaAcento.setTypeface(
+                Typeface.DEFAULT,
+                Typeface.BOLD
+        );
 
         TextView explicacao = texto(
-
                 "Aqui aparecem somente as pessoas que aceitaram sua conexão.",
-
-                13,
-
-                Color.rgb(135, 150, 175)
-
+                12,
+                Color.rgb(155, 170, 195)
         );
 
+        explicacao.setGravity(
+                Gravity.CENTER_VERTICAL
+        );
 
+        cabecalhoConexoes.addView(
+                subtitulo,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(28)
+                )
+        );
 
-        explicacao.setPadding(0, 0, 0, dp(12));
+        cabecalhoConexoes.addView(
+                linhaAcento,
+                new LinearLayout.LayoutParams(
+                        -1,
+                        dp(22)
+                )
+        );
 
+        explicacao.setMaxLines(Integer.MAX_VALUE);
+        cabecalhoConexoes.addView(
+                explicacao,
+                new LinearLayout.LayoutParams(-1, -2)
+        );
 
+        LinearLayout.LayoutParams cabecalhoParams =
+                new LinearLayout.LayoutParams(
+                        -1,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+
+        cabecalhoParams.setMargins(
+                0,
+                0,
+                0,
+                dp(14)
+        );
 
         principal.addView(
-
-                explicacao,
-
-                new LinearLayout.LayoutParams(
-
-                        -1,
-
-                        dp(42)
-
-                )
-
+                cabecalhoConexoes,
+                cabecalhoParams
         );
-
 
 
         ScrollView scroll = new ScrollView(this);
@@ -7254,6 +7510,10 @@ private void mostrarGrupos() {
 
         LinearLayout card = new LinearLayout(this);
 
+        // Usamos a largura útil da janela (inclusive tela dividida),
+        // e não o nome/modelo do aparelho.
+        final int larguraJanelaDp = getResources().getConfiguration().screenWidthDp;
+        final boolean compacto = larguraJanelaDp < 650;
         card.setOrientation(LinearLayout.HORIZONTAL);
 
         card.setGravity(Gravity.CENTER_VERTICAL);
@@ -7386,111 +7646,14 @@ private void mostrarGrupos() {
 
 
 
-        centro.addView(
-
-                nomeView,
-
-                new LinearLayout.LayoutParams(
-
-                        -1,
-
-                        dp(28)
-
-                )
-
-        );
+        nomeView.setMaxLines(3);
+        nomeView.setSingleLine(false);
+        nomeView.setBreakStrategy(android.text.Layout.BREAK_STRATEGY_HIGH_QUALITY);
+        centro.addView(nomeView, new LinearLayout.LayoutParams(-1, -2));
 
 
 
-        LinearLayout linhaId = new LinearLayout(this);
 
-        linhaId.setOrientation(LinearLayout.HORIZONTAL);
-
-        linhaId.setGravity(Gravity.CENTER_VERTICAL);
-
-
-
-        TextView idView = texto(
-
-                identificador,
-
-                12,
-
-                Color.rgb(139, 148, 158)
-
-        );
-
-        idView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-
-
-
-        linhaId.addView(
-
-                idView,
-
-                new LinearLayout.LayoutParams(
-
-                        0,
-
-                        dp(28),
-
-                        1
-
-                )
-
-        );
-
-
-
-        TextView copiar = texto(
-
-                "📋",
-
-                17,
-
-                Color.rgb(240, 246, 252)
-
-        );
-
-        copiar.setGravity(Gravity.CENTER);
-
-
-
-        GradientDrawable fundoCopiar = new GradientDrawable();
-
-        fundoCopiar.setColor(Color.rgb(33, 38, 45));
-
-        fundoCopiar.setCornerRadius(dp(8));
-
-        fundoCopiar.setStroke(dp(1), Color.rgb(48, 54, 61));
-
-        copiar.setBackground(fundoCopiar);
-
-
-
-        final String identificadorFinal = identificador;
-
-            copiar.setOnClickListener(v -> copiarPublico(identificadorFinal));
-
-
-
-        linhaId.addView(
-
-                copiar,
-
-                new LinearLayout.LayoutParams(
-
-                        dp(42),
-
-                        dp(30)
-
-                )
-
-        );
-
-
-
-        centro.addView(linhaId);
 
 
 
@@ -7516,19 +7679,7 @@ private void mostrarGrupos() {
 
 
 
-        centro.addView(
-
-                status,
-
-                new LinearLayout.LayoutParams(
-
-                        -1,
-
-                        dp(20)
-
-                )
-
-        );
+        centro.addView(status, new LinearLayout.LayoutParams(-1, -2));
 
 
 
@@ -7538,11 +7689,11 @@ private void mostrarGrupos() {
 
         TextView convidar = texto(
 
-                "💬 CONVERSAR",
+                "💬  CONVERSAR",
 
                 10,
 
-                Color.rgb(240, 246, 252)
+                Color.rgb(255, 255, 255)
 
         );
 
@@ -7550,33 +7701,32 @@ private void mostrarGrupos() {
 
         convidar.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
 
-
-
         GradientDrawable fundoConvidar = new GradientDrawable(
 
                 GradientDrawable.Orientation.TL_BR,
 
                 new int[]{
 
-                        Color.rgb(31, 111, 235),
+                        Color.rgb(20, 130, 255),
 
-                        Color.rgb(31, 111, 235)
+                        Color.rgb(45, 92, 255)
 
                 }
 
         );
 
-        fundoConvidar.setCornerRadius(dp(8));
+        fundoConvidar.setCornerRadius(dp(13));
 
-        fundoConvidar.setStroke(dp(1), Color.rgb(31, 111, 235));
+        fundoConvidar.setStroke(
+                dp(1),
+                Color.rgb(76, 150, 255)
+        );
 
         convidar.setBackground(fundoConvidar);
 
-
+        convidar.setElevation(dp(3));
 
         convidar.setOnClickListener(v -> {
-
-
 
             Intent chat = new Intent(
 
@@ -7586,8 +7736,6 @@ private void mostrarGrupos() {
 
             );
 
-
-
             chat.putExtra(
 
                     "uid",
@@ -7596,45 +7744,111 @@ private void mostrarGrupos() {
 
             );
 
-
-
             startActivity(chat);
 
         });
 
 
+        TextView desfazer = texto(
 
-        card.addView(
+                "✕  DESFAZER",
 
-                convidar,
+                10,
 
-                new LinearLayout.LayoutParams(
+                Color.rgb(255, 255, 255)
 
-                        dp(88),
+        );
 
-                        dp(46)
+        desfazer.setGravity(Gravity.CENTER);
+
+        desfazer.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+
+        GradientDrawable fundoDesfazer = new GradientDrawable(
+
+                GradientDrawable.Orientation.TL_BR,
+
+                new int[]{
+
+                        Color.rgb(245, 65, 75),
+
+                        Color.rgb(205, 38, 55)
+
+                }
+
+        );
+
+        fundoDesfazer.setCornerRadius(dp(13));
+
+        fundoDesfazer.setStroke(
+                dp(1),
+                Color.rgb(255, 105, 112)
+        );
+
+        desfazer.setBackground(fundoDesfazer);
+
+        desfazer.setElevation(dp(3));
+
+        desfazer.setOnClickListener(v ->
+
+                desfazerAmizade(
+
+                        uidDestinoFinal,
+
+                        nomeFinal,
+
+                        card
 
                 )
 
         );
 
 
+        // NEXO_RESPONSIVO_V4: no celular, foto/nome em cima e ações embaixo;
+        // no tablet e em janelas largas, tudo permanece lado a lado.
+        if (compacto) {
+            card.removeView(foto);
+            card.removeView(centro);
+            card.setOrientation(LinearLayout.VERTICAL);
+            LinearLayout cabecalhoPessoa = new LinearLayout(this);
+            cabecalhoPessoa.setOrientation(LinearLayout.HORIZONTAL);
+            cabecalhoPessoa.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams lpAvatar =
+                    new LinearLayout.LayoutParams(dp(60), dp(60));
+            lpAvatar.rightMargin = dp(12);
+            cabecalhoPessoa.addView(foto, lpAvatar);
+            cabecalhoPessoa.addView(centro,
+                    new LinearLayout.LayoutParams(0, -2, 1f));
+            card.addView(cabecalhoPessoa,
+                    new LinearLayout.LayoutParams(-1, -2));
+        }
 
+        LinearLayout colunaAcoes = new LinearLayout(this);
+        colunaAcoes.setOrientation(LinearLayout.HORIZONTAL);
+        colunaAcoes.setGravity(Gravity.CENTER_VERTICAL);
+        // Pesos proporcionais: nenhuma largura fixa de botão.
+        LinearLayout.LayoutParams lpConversar =
+                new LinearLayout.LayoutParams(0, dp(46), 1f);
+        LinearLayout.LayoutParams lpDesfazer =
+                new LinearLayout.LayoutParams(0, dp(46), 1f);
+        lpDesfazer.leftMargin = dp(8);
+        colunaAcoes.addView(convidar, lpConversar);
+        colunaAcoes.addView(desfazer, lpDesfazer);
+        LinearLayout.LayoutParams lpAcoes = new LinearLayout.LayoutParams(
+                compacto ? -1 : dp(258), -2);
+        if (compacto) lpAcoes.topMargin = dp(10);
+        else lpAcoes.leftMargin = dp(4);
+        card.addView(colunaAcoes, lpAcoes);
+
+        // Cresce conforme nome, fonte, orientação e largura.
+        card.setMinimumHeight(dp(94));
         LinearLayout.LayoutParams cardParams =
-
-                new LinearLayout.LayoutParams(
-
-                        -1,
-
-                        dp(94)
-
-                );
+                new LinearLayout.LayoutParams(-1, -2);
 
         cardParams.setMargins(0, 0, 0, dp(12));
 
 
 
-        String termoCard = (nomeFinal + " " + identificadorFinal)
+        String termoCard = nomeFinal
 
                 .toLowerCase(java.util.Locale.ROOT);
 
@@ -8282,6 +8496,17 @@ Long naoLidas = conversa.getLong("naoLidas_" + meuUid);
 
 
 
+                                // NEXO_PREMIUM_V3: limpar remove somente a conversa
+                                // da lista deste usuário, sem alterar os amigos.
+                                com.google.firebase.Timestamp limpaEm =
+                                        conversa.getTimestamp("limpoEm_" + meuUid);
+                                com.google.firebase.Timestamp ultimaEm = ultima == null
+                                        ? null : ultima.getTimestamp("criadoEm");
+                                if (limpaEm != null &&
+                                        (ultimaEm == null ||
+                                         ultimaEm.toDate().getTime() <= limpaEm.toDate().getTime())) {
+                                    return;
+                                }
                                 if (!cartaoCriado[0] && lista.getParent() == conteudo) {
 
                                     cartaoCriado[0] = true;
@@ -8424,15 +8649,15 @@ Long naoLidas = conversa.getLong("naoLidas_" + meuUid);
 
         nomeView.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
 
-        nomeView.setSingleLine(true);
-
+        nomeView.setSingleLine(false);
+        nomeView.setMaxLines(2);
         nomeView.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
 
 
         linhaTopo.addView(nomeView,
 
-                new LinearLayout.LayoutParams(0, dp(26), 1));
+                new LinearLayout.LayoutParams(0, -2, 1));
 
 
 
@@ -8550,15 +8775,15 @@ Long naoLidas = conversa.getLong("naoLidas_" + meuUid);
 
                 ultimaTexto, 13, Color.rgb(139, 148, 158));
 
-        mensagem.setSingleLine(true);
-
+        mensagem.setSingleLine(false);
+        mensagem.setMaxLines(2);
         mensagem.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
 
 
         linhaBaixo.addView(mensagem,
 
-                new LinearLayout.LayoutParams(0, dp(24), 1));
+                new LinearLayout.LayoutParams(0, -2, 1));
 
 
 
@@ -8638,12 +8863,18 @@ Long naoLidas = conversa.getLong("naoLidas_" + meuUid);
 
                 }
 
+                if ("EXCLUIR CONVERSA".equals(item.getTitle().toString())) {
+                    NexoMensagensLote.confirmarLimpeza(SocialActivity.this, db,
+                            "chats/" + conversaId, meuUid, () -> {
+                                Toast.makeText(SocialActivity.this,
+                                        "Conversa removida da lista; amizade preservada.",
+                                        Toast.LENGTH_LONG).show();
+                            });
+                    return true;
+                }
                 Toast.makeText(this,
-
-                        item.getTitle().toString() + " será configurado aqui.",
-
-                        Toast.LENGTH_SHORT).show();
-
+                        "A opção de silenciar ainda depende da configuração de avisos.",
+                        Toast.LENGTH_LONG).show();
                 return true;
 
             });
@@ -8668,9 +8899,9 @@ Long naoLidas = conversa.getLong("naoLidas_" + meuUid);
 
 
 
+        card.setMinimumHeight(dp(76));
         LinearLayout.LayoutParams cardParams =
-
-                new LinearLayout.LayoutParams(-1, dp(76));
+                new LinearLayout.LayoutParams(-1, -2);
 
         cardParams.setMargins(0, 0, 0, dp(1));
 

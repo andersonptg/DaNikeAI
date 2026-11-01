@@ -1067,7 +1067,7 @@ public class MainActivity extends Activity {
 
         prefs = getSharedPreferences("DaNikeAI_Dados", 0);
 
-        escuro = prefs.getBoolean("modo_escuro", true);
+        escuro = NexoTemaGlobal.escuro(this);
 
 
 
@@ -1239,6 +1239,16 @@ raiz.addView(fundo, new FrameLayout.LayoutParams(-1, -1));
 
 
 
+// NEXO_HOME_RESPONSIVA_V1 — proporcoes reais e janela em dp
+// Usa a largura da janela do app; suporta celular, tablet, Chromebook e multi-janela.
+int larguraDisponivelDp = getResources().getConfiguration().screenWidthDp;
+if (larguraDisponivelDp <= 0) {
+    larguraDisponivelDp = Math.round(
+            getResources().getDisplayMetrics().widthPixels /
+            getResources().getDisplayMetrics().density);
+}
+boolean telaAmplaNexo = larguraDisponivelDp >= 600;
+
 // CABEÇALHO PREMIUM DA HOME
 
 LinearLayout cabecalhoNexo = new LinearLayout(this);
@@ -1406,10 +1416,12 @@ cabecalhoNexo.addView(perfilTopoBox, perfilBoxParams);
 
 
 FrameLayout.LayoutParams cabecalhoParams =
-
-        new FrameLayout.LayoutParams(-1, dp(86), Gravity.TOP);
-
-cabecalhoParams.setMargins(dp(12), dp(18), dp(12), 0);
+        new FrameLayout.LayoutParams(
+                dp(Math.min(820, Math.max(160, larguraDisponivelDp - 24))),
+                dp(86),
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL
+        );
+cabecalhoParams.topMargin = dp(12);
 
 raiz.addView(cabecalhoNexo, cabecalhoParams);
 
@@ -3671,36 +3683,57 @@ botaoPerfilTopo.setOnClickListener(v ->
         }
 
         ScrollView homeCardsScroll = new ScrollView(this);
-        homeCardsScroll.setFillViewport(true);
-        homeCardsScroll.setVerticalScrollBarEnabled(false);
-        homeCardsScroll.setClipToPadding(false);
+homeCardsScroll.setFillViewport(true);
+homeCardsScroll.setVerticalScrollBarEnabled(false);
+homeCardsScroll.setClipToPadding(false);
+homeCardsScroll.setOverScrollMode(View.OVER_SCROLL_IF_CONTENT_SCROLLS);
+// Reserva área real para o cabeçalho e a barra de navegação flutuantes.
+homeCardsScroll.setPadding(
+        0, dp(telaAmplaNexo ? 112 : 108),
+        0, dp(telaAmplaNexo ? 104 : 94)
+);
 
-        LinearLayout homeCards = new LinearLayout(this);
-        homeCards.setOrientation(LinearLayout.VERTICAL);
-        homeCards.setGravity(Gravity.CENTER_HORIZONTAL);
-        int larguraTelaHome = getResources().getDisplayMetrics().widthPixels;
-        int alturaTelaHome = getResources().getDisplayMetrics().heightPixels;
+LinearLayout homeCards = new LinearLayout(this);
+homeCards.setOrientation(LinearLayout.VERTICAL);
+homeCards.setGravity(Gravity.CENTER);
+homeCards.setPadding(dp(4), dp(10), dp(4), dp(10));
 
-        // Bloco compacto e centralizado.
-        int espacoBotoesResponsivo =
-                larguraTelaHome < dp(600) ? dp(4) : dp(6);
+// Medidas em dp da janela; limita o tamanho em tablets e notebooks.
+int margemHorizontalDp = telaAmplaNexo ? 64 : 28;
+int larguraCartoesDp = Math.min(
+        760, Math.max(160, larguraDisponivelDp - margemHorizontalDp)
+);
+int larguraCartoesPx = dp(larguraCartoesDp);
+int intervaloCartoesPx = dp(telaAmplaNexo ? 14 : 10);
 
-        int alturaBloco =
-                dp(155) + dp(155) + dp(135) + dp(155)
-                + (espacoBotoesResponsivo * 3);
+// Proporções dos PNGs oficiais (1382 px de largura).
+// Uma altura mínima de toque mantém acessibilidade em telas pequenas.
+int alturaIaPx = Math.max(dp(60), Math.round(larguraCartoesPx * 275f / 1382f));
+int alturaHistoricoPx = Math.max(dp(60), Math.round(larguraCartoesPx * 287f / 1382f));
+int alturaFilmesPx = Math.max(dp(60), Math.round(larguraCartoesPx * 261f / 1382f));
+int alturaCompartilharPx = Math.max(dp(60), Math.round(larguraCartoesPx * 295f / 1382f));
 
-        int topoHomeResponsivo =
-                Math.max(
-                        dp(24),
-                        (alturaTelaHome - alturaBloco) / 2
-                );
+iaParams.width = larguraCartoesPx;
+iaParams.height = alturaIaPx;
+iaParams.setMargins(0, 0, 0, intervaloCartoesPx);
 
-        homeCards.setPadding(
-                0,
-                topoHomeResponsivo,
-                0,
-                dp(24)
-        );
+historicoParams.width = larguraCartoesPx;
+historicoParams.height = alturaHistoricoPx;
+historicoParams.setMargins(0, 0, 0, intervaloCartoesPx);
+
+raveParams.width = larguraCartoesPx;
+raveParams.height = alturaFilmesPx;
+raveParams.setMargins(0, 0, 0, intervaloCartoesPx);
+
+compartilharParams.width = larguraCartoesPx;
+compartilharParams.height = alturaCompartilharPx;
+compartilharParams.setMargins(0, 0, 0, 0);
+
+// As imagens originais continuam FIT_CENTER; sem cortes nem deformação.
+imagemIA.setContentDescription("Abrir IA NEXO");
+imagemHistorico.setContentDescription("Abrir Histórico");
+imagemFilmesSeries.setContentDescription("Abrir Filmes e Séries HAVE");
+imagemCompartilhar.setContentDescription("Compartilhar NEXO");
 
         // IA
         if (containerIA.getParent() instanceof android.view.ViewGroup) {
@@ -3877,8 +3910,8 @@ botaoPerfilTopo.setOnClickListener(v ->
 
         );
 
-        barraNavegacao.setBackgroundColor(Color.TRANSPARENT);
-        barraNavegacao.setElevation(0f);
+        barraNavegacao.setBackground(fundoBarra);
+barraNavegacao.setElevation(dp(10));
 
 
 
@@ -3895,7 +3928,7 @@ botaoPerfilTopo.setOnClickListener(v ->
                 Typeface.BOLD
 
         );
-TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
+TextView botaoConexoes = txt("👥\nConexões", 12, Color.WHITE);
 
         botaoConexoes.setGravity(Gravity.CENTER);
 
@@ -4142,44 +4175,17 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
 
         for (TextView botao : botoesNav) {
-
-            botao.setPadding(
-
-                    dp(8),
-
-                    dp(3),
-
-                    dp(8),
-
-                    dp(3)
-
-            );
-
-
+            // Largura dividida por peso, fonte adaptada sem truncar as legendas.
+            botao.setGravity(Gravity.CENTER);
+            botao.setTextSize(telaAmplaNexo ? 12f : (ehDono ? 9.3f : 10.4f));
+            botao.setIncludeFontPadding(false);
+            botao.setMaxLines(2);
+            botao.setPadding(dp(2), dp(3), dp(2), dp(3));
 
             LinearLayout.LayoutParams bp =
-
-                    new LinearLayout.LayoutParams(
-
-                            0,
-
-                            dp(62),
-
-                            1
-
-                    );
-
-            bp.setMargins(
-
-                    dp(3),
-
-                    0,
-
-                    dp(3),
-
-                    0
-
-            );
+                    new LinearLayout.LayoutParams(0, dp(62), 1f);
+            bp.setMargins(dp(telaAmplaNexo ? 5 : 2), 0,
+                    dp(telaAmplaNexo ? 5 : 2), 0);
 
 
 
@@ -4334,28 +4340,12 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
 
 
         FrameLayout.LayoutParams navParams =
-
                 new FrameLayout.LayoutParams(
-
-                        -1,
-
+                        dp(Math.min(830, Math.max(160, larguraDisponivelDp - 20))),
                         dp(76),
-
-                        Gravity.BOTTOM
-
+                        Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL
                 );
-
-        navParams.setMargins(
-
-                dp(8),
-
-                0,
-
-                dp(8),
-
-                dp(8)
-
-        );
+        navParams.bottomMargin = dp(9);
 
 
 
@@ -8807,6 +8797,10 @@ TextView botaoConexoes = txt("👥\\nConexões", 12, Color.WHITE);
     protected void onResume() {
 
         super.onResume();
+        if (NexoTemaGlobal.escuro(this) != escuro) {
+            recreate();
+            return;
+        }
 
 
 

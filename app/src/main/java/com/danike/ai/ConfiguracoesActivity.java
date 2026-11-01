@@ -61,12 +61,16 @@ public class ConfiguracoesActivity extends Activity {
                 MODE_PRIVATE
         );
 
-        escuro = config.getBoolean(
-                "modo_escuro",
-                true
-        );
+        escuro = NexoTemaGlobal.escuro(this);
+        NexoTemaGlobal.aplicarJanela(this);
 
         montar();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (NexoTemaGlobal.escuro(this) != escuro) recreate();
     }
 
     void montar() {
@@ -194,65 +198,38 @@ public class ConfiguracoesActivity extends Activity {
     }
 
     void adicionarAparencia() {
-
         lista.addView(tituloSecao("🎨  APARÊNCIA"));
-
-        boolean atual = config.getBoolean(
-                "modo_escuro",
-                true
-        );
-
-        Switch s = novoSwitch(
-                "Modo escuro",
-                "Usar aparência escura nas telas de configuração",
-                atual
-        );
-
-        s.setOnCheckedChangeListener((b,v) -> {
-
-            config.edit()
-                    .putBoolean("modo_escuro",v)
-                    .apply();
-
-            escuro = v;
-
-            Toast.makeText(
-                    this,
-                    v
-                            ? "🌙 Modo escuro ativado"
-                            : "☀️ Modo claro ativado",
-                    Toast.LENGTH_SHORT
-            ).show();
-
-            montar();
-        });
-
-        lista.addView(s);
-
+        int modoAtual = NexoTemaGlobal.modo(this);
+        String atual = modoAtual == NexoTemaGlobal.ESCURO ? "Escuro"
+                : modoAtual == NexoTemaGlobal.CLARO ? "Claro" : "Automático";
         lista.addView(botao(
-                "☀️  Modo claro",
-                "Ativar aparência clara",
-                v -> {
-                    config.edit()
-                            .putBoolean("modo_escuro",false)
-                            .apply();
-                    escuro = false;
-                    montar();
-                }
+                "✦  Tema do NEXO: " + atual,
+                "Escolha o tema global e o modo automático do aparelho",
+                v -> NexoTemaGlobal.selecionar(this, () -> {
+                    escuro = NexoTemaGlobal.escuro(this);
+                    recreate();
+                })
         ));
-
         lista.addView(botao(
-                "🌙  Modo escuro",
-                "Ativar aparência escura",
-                v -> {
-                    config.edit()
-                            .putBoolean("modo_escuro",true)
-                            .apply();
-                    escuro = true;
-                    montar();
-                }
+                "🌙  Escuro",
+                "Interface escura NEXO",
+                v -> { NexoTemaGlobal.definir(this, NexoTemaGlobal.ESCURO);
+                       escuro = true; recreate(); }
+        ));
+        lista.addView(botao(
+                "☀️  Claro",
+                "Interface clara NEXO",
+                v -> { NexoTemaGlobal.definir(this, NexoTemaGlobal.CLARO);
+                       escuro = false; recreate(); }
+        ));
+        lista.addView(botao(
+                "◐  Automático",
+                "Acompanhar a configuração do aparelho",
+                v -> { NexoTemaGlobal.definir(this, NexoTemaGlobal.AUTOMATICO);
+                       escuro = NexoTemaGlobal.escuro(this); recreate(); }
         ));
     }
+
 
     void adicionarVoz() {
 

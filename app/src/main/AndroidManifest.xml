@@ -62,6 +62,10 @@
 
         android:supportsRtl="true"
         android:name=".DaNikeAIApplication">
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_danike" />
+
 
         <activity
 
@@ -155,6 +159,11 @@
 
             android:name=".MainActivity"
 
+            android:exported="false" />
+
+        <!-- SUPORTE NEXO -->
+        <activity
+            android:name=".SuporteActivity"
             android:exported="false" />
 
 
@@ -275,6 +284,7 @@
     <activity android:name=".HaveSalaStreamingActivity" android:exported="false" />
         <activity android:name=".JFDemoActivity" android:exported="false" />
         <activity android:name=".nexo.NexoFilmesActivity" />
+        <activity android:name=".NexoWatchPartyActivity" android:exported="false"  android:configChanges="keyboardHidden|orientation|screenSize" />
     </application>
 
 
