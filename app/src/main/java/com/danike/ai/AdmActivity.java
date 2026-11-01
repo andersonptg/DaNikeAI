@@ -2103,20 +2103,50 @@ private boolean salvarPerfilEquipeLocal(
                     final String linkApkFinal = apkUrlRelease;
                     final String tagRelease = release.optString("tag_name", "Release");
 
+                    // NEXO_RELEASE_GUARD_V81: impedir anúncio de versão/APK incompatíveis.
+                    // A Release é a fonte do APK; o build.gradle é a fonte do Code anunciado.
+                    if (!("v" + nomeVersao).equals(tagRelease)) {
+                        throw new Exception("A Release " + tagRelease
+                                + " não corresponde à versão " + nomeVersao
+                                + " do GitHub. Aguarde a nova compilação Release.");
+                    }
+                    String nomeDaRelease = release.optString("name", "");
+                    java.util.regex.Matcher codigoNaRelease = java.util.regex.Pattern
+                            .compile("(?i)\\bcode\\s+(\\d+)\\b")
+                            .matcher(nomeDaRelease);
+                    if (!codigoNaRelease.find()
+                            || !textoCodigo.equals(codigoNaRelease.group(1))) {
+                        throw new Exception("Código da Release não corresponde ao build.gradle ("
+                                + textoCodigo + "). Publicação bloqueada.");
+                    }
+                    final int codigoRemoto = Integer.parseInt(textoCodigo);
+                    if (codigoRemoto < BuildConfig.VERSION_CODE) {
+                        throw new Exception("Release mais antiga que o APK instalado. Não publicar.");
+                    }
+                    if (codigoRemoto == BuildConfig.VERSION_CODE
+                            && !nomeVersao.equals(BuildConfig.VERSION_NAME)) {
+                        throw new Exception("Mesmo Code, nomes de versão diferentes. Não publicar.");
+                    }
+                    final boolean mesmaVersaoInstalada = codigoRemoto == BuildConfig.VERSION_CODE;
+
+
                     runOnUiThread(() -> {
                         versao.setText(nomeVersao);
                         codigo.setText(textoCodigo);
                         link.setText(linkApkFinal);
                         statusGithub.setText(
-                                "🟢 GitHub sincronizado\n"
+                                "🟢 Release validada\n"
                                 + "Release: " + tagRelease + "\n"
-                                + "Versão: " + nomeVersao
-                                + " • Código " + textoCodigo);
+                                + "Versão: " + nomeVersao + " • Código " + textoCodigo
+                                + (mesmaVersaoInstalada
+                                    ? "\nEsta versão já está no seu aparelho. Pode publicar aos membros."
+                                    : "\nNova versão pronta para publicar aos membros."));
+                        publicar.setText("PUBLICAR AOS MEMBROS");
                         publicar.setEnabled(true);
 
                         android.widget.Toast.makeText(
                                 this,
-                                "Release e NEXO.apk carregados. Você já pode publicar.",
+                                "APK e versão conferidos. Publicação disponível aos membros.",
                                 android.widget.Toast.LENGTH_SHORT).show();
                     });
 
