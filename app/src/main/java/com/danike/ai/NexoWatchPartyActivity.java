@@ -21,6 +21,8 @@ import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import android.view.inputmethod.EditorInfo;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -63,13 +65,13 @@ public class NexoWatchPartyActivity extends Activity {
     public static final String EXTRA_SERIES_TITLE = "nexo_party_series_title";
     // NEXO_WATCH_CINEMA_V2 — nova tela cinema flutuante + URL automática.
 
-    private static final int FUNDO = Color.rgb(4, 7, 21);
-    private static final int CARTAO = Color.rgb(14, 19, 46);
-    private static final int BRANCO = Color.rgb(248, 248, 255);
-    private static final int SUAVE = Color.rgb(178, 190, 224);
-    private static final int AZUL = Color.rgb(25, 193, 255);
-    private static final int ROXO = Color.rgb(148, 71, 250);
-    private static final int ROSA = Color.rgb(219, 77, 251);
+    private static final int FUNDO = Color.BLACK;
+    private static final int CARTAO = Color.rgb(6, 11, 16);
+    private static final int BRANCO = Color.rgb(248, 250, 255);
+    private static final int SUAVE = Color.rgb(166, 184, 200);
+    private static final int AZUL = Color.rgb(0, 191, 255);
+    private static final int ROXO = Color.rgb(0, 115, 160);
+    private static final int ROSA = Color.rgb(0, 155, 220);
     private static final int VERDE = Color.rgb(48, 236, 157);
 
     private final Handler handler = new Handler(Looper.getMainLooper());
@@ -79,7 +81,7 @@ public class NexoWatchPartyActivity extends Activity {
     private String apelido;
     private DocumentReference sala;
     private String salaId;
-    private boolean souCriador;
+    private boolean souLider;
     private boolean aplicandoEstadoRemoto;
     private boolean destruida;
     private boolean primeiraSala = true;
@@ -112,12 +114,16 @@ public class NexoWatchPartyActivity extends Activity {
     private TextView chipEpisodioAtual;
     private String textoRespondendo = "";
     private NexoWatchCinemaOverlayV2 cinema;
-    private boolean mensagensInicializadas = false;
-    private long ultimaMensagemTs = 0L;
+    private final NexoWatchMessageTracker rastreadorMensagens = new NexoWatchMessageTracker();
+    private List<?> ultimasMensagens = new ArrayList<>();
+    private boolean enviandoMensagem;
+    private int quantidadeParticipantes = 1;
+    private DocumentSnapshot ultimaSalaSnapshot;
+    private boolean compactandoChat;
 
     private final Runnable publicadorEstado = new Runnable() {
         @Override public void run() {
-            if (!destruida && sala != null && souCriador && player != null) {
+            if (!destruida && sala != null && souLider && player != null) {
                 if (player.isPlaying()) publicarEstado();
                 handler.postDelayed(this, 6500L);
             }
@@ -163,7 +169,6 @@ public class NexoWatchPartyActivity extends Activity {
                         if (sala != null) {
                             Map<String,Object> dadosPerfil = new HashMap<>();
                             dadosPerfil.put("nomes." + uid, apelido);
-                            if (souCriador) dadosPerfil.put("criadorNome", apelido);
                             sala.update(dadosPerfil).addOnFailureListener(e ->
                                 android.util.Log.w("NEXO_WATCH", "perfil", e));
                         }
@@ -230,7 +235,10 @@ public class NexoWatchPartyActivity extends Activity {
         t.setGravity(Gravity.CENTER);
         t.setPadding(dp(13), dp(10), dp(13), dp(10));
         t.setMinHeight(dp(43));
-        t.setBackground(gradiente(c1, c2, borda, 14));
+        // Contorno discreto e fundo preto; azul neon somente nas ações.
+        int preenchimento = (c1 == Color.rgb(25, 145, 244) || c1 == Color.rgb(30, 90, 189))
+                ? Color.rgb(0, 75, 116) : Color.rgb(8, 15, 22);
+        t.setBackground(fundo(preenchimento, Color.rgb(0, 111, 157), 15));
         t.setClickable(true);
         t.setFocusable(true);
         NexoWatchIconsV2.aplicar(this,t,titulo);
@@ -250,7 +258,7 @@ public class NexoWatchPartyActivity extends Activity {
     private LinearLayout painel(int borda) {
         LinearLayout l = coluna();
         l.setPadding(dp(13), dp(14), dp(13), dp(14));
-        l.setBackground(gradiente(CARTAO, Color.rgb(17, 11, 42), borda, 19));
+        l.setBackground(fundo(CARTAO, Color.rgb(21, 45, 59), 17));
         l.setClipToPadding(false);
         return l;
     }
@@ -289,7 +297,7 @@ public class NexoWatchPartyActivity extends Activity {
     private void topo(LinearLayout corpo, String titulo, String descricao) {
         LinearLayout barra = linha();
         TextView marca = texto("NEXO", 21, BRANCO, true);
-        marca.setShadowLayer(dp(5), 0, 0, ROXO);
+        marca.setShadowLayer(dp(5), 0, 0, AZUL);
         barra.addView(marca);
         TextView voltar = botao("‹", Color.rgb(23, 28, 63), Color.rgb(27, 20, 57), AZUL);
         voltar.setTextSize(24);
@@ -916,6 +924,12 @@ public class NexoWatchPartyActivity extends Activity {
                 Color.rgb(9, 27, 75), Color.rgb(86, 105, 237), 19));
         card.setElevation(dp(3));
         card.setOnClickListener(v -> entrarSala(doc.getId()));
+        // NEXO_V8: toque longo na sala FORA do player oferece exclusao ao criador.
+        card.setLongClickable(true);
+        card.setOnLongClickListener(v -> {
+            mostrarMenuSalaLobby(doc);
+            return true; // Nao entrar na sala ao soltar o dedo.
+        });
 
         FrameLayout poster = new FrameLayout(this);
         poster.setBackground(gradiente(Color.rgb(44, 25, 99),
@@ -1009,10 +1023,51 @@ public class NexoWatchPartyActivity extends Activity {
         destino.addView(card, margens(-1, -2, 0, 12));
     }
 
+    /** Acao de toque longo nas salas da lista, nunca em cima do filme. */
+    private void mostrarMenuSalaLobby(DocumentSnapshot resumo) {
+        if (resumo == null || !"NEXO_WATCH".equals(resumo.getString("tipo"))) return;
+        if (!uid.equals(resumo.getString("criadorUid"))) {
+            toast("Somente quem criou a sala pode apagá-la.");
+            return;
+        }
+        final String id = resumo.getId();
+        final String titulo = nomePublicoSeguro(resumo.getString("nomeSala"), "Sala NEXO");
+        new AlertDialog.Builder(this)
+                .setTitle("Gerenciar sala")
+                .setItems(new String[]{"Abrir sala", "Apagar sala"}, (janela, escolha) -> {
+                    if (escolha == 0) entrarSala(id);
+                    else confirmarExclusaoSalaLobby(id, titulo);
+                }).show();
+    }
+
+    private void confirmarExclusaoSalaLobby(String id, String titulo) {
+        new AlertDialog.Builder(this)
+                .setTitle("Apagar esta sala?")
+                .setMessage("A sala “" + titulo + "” será excluída definitivamente. "
+                        + "Os participantes perderão o acesso. Esta ação não pode ser desfeita.")
+                .setNegativeButton("CANCELAR", null)
+                .setPositiveButton("APAGAR SALA", (janela, escolha) -> {
+                    DocumentReference ref = db.collection("salas_have").document(id);
+                    // Verificar novamente dentro da transacao antes de apagar.
+                    db.runTransaction(tx -> {
+                        DocumentSnapshot atual = tx.get(ref);
+                        if (!atual.exists())
+                            throw new IllegalStateException("A sala já foi apagada.");
+                        if (!"NEXO_WATCH".equals(atual.getString("tipo"))
+                                || !uid.equals(atual.getString("criadorUid")))
+                            throw new SecurityException("Somente o criador pode apagar esta sala.");
+                        tx.delete(ref);
+                        return null;
+                    }).addOnSuccessListener(ok -> {
+                        if (!destruida) toast("Sala apagada.");
+                        // O listener da lista atualiza os cartoes automaticamente.
+                    }).addOnFailureListener(e -> erro("Não foi possível apagar a sala", e));
+                }).show();
+    }
+
     private View lobbyAvatar(String pessoaUid, String nome, String fotoDoc) {
         FrameLayout moldura = new FrameLayout(this);
-        moldura.setBackground(gradiente(Color.rgb(79, 37, 140),
-                Color.rgb(12, 84, 140), ROXO, 30));
+        moldura.setBackground(fundo(Color.rgb(6, 34, 50), AZUL, 30));
         moldura.setClipToOutline(true);
         TextView inicial = rotuloNeon(nome.isEmpty() ? "?"
                 : nome.substring(0, 1).toUpperCase(Locale.ROOT), 11, BRANCO, true);
@@ -1156,6 +1211,7 @@ public class NexoWatchPartyActivity extends Activity {
             dados.put("episodioAtual", filme);
         }
         dados.put("criadorUid", uid);
+        dados.put("liderUid", uid); // primeiro líder; independente da conta ADM global
         dados.put("criadorNome", apelido);
         dados.put("aberta", true);
         dados.put("participantes", Arrays.asList(uid));
@@ -1192,21 +1248,50 @@ public class NexoWatchPartyActivity extends Activity {
                     }
                     salaId = id;
                     sala = doc.getReference();
-                    souCriador = uid.equals(doc.getString("criadorUid"));
                     primeiraSala = true;
-                    sala.update("participantes", FieldValue.arrayUnion(uid),
-                                    "nomes." + uid, apelido)
-                            .addOnFailureListener(e -> erro("Não foi possível registrar a entrada", e));
-                    construirSala(doc);
-                    salaListener = sala.addSnapshotListener((snapshot, erro) -> {
-                        if (destruida || sala == null) return;
-                        if (erro != null) { erro("Falha na sincronia da sala", erro); return; }
-                        if (snapshot == null || !snapshot.exists()) {
-                            toast("A sala foi encerrada.");
-                            montarLobby();
-                            return;
-                        }
-                        atualizarSala(snapshot);
+                    // Entrada atômica: a lista preserva a ordem de chegada para sucessão.
+                    DocumentReference refEntrada = sala;
+                    db.runTransaction(tx -> {
+                        DocumentSnapshot atual = tx.get(refEntrada);
+                        if (!atual.exists() || !"NEXO_WATCH".equals(atual.getString("tipo"))
+                                || Boolean.FALSE.equals(atual.getBoolean("aberta")))
+                            throw new IllegalStateException("Sala não disponível");
+                        List<String> pessoas = new ArrayList<>();
+                        List<?> existentes = (List<?>) atual.get("participantes");
+                        if (existentes != null) for (Object pessoa : existentes)
+                            if (pessoa != null && !pessoas.contains(String.valueOf(pessoa)))
+                                pessoas.add(String.valueOf(pessoa));
+                        if (!pessoas.contains(uid)) pessoas.add(uid);
+                        String lider = atual.getString("liderUid");
+                        if (lider == null || !pessoas.contains(lider)) lider = pessoas.get(0);
+                        Map<String,Object> mudancas = new HashMap<>();
+                        mudancas.put("participantes", pessoas);
+                        mudancas.put("liderUid", lider);
+                        Map<String,Object> nomes = (Map<String,Object>) atual.get("nomes");
+                        nomes = nomes == null ? new HashMap<>() : new HashMap<>(nomes);
+                        nomes.put(uid, apelido);
+                        mudancas.put("nomes", nomes);
+                        tx.update(refEntrada, mudancas);
+                        return null;
+                    }).addOnSuccessListener(ignorado -> {
+                        if (destruida || sala != refEntrada) return;
+                        refEntrada.get().addOnSuccessListener(atual -> {
+                            if (destruida || sala != refEntrada || !atual.exists()) return;
+                            souLider = uid.equals(txt(atual.get("liderUid"),
+                                    txt(atual.get("criadorUid"), "")));
+                            construirSala(atual);
+                            salaListener = refEntrada.addSnapshotListener((snapshot, erro) -> {
+                                if (destruida || sala != refEntrada) return;
+                                if (erro != null) { erro("Falha na sincronia da sala", erro); return; }
+                                if (snapshot == null || !snapshot.exists()) {
+                                    toast("A sala foi encerrada."); montarLobby(); return;
+                                }
+                                atualizarSala(snapshot);
+                            });
+                        }).addOnFailureListener(e -> erro("Erro ao carregar sala", e));
+                    }).addOnFailureListener(e -> {
+                        erro("Não foi possível entrar na sala", e);
+                        if (sala == refEntrada) { sala = null; salaId = null; montarLobby(); }
                     });
                 }).addOnFailureListener(e -> erro("Erro ao entrar na sala", e));
     }
@@ -1236,24 +1321,25 @@ public class NexoWatchPartyActivity extends Activity {
         corpo.addView(menuScroll, margens(-1, dp(48), 0, 10));
 
         FrameLayout moldura = new FrameLayout(this);
-        moldura.setBackground(gradiente(Color.rgb(24, 32, 86), Color.rgb(72, 28, 113), AZUL, 20));
-        moldura.setPadding(dp(2), dp(2), dp(2), dp(2));
-        moldura.setElevation(dp(6));
+        moldura.setBackgroundColor(Color.BLACK);
+        moldura.setPadding(0,0,0,0);
+        moldura.setElevation(0);
         FrameLayout areaPlayer = new FrameLayout(this);
-        areaPlayer.setBackground(fundo(Color.rgb(6, 8, 22), Color.TRANSPARENT, 18));
-        areaPlayer.setClipToOutline(true);
+        areaPlayer.setBackgroundColor(Color.BLACK);
+        areaPlayer.setClipToOutline(false);
         moldura.addView(areaPlayer, new FrameLayout.LayoutParams(-1, -1));
         playerView = new PlayerView(this);
-        playerView.setUseController(souCriador);
-        playerView.setControllerAutoShow(true);
+        playerView.setUseController(false);
+        playerView.setControllerAutoShow(false);
         playerView.setShowBuffering(PlayerView.SHOW_BUFFERING_WHEN_PLAYING);
         playerView.setKeepScreenOn(true);
         areaPlayer.addView(playerView, new FrameLayout.LayoutParams(-1, -1));
+        playerView.setUseController(false);
+        // O vídeo permanece na sala. Apenas o botão [ ] abre a tela cheia.
 
         capaDemonstrativa = new ImageView(this);
         // Fundo neutro de espera — nunca exibir um filme de exemplo como se fosse o selecionado.
-        capaDemonstrativa.setImageDrawable(gradiente(Color.rgb(10,18,43),
-                Color.rgb(23,11,53),Color.TRANSPARENT,16));
+        capaDemonstrativa.setImageDrawable(fundo(Color.BLACK,Color.TRANSPARENT,0));
         capaDemonstrativa.setScaleType(ImageView.ScaleType.CENTER_CROP);
         areaPlayer.addView(capaDemonstrativa, new FrameLayout.LayoutParams(-1, -1));
         TextView avisoCapa = texto("▶  AGUARDANDO SESSÃO", 13, BRANCO, true);
@@ -1281,7 +1367,7 @@ public class NexoWatchPartyActivity extends Activity {
         telaCheia.setImageDrawable(NexoWatchIconsV2.icon("fullscreen",Color.WHITE));
         telaCheia.setPadding(dp(11),dp(11),dp(11),dp(11));
         telaCheia.setContentDescription("Assistir em tela cheia com chat flutuante");
-        telaCheia.setBackground(fundo(Color.argb(225,13,22,47),ROXO,15));
+        telaCheia.setBackground(fundo(0xE6000000,AZUL,15));
         FrameLayout.LayoutParams telaLp=new FrameLayout.LayoutParams(
                 dp(45),dp(45),Gravity.TOP|Gravity.RIGHT);
         telaLp.setMargins(0,dp(10),dp(10),0);
@@ -1290,13 +1376,14 @@ public class NexoWatchPartyActivity extends Activity {
         playerView.setResizeMode(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT);
 
         int conteudoLargura = Math.min(larguraDp() - 28, 1100);
-        int alturaPlayer = Math.min(dp(500), Math.max(dp(190), dp(conteudoLargura * 9f / 16f)));
+        int alturaPlayer = Math.round(dp(conteudoLargura * 9f / 16f));
         corpo.addView(moldura, margens(-1, alturaPlayer, 0, 14));
 
-        LinearLayout informacoes = painel(ROXO);
+        LinearLayout informacoes = coluna();
+        informacoes.setPadding(dp(5),dp(7),dp(5),dp(9));
         chipTitulo = texto(nome, 17, BRANCO, true);
         informacoes.addView(chipTitulo);
-        chipCriador = texto("♛ Criador", 12, SUAVE, false);
+        chipCriador = texto("Líder da sala", 12, SUAVE, false);
         chipNumero = texto("◉  1 participante", 12, AZUL, true);
         informacoes.addView(chipCriador, margens(-1, -2, 5, 0));
         informacoes.addView(chipNumero, margens(-1, -2, 5, 0));
@@ -1305,7 +1392,7 @@ public class NexoWatchPartyActivity extends Activity {
             chipEpisodioAtual = texto("EPISÓDIO ATUAL  •  " +
                     txt(dados.get("episodioAtual"), ""), 12, AZUL, true);
             informacoes.addView(chipEpisodioAtual, margens(-1,-2,8,0));
-            TextView episodiosBotao = botao(souCriador
+            TextView episodiosBotao = botao(souLider
                     ? "TEMPORADAS E EPISÓDIOS  •  GERENCIAR"
                     : "TEMPORADAS E EPISÓDIOS  •  VER",
                     Color.rgb(25,45,100),Color.rgb(68,25,122),ROXO);
@@ -1333,51 +1420,43 @@ public class NexoWatchPartyActivity extends Activity {
 
         LinearLayout participantes = painel(AZUL);
         participantes.addView(texto("PARTICIPANTES", 16, BRANCO, true));
-        listaParticipantes = coluna();
-        participantes.addView(listaParticipantes, margens(-1, -2, 9, 0));
+        listaParticipantes = linha();
+        HorizontalScrollView rolagemPessoas = new HorizontalScrollView(this);
+        rolagemPessoas.setHorizontalScrollBarEnabled(false);
+        rolagemPessoas.addView(listaParticipantes);
+        participantes.addView(rolagemPessoas, margens(-1, -2, 8, 0));
         esquerda.addView(participantes);
 
-        LinearLayout recursos = painel(ROXO);
-        recursos.addView(texto("RECURSOS DA SALA", 15, BRANCO, true));
-        TextView pausa = texto("⏸  Votar para pausar", 13, BRANCO, true);
-        pausa.setPadding(dp(11), dp(12), dp(11), dp(12));
-        pausa.setBackground(fundo(Color.rgb(29, 29, 70), Color.rgb(65, 66, 140), 12));
-        pausa.setOnClickListener(v -> votarPausa());
-        recursos.addView(pausa, margens(-1, -2, 10, 7));
-        textoVotos = texto("0 votos para pausar", 11, SUAVE, false);
-        recursos.addView(textoVotos);
-        TextView reacoes = texto("Explosão de reações", 13, BRANCO, true);
-        reacoes.setPadding(dp(11), dp(12), dp(11), dp(12));
-        reacoes.setBackground(fundo(Color.rgb(29, 29, 70), Color.rgb(65, 66, 140), 12));
-        reacoes.setOnClickListener(v -> escolherReacao());
-        recursos.addView(reacoes, margens(-1, -2, 10, 7));
-        recursos.addView(texto("Converse sem sair do filme", 12, SUAVE, false));
-        esquerda.addView(recursos, margens(-1, -2, 12, 0));
-
-        LinearLayout chat = painel(ROXO);
+        LinearLayout chat = painel(AZUL);
         chat.addView(texto("CHAT AO VIVO", 17, BRANCO, true));
         rolagemChat = new ScrollView(this);
-        rolagemChat.setFillViewport(true);
+        rolagemChat.setFillViewport(false);
+        rolagemChat.setVerticalScrollBarEnabled(true);
         listaMensagens = coluna();
         listaMensagens.setPadding(0, dp(8), 0, dp(4));
         rolagemChat.addView(listaMensagens);
-        chat.addView(rolagemChat, margens(-1, dp(tablet ? 235 : 182), 10, 5));
+        chat.addView(rolagemChat, margens(-1, dp(tablet ? 220 : 165), 10, 5));
         LinearLayout enviarLinha = linha();
         campoMensagem = new EditText(this);
         campoMensagem.setHint("Digite uma mensagem...");
         campoMensagem.setHintTextColor(SUAVE);
         campoMensagem.setTextColor(BRANCO);
         campoMensagem.setTextSize(13);
-        campoMensagem.setMaxLines(3);
+        campoMensagem.setSingleLine(true);
+        campoMensagem.setImeOptions(EditorInfo.IME_ACTION_SEND);
         campoMensagem.setMinHeight(dp(44));
         campoMensagem.setPadding(dp(11), dp(8), dp(11), dp(8));
-        campoMensagem.setBackground(fundo(Color.rgb(24, 25, 65), AZUL, 18));
+        campoMensagem.setBackground(fundo(Color.rgb(8, 19, 29), Color.rgb(33, 90, 116), 18));
         enviarLinha.addView(campoMensagem, new LinearLayout.LayoutParams(0, -2, 1));
         TextView enviar = botao("➤", Color.rgb(30, 90, 189), Color.rgb(111, 27, 195), AZUL);
         LinearLayout.LayoutParams enviarP = new LinearLayout.LayoutParams(dp(52), dp(47));
         enviarP.setMargins(dp(8), 0, 0, 0);
         enviarLinha.addView(enviar, enviarP);
         enviar.setOnClickListener(v -> enviarMensagem());
+        campoMensagem.setOnEditorActionListener((v, acao, evento) -> {
+            if (acao == EditorInfo.IME_ACTION_SEND) { enviarMensagem(); return true; }
+            return false;
+        });
         chat.addView(enviarLinha, margens(-1, -2, 8, 0));
         direita.addView(chat);
 
@@ -1397,7 +1476,7 @@ public class NexoWatchPartyActivity extends Activity {
         microfone.setOnClickListener(v -> toast("Microfone em grupo: requer integração de chamadas em tempo real."));
         camera.setOnClickListener(v -> toast("Câmera em grupo: requer integração de chamadas em tempo real."));
         botaoPronto.setOnClickListener(v -> {
-            if (!souCriador) { toast("A reprodução é controlada pelo criador da sala."); return; }
+            if (!souLider) { toast("Somente o líder controla a reprodução."); return; }
             if (player == null) { toast("Escolha um vídeo para começar."); return; }
             if (player.isPlaying()) player.pause(); else player.play();
             publicarEstado();
@@ -1405,23 +1484,11 @@ public class NexoWatchPartyActivity extends Activity {
         acoesScroll.addView(acoes);
         corpo.addView(acoesScroll, margens(-1, dp(52), 17, 12));
 
-        LinearLayout rodape = painel(AZUL);
-        HorizontalScrollView footer = new HorizontalScrollView(this);
-        footer.setHorizontalScrollBarEnabled(false);
-        LinearLayout navegacao = linha();
-        for (String item : new String[] { "☏  Chat", "♧  Participantes", "♡  Reações", "↗  Compartilhar", "⟳  Sincronia" }) {
-            TextView b = botao(item, Color.rgb(24, 31, 81), Color.rgb(47, 20, 100), ROXO);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-2, dp(44));
-            p.setMargins(0, 0, dp(7), 0);
-            navegacao.addView(b, p);
-            if (item.contains("Compartilhar")) b.setOnClickListener(v -> convidar());
-            else if (item.contains("Reações")) b.setOnClickListener(v -> escolherReacao());
-            else if (item.contains("Sincronia")) b.setOnClickListener(v -> sincronizarManual());
-            else b.setOnClickListener(v -> toast("Seção disponível nesta tela."));
-        }
-        footer.addView(navegacao);
-        rodape.addView(footer);
-        corpo.addView(rodape);
+        // As acoes secundarias ficam em um pop-up compacto em vez de varias caixas.
+        TextView opcoes = botao("CONTROLES  ·  CHAT  ·  PARTICIPANTES  ·  SINCRONIA",
+                Color.rgb(8,22,33), Color.rgb(8,22,33), AZUL);
+        opcoes.setOnClickListener(v -> mostrarOpcoesSala());
+        corpo.addView(opcoes, margens(-1, dp(42), 6, 12));
 
         String url = valor(dados.getString("videoUrl"));
         if (!url.isEmpty() && url.startsWith("https://")) {
@@ -1430,9 +1497,9 @@ public class NexoWatchPartyActivity extends Activity {
             if(inicio != null && inicio > 0 && player != null)player.seekTo(inicio);
         } else {
             chipSincronia.setText("●  AGUARDANDO VÍDEO");
-            if (souCriador) avisoCapa.setOnClickListener(v -> escolherVideo());
+            if (souLider) avisoCapa.setOnClickListener(v -> escolherVideo());
         }
-        if (souCriador) {
+        if (souLider) {
             handler.removeCallbacks(publicadorEstado);
             handler.postDelayed(publicadorEstado, 6500L);
         }
@@ -1447,7 +1514,7 @@ public class NexoWatchPartyActivity extends Activity {
                 .build();
         urlAtualPlayer = videoUrl;
         playerView.setPlayer(player);
-        playerView.setUseController(souCriador);
+        playerView.setUseController(false);
         player.addListener(new Player.Listener() {
             @Override public void onPlaybackStateChanged(int estado) {
                 if (estado == Player.STATE_READY) {
@@ -1456,7 +1523,9 @@ public class NexoWatchPartyActivity extends Activity {
                 }
             }
             @Override public void onIsPlayingChanged(boolean estaTocando) {
-                if (souCriador && !aplicandoEstadoRemoto) publicarEstado();
+                if (chipSincronia != null)
+                    chipSincronia.setVisibility(estaTocando ? View.GONE : View.VISIBLE);
+                if (souLider && !aplicandoEstadoRemoto) publicarEstado();
                 if (botaoPronto != null) botaoPronto.setText(estaTocando ? "PAUSAR SESSÃO" : "PRONTO PARA ASSISTIR");
                 NexoWatchIconsV2.aplicar(NexoWatchPartyActivity.this,botaoPronto,botaoPronto.getText().toString());
             }
@@ -1473,10 +1542,22 @@ public class NexoWatchPartyActivity extends Activity {
 
     private void atualizarSala(DocumentSnapshot doc) {
         if (chipTitulo == null) return;
+        ultimaSalaSnapshot = doc;
         String titulo = txt(doc.get("nomeSala"), "Sala NEXO");
+        String liderAtual = txt(doc.get("liderUid"), txt(doc.get("criadorUid"), ""));
+        boolean novoLider = uid.equals(liderAtual);
+        if (souLider != novoLider) {
+            souLider = novoLider;
+            if (cinema != null) cinema.atualizarLider(souLider);
+            if (botaoPronto != null) botaoPronto.setText(souLider
+                    ? "PRONTO PARA ASSISTIR" : "ASSISTINDO COM O LÍDER");
+            handler.removeCallbacks(publicadorEstado);
+            if (souLider) handler.postDelayed(publicadorEstado, 6500L);
+        }
         String criador = txt(doc.get("criadorNome"), "Criador");
         chipTitulo.setText(titulo);
-        chipCriador.setText("CRIADOR/ADM: " + criador);
+        chipCriador.setText(souLider ? "VOCÊ É O LÍDER DA SALA"
+                : "LÍDER DA SALA  •  " + nomeLider(doc, liderAtual, criador));
         if (chipEpisodioAtual != null)
             chipEpisodioAtual.setText("EPISÓDIO ATUAL  •  " +
                     txt(doc.get("episodioAtual"), titulo));
@@ -1488,17 +1569,29 @@ public class NexoWatchPartyActivity extends Activity {
             iniciarPlayer(novaUrl, avisoCapaAtual);
         }
         List<?> pessoas = (List<?>) doc.get("participantes");
-        chipNumero.setText("◉  " + (pessoas == null ? 0 : pessoas.size()) + " participantes na sala");
+        quantidadeParticipantes = pessoas == null ? 0 : pessoas.size();
+        chipNumero.setText("•  " + quantidadeParticipantes + " participantes na sala");
+        if (cinema != null) atualizarPessoasCinema(doc);
         Object participanteObj = doc.get("participantes");
-        String listaAtual = String.valueOf(participanteObj) + String.valueOf(doc.get("nomes"));
+        String listaAtual = String.valueOf(participanteObj)
+                + String.valueOf(doc.get("nomes")) + liderAtual;
         if (!listaAtual.equals(ultimosParticipantes)) {
             ultimosParticipantes = listaAtual;
             desenharParticipantes(doc);
         }
-        String listaMens = String.valueOf(doc.get("mensagens"));
+        List<?> mensagensAtuais = (List<?>) doc.get("mensagens");
+        if (mensagensAtuais != null && mensagensAtuais.size() > 80 && souLider
+                && !compactandoChat && sala != null) compactarChat();
+        List<Map<?, ?>> novas = rastreadorMensagens.atualizar(mensagensAtuais);
+        ultimasMensagens = mensagensAtuais == null ? new ArrayList<>() : new ArrayList<>(mensagensAtuais);
+        String listaMens = String.valueOf(mensagensAtuais);
         if (!listaMens.equals(ultimaMensagemRenderizada)) {
             ultimaMensagemRenderizada = listaMens;
             desenharMensagens(doc);
+        }
+        if (cinema != null && cinema.estaAberto()) for (Map<?, ?> m : novas) {
+            cinema.novaMensagem(txt(m.get("nome"), "Amigo"),
+                    txt(m.get("texto"), ""), txt(m.get("horario"), ""));
         }
         List<?> votos = (List<?>) doc.get("votosPausa");
         if (textoVotos != null) textoVotos.setText((votos == null ? 0 : votos.size()) + " votos para pausar");
@@ -1515,36 +1608,137 @@ public class NexoWatchPartyActivity extends Activity {
         else { toast("O criador encerrou a sessão."); montarLobby(); }
     }
 
+    private String nomeLider(DocumentSnapshot doc, String lider, String criador) {
+        Map<String,Object> nomes = (Map<String,Object>) doc.get("nomes");
+        return nomes != null ? txt(nomes.get(lider), criador) : criador;
+    }
+
+    private void atualizarPessoasCinema(DocumentSnapshot doc) {
+        if (cinema == null) return;
+        List<?> ids = (List<?>) doc.get("participantes");
+        Map<String,Object> nomes = (Map<String,Object>)doc.get("nomes");
+        String lider = txt(doc.get("liderUid"), txt(doc.get("criadorUid"), ""));
+        cinema.atualizarPessoas(ids, nomes, lider);
+    }
+
     private void desenharParticipantes(DocumentSnapshot doc) {
         if (listaParticipantes == null) return;
         listaParticipantes.removeAllViews();
-        List<?> participantes = (List<?>) doc.get("participantes");
-        Map<String, Object> nomes = (Map<String, Object>) doc.get("nomes");
-        String dono = txt(doc.get("criadorUid"), "");
-        if (participantes == null) return;
-        for (Object participante : participantes) {
-            String id = String.valueOf(participante);
-            String nome = nomes != null ? txt(nomes.get(id), "Convidado") : "Convidado";
-            LinearLayout item = linha();
-            TextView avatar = texto(nome.isEmpty() ? "?" : nome.substring(0, 1).toUpperCase(Locale.ROOT),
-                    16, BRANCO, true);
-            avatar.setGravity(Gravity.CENTER);
-            avatar.setBackground(gradiente(Color.rgb(25, 106, 161), Color.rgb(116, 43, 167), ROXO, 40));
-            item.addView(avatar, new LinearLayout.LayoutParams(dp(37), dp(37)));
-            TextView nomeT = texto("  " + nome + (id.equals(dono) ? "  ♛ ADM" : ""), 13, BRANCO, id.equals(dono));
-            item.addView(nomeT, new LinearLayout.LayoutParams(0, -2, 1));
-            item.addView(texto("●", 12, VERDE, true));
-            listaParticipantes.addView(item, margens(-1, dp(45), 0, 2));
+        List<?> ids = (List<?>)doc.get("participantes");
+        Map<String,Object> nomes = (Map<String,Object>)doc.get("nomes");
+        String lider = txt(doc.get("liderUid"), txt(doc.get("criadorUid"), ""));
+        if (ids == null) return;
+        for (Object obj : ids) {
+            final String id = String.valueOf(obj);
+            final String nome = nomes == null ? "Membro NEXO" : txt(nomes.get(id), "Membro NEXO");
+            LinearLayout tile = coluna();
+            tile.setGravity(Gravity.CENTER_HORIZONTAL);
+            View retrato = lobbyAvatar(id, nome, "");
+            tile.addView(retrato, new LinearLayout.LayoutParams(dp(43), dp(43)));
+            TextView rotulo = texto(nome.length()>13 ? nome.substring(0,12)+"…" : nome,
+                    10.5f, BRANCO, false);
+            rotulo.setGravity(Gravity.CENTER);
+            rotulo.setMaxLines(1);
+            tile.addView(rotulo);
+            TextView cargo = texto(id.equals(lider) ? "LÍDER" : "NA SALA", 9,
+                    id.equals(lider) ? AZUL : VERDE, true);
+            cargo.setGravity(Gravity.CENTER);
+            tile.addView(cargo);
+            tile.setPadding(dp(5), dp(3), dp(5), dp(3));
+            tile.setOnClickListener(v -> abrirPerfilPublico(id, tile));
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(dp(91), dp(87));
+            p.rightMargin = dp(5);
+            listaParticipantes.addView(tile, p);
         }
+    }
+
+    /** Perfil publico em popup: nome, identificador, descricao e foto cadastrados. */
+    private void abrirPerfilPublico(String membroUid, View ancora) {
+        if (membroUid == null || membroUid.isEmpty() || db == null) return;
+        LinearLayout painel = coluna();
+        painel.setPadding(dp(15), dp(13), dp(15), dp(13));
+        painel.setBackground(fundo(0xF5060C14, AZUL, 16));
+        TextView titulo = texto("PERFIL PÚBLICO", 13, AZUL, true);
+        painel.addView(titulo);
+        FrameLayout avatar = new FrameLayout(this);
+        avatar.setBackground(fundo(0xFF07314A, AZUL, 32));
+        avatar.setClipToOutline(true);
+        TextView inicial = texto("N", 20, BRANCO, true);
+        inicial.setGravity(Gravity.CENTER);
+        avatar.addView(inicial, new FrameLayout.LayoutParams(-1, -1));
+        ImageView foto = new ImageView(this);
+        foto.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        foto.setClipToOutline(true);
+        avatar.addView(foto, new FrameLayout.LayoutParams(-1, -1));
+        LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(dp(56), dp(56));
+        alp.gravity = Gravity.CENTER_HORIZONTAL;
+        alp.topMargin = dp(9);alp.bottomMargin = dp(9);
+        painel.addView(avatar, alp);
+        TextView nome = texto("Carregando perfil...", 15, BRANCO, true);
+        nome.setGravity(Gravity.CENTER);
+        painel.addView(nome);
+        TextView handle = texto("", 12, AZUL, false);
+        handle.setGravity(Gravity.CENTER);
+        painel.addView(handle);
+        TextView descricao = texto("", 12, SUAVE, false);
+        descricao.setGravity(Gravity.CENTER);
+        descricao.setPadding(0,dp(7),0,0);
+        painel.addView(descricao);
+        PopupWindow pop = new PopupWindow(painel, dp(288), -2, true);
+        pop.setBackgroundDrawable(fundo(0xF5060C14, AZUL, 16));
+        pop.setOutsideTouchable(true);
+        pop.setElevation(dp(9));
+        // Usar a janela do cinema quando o perfil vier da tela cheia.
+        View janela = ancora != null ? ancora : getWindow().getDecorView();
+        pop.showAtLocation(janela, Gravity.CENTER, 0, 0);
+        db.collection("perfis_publicos").document(membroUid).get()
+                .addOnSuccessListener(perfil -> {
+                    if (!pop.isShowing()) return;
+                    String n = valor(perfil.getString("nome"));
+                    if (n.isEmpty() || n.contains("@")) n = "Membro NEXO";
+                    nome.setText(n);
+                    inicial.setText(n.substring(0,1).toUpperCase(Locale.ROOT));
+                    String h = valor(perfil.getString("handle"));
+                    if (!h.isEmpty()) handle.setText(h.startsWith("@") ? h : "@" + h);
+                    String d = valor(perfil.getString("descricao"));
+                    descricao.setText(d.isEmpty() ? "Perfil sem descrição pública" : d);
+                    String url = valor(perfil.getString("fotoUrl"));
+                    if (!url.startsWith("https://")) url = valor(perfil.getString("avatarUrl"));
+                    if (url.startsWith("https://")) {
+                        foto.setTag(url);
+                        lobbyCarregarImagem(url, foto);
+                    }
+                }).addOnFailureListener(e -> {
+                    if (pop.isShowing()) nome.setText("Perfil indisponível");
+                });
+    }
+
+    private void mostrarOpcoesSala() {
+        String[] escolhas = {"Chat", "Participantes e perfis", "Reagir", "Votar para pausar",
+                "Convidar", "Sincronizar", "Tela cheia [ ]"};
+        new AlertDialog.Builder(this).setTitle("Opções da sala")
+                .setItems(escolhas, (d, i) -> {
+                    switch(i) {
+                        case 0: if (campoMensagem!=null) campoMensagem.requestFocus(); break;
+                        case 1: if (listaParticipantes!=null) listaParticipantes.requestFocus(); break;
+                        case 2: escolherReacao(); break;
+                        case 3: votarPausa(); break;
+                        case 4: convidar(); break;
+                        case 5: sincronizarManual(); break;
+                        case 6: abrirCinema(); break;
+                    }
+                }).show();
     }
 
     private void desenharMensagens(DocumentSnapshot doc) {
         if (listaMensagens == null) return;
+        boolean acompanhar = rolagemChat != null &&
+                rolagemChat.getScrollY() + rolagemChat.getHeight()
+                    >= listaMensagens.getHeight() - dp(55);
         listaMensagens.removeAllViews();
         List<?> mensagens = (List<?>) doc.get("mensagens");
         if (mensagens == null || mensagens.isEmpty()) {
             listaMensagens.addView(texto("Conversem aqui enquanto assistem.", 12, SUAVE, false));
-            mensagensInicializadas = true;
             return;
         }
         for (Object msg : mensagens) {
@@ -1553,8 +1747,8 @@ public class NexoWatchPartyActivity extends Activity {
             boolean minha = uid.equals(txt(m.get("uid"), ""));
             LinearLayout bolha = coluna();
             bolha.setPadding(dp(10), dp(9), dp(10), dp(9));
-            bolha.setBackground(gradiente(minha ? Color.rgb(28, 43, 100) : Color.rgb(38, 35, 85),
-                    Color.rgb(33, 25, 75), minha ? AZUL : Color.rgb(97, 79, 180), 15));
+            bolha.setBackground(fundo(minha ? Color.rgb(11, 34, 49) : Color.rgb(16, 27, 35),
+                    minha ? Color.rgb(0, 108, 158) : Color.rgb(27, 56, 72), 15));
             String horario = txt(m.get("horario"), "");
             bolha.addView(texto(txt(m.get("nome"), "Amigo") + "  " + horario,
                     11, minha ? AZUL : SUAVE, true));
@@ -1577,26 +1771,9 @@ public class NexoWatchPartyActivity extends Activity {
             p.setMargins(minha ? dp(35) : 0, dp(4), minha ? 0 : dp(35), dp(5));
             listaMensagens.addView(bolha, p);
         }
-        // Exibe somente mensagens NOVAS sobre o filme, sem jogar histórico antigo na tela.
-        long maiorTs=ultimaMensagemTs;
-        String nomeNovo="",textoNovo="";
-        for(Object o: mensagens){
-            if(!(o instanceof Map))continue;
-            Map<?,?> m=(Map<?,?>)o;
-            Object v=m.get("ts");
-            if(v instanceof Number){
-                long ts=((Number)v).longValue();
-                if(ts>maiorTs){maiorTs=ts;
-                    nomeNovo=txt(m.get("nome"),"Amigo");
-                    textoNovo=txt(m.get("texto"),"");}
-            }
-        }
-        if(mensagensInicializadas && maiorTs>ultimaMensagemTs && cinema!=null){
-            cinema.novaMensagem(nomeNovo,textoNovo);
-        }
-        ultimaMensagemTs=maiorTs;
-        mensagensInicializadas=true;
-        rolagemChat.post(() -> rolagemChat.fullScroll(View.FOCUS_DOWN));
+        if (acompanhar) rolagemChat.post(() -> {
+            if (rolagemChat != null) rolagemChat.fullScroll(View.FOCUS_DOWN);
+        });
     }
 
     private void abrirCinema() {
@@ -1605,48 +1782,100 @@ public class NexoWatchPartyActivity extends Activity {
         }
         if (cinema!=null && cinema.estaAberto()) return;
         String nome=chipTitulo==null?"Sala NEXO":chipTitulo.getText().toString();
-        cinema=new NexoWatchCinemaOverlayV2(this,player,playerView,souCriador,nome,
-            mensagem->{
-                if(campoMensagem!=null){campoMensagem.setText(mensagem);enviarMensagem();}
-            });
+        if (ultimaSalaSnapshot != null) {
+            String tituloMidia = valor(ultimaSalaSnapshot.getString("filmeTitulo"));
+            if (!tituloMidia.isEmpty()) nome = tituloMidia;
+        }
+        boolean salaDeSerie = ultimaSalaSnapshot != null &&
+                !valor(ultimaSalaSnapshot.getString("serieTitulo")).isEmpty();
+        cinema = new NexoWatchCinemaOverlayV2(this, player, playerView, souLider,
+                nome, salaDeSerie,
+                (mensagem, resultado) -> enviarMensagemTexto(mensagem, resultado),
+                this::publicarEstado, this::abrirPerfilPublico,
+                acao -> {
+                    if ("reagir".equals(acao)) escolherReacao();
+                    else if ("convidar".equals(acao)) convidar();
+                    else if ("sincronizar".equals(acao)) sincronizarManual();
+                    else if ("temporadas".equals(acao)) {
+                        if (cinema != null) cinema.fechar();
+                        abrirTemporadas();
+                    }
+                });
         cinema.abrir();
+        cinema.atualizarParticipantes(quantidadeParticipantes);
+        cinema.carregarHistorico(ultimasMensagens);
+        if (ultimaSalaSnapshot != null) atualizarPessoasCinema(ultimaSalaSnapshot);
     }
 
     private void enviarMensagem() {
-        if (sala == null || campoMensagem == null) return;
-        String msg = valor(campoMensagem.getText().toString());
-        if (msg.isEmpty()) return;
-        if (msg.length() > 900) { toast("Mensagem muito longa."); return; }
-        Map<String, Object> item = new HashMap<>();
+        if (campoMensagem == null) return;
+        final String texto = valor(campoMensagem.getText().toString());
+        if (texto.isEmpty()) return;
+        campoMensagem.setText(""); // resposta visual imediata, sem esperar a rede
+        enviarMensagemTexto(texto, sucesso -> {
+            if (!sucesso && campoMensagem != null && campoMensagem.getText().length() == 0) {
+                campoMensagem.setText(texto);
+                campoMensagem.setSelection(campoMensagem.length());
+            }
+        });
+    }
+
+    /** Gravação atômica sem transação de leitura; Firestore atualiza o chat local na hora. */
+    private void enviarMensagemTexto(String msg, NexoWatchCinemaOverlayV2.Resultado resultado) {
+        if (sala == null || msg == null || msg.trim().isEmpty()) {
+            resultado.concluido(false); return;
+        }
+        msg = msg.trim();
+        if (msg.length() > 900) {
+            toast("Mensagem muito longa (máximo 900 caracteres).");
+            resultado.concluido(false); return;
+        }
+        Map<String,Object> item = new HashMap<>();
+        item.put("id", java.util.UUID.randomUUID().toString());
         item.put("uid", uid);
         item.put("nome", apelido);
         item.put("texto", msg);
-        item.put("horario", new java.text.SimpleDateFormat("HH:mm", Locale.getDefault()).format(new java.util.Date()));
+        item.put("horario", new java.text.SimpleDateFormat("HH:mm", Locale.getDefault())
+                .format(new java.util.Date()));
         item.put("resposta", textoRespondendo);
         item.put("ts", System.currentTimeMillis());
         textoRespondendo = "";
-        campoMensagem.setHint("Digite uma mensagem...");
-        campoMensagem.setText("");
-        // Pequenas salas: histórico limitado a 60 mensagens dentro do documento.
-        // Para produção em escala, migrar para subcoleção com regras específicas.
-        db.runTransaction(transacao -> {
-            DocumentSnapshot atual = transacao.get(sala);
-            List<Object> existente = (List<Object>) atual.get("mensagens");
-            List<Object> historico = existente == null ? new ArrayList<>() : new ArrayList<>(existente);
-            historico.add(item);
-            while (historico.size() > 60) historico.remove(0);
-            transacao.update(sala, "mensagens", historico);
+        if (campoMensagem != null) campoMensagem.setHint("Digite uma mensagem...");
+        // arrayUnion não precisa ler documento nem bloquear outras mensagens simultâneas.
+        // O listener da sala renderiza os dados locais antes da confirmação do servidor.
+        sala.update("mensagens", FieldValue.arrayUnion(item))
+                .addOnSuccessListener(ignorado -> {
+                    android.util.Log.d("NEXO_CHAT", "MENSAGEM_CONFIRMADA_FIRESTORE");
+                    resultado.concluido(true);
+                })
+                .addOnFailureListener(e -> {
+                    android.util.Log.w("NEXO_CHAT", "MENSAGEM_FALHOU_FIRESTORE", e);
+                    erro("Não foi possível enviar mensagem", e);
+                    resultado.concluido(false);
+                });
+        // A interface recebe a mensagem pelo snapshot local, sem esperar a rede.
+        // O callback de sucesso so ocorre quando a gravacao foi confirmada.
+    }
+
+    private void compactarChat() {
+        if (sala == null || compactandoChat) return;
+        compactandoChat = true;
+        DocumentReference ref = sala;
+        db.runTransaction(tx -> {
+            DocumentSnapshot doc = tx.get(ref);
+            List<?> todas = (List<?>) doc.get("mensagens");
+            if (todas != null && todas.size() > 80) {
+                // Ultimas 60, sem perder mensagens enviadas enquanto a transação tenta confirmar.
+                tx.update(ref, "mensagens", new ArrayList<>(todas.subList(todas.size()-60,todas.size())));
+            }
             return null;
-        }).addOnFailureListener(e -> {
-            campoMensagem.setText(msg);
-            erro("Não foi possível enviar mensagem", e);
-        });
+        }).addOnCompleteListener(ok -> compactandoChat = false);
     }
 
     private void aplicarSincronia(DocumentSnapshot doc) {
         if (player == null) return;
-        if (souCriador) {
-            chipSincronia.setText("●  CONTROLE DO CRIADOR");
+        if (souLider) {
+            chipSincronia.setText("●  CONTROLE DO LÍDER");
             return;
         }
         Boolean tocando = doc.getBoolean("reproduzindo");
@@ -1668,7 +1897,7 @@ public class NexoWatchPartyActivity extends Activity {
     }
 
     private void publicarEstado() {
-        if (sala == null || player == null || !souCriador || destruida) return;
+        if (sala == null || player == null || !souLider || destruida) return;
         Map<String, Object> estado = new HashMap<>();
         estado.put("reproduzindo", player.isPlaying());
         estado.put("posicaoMs", player.getCurrentPosition());
@@ -1681,7 +1910,7 @@ public class NexoWatchPartyActivity extends Activity {
                 .addOnFailureListener(e -> erro("Não foi possível sincronizar", e));
     }
     private void escolherVideo() {
-        if (!souCriador || sala == null) return;
+        if (!souLider || sala == null) return;
         EditText url = entrada("https://.../video.mp4", "");
         new AlertDialog.Builder(this).setTitle("Vídeo da sala")
                 .setView(url).setNegativeButton("Cancelar", null)
@@ -1692,109 +1921,316 @@ public class NexoWatchPartyActivity extends Activity {
                             "reproduzindo", false, "sincronizadoEm", FieldValue.serverTimestamp())
                             .addOnSuccessListener(ok -> {
                                 String idAtual = salaId;
-                                liberarSala();
+                                liberarSala(false);
                                 entrarSala(idAtual);
                             })
                             .addOnFailureListener(e -> erro("Falha ao atualizar vídeo", e));
                 }).show();
     }
 
-    /** Troca episódios usando o catálogo remoto existente, sem recriar a sala. */
+    // NEXO_V8_TEMPORADAS_PREMIUM — seletor de temporada e cards de episodios.
+    private static final class EpisodioSala {
+        int temporada, numero;
+        String nome, descricao, imagem, videoUrl, duracao;
+        EpisodioSala(int t, int n, String titulo, String sinopse, String capa,
+                     String url, String tempo) {
+            temporada=t; numero=n; nome=titulo; descricao=sinopse;
+            imagem=capa; videoUrl=url; duracao=tempo;
+        }
+        String etiqueta() { return "T"+temporada+" · E"+numero+"  "+nome; }
+    }
+    private static final class TemporadaSala {
+        int numero;
+        final List<EpisodioSala> episodios=new ArrayList<>();
+        TemporadaSala(int n) { numero=n; }
+    }
+    private static String campoCatalogo(org.json.JSONObject item, String... chaves) {
+        if (item==null) return "";
+        for (String chave:chaves) {
+            String valor=item.optString(chave, "").trim();
+            if (!valor.isEmpty() && !"null".equalsIgnoreCase(valor)) return valor;
+        }
+        return "";
+    }
+
+    /** Troca episodio no documento atual da sala; nao cria outra sala. */
+    private void selecionarEpisodioSala(DocumentReference refAtual, String serie,
+                                        EpisodioSala ep, android.app.Dialog janela) {
+        if (!souLider) { toast("Somente o líder pode trocar episódios."); return; }
+        if (sala != refAtual || destruida) return;
+        if (!ep.videoUrl.startsWith("https://")) {
+            toast("Este episódio ainda não tem vídeo publicado."); return;
+        }
+        Map<String,Object> dados=new HashMap<>();
+        dados.put("videoUrl",ep.videoUrl);
+        dados.put("filmeTitulo",serie+"  •  "+ep.etiqueta());
+        dados.put("episodioAtual",ep.etiqueta());
+        dados.put("posicaoMs",0L);
+        dados.put("reproduzindo",false);
+        dados.put("sincronizadoEm",FieldValue.serverTimestamp());
+        refAtual.update(dados).addOnSuccessListener(ok -> {
+            if (janela != null && janela.isShowing()) janela.dismiss();
+            if (!destruida) toast("Agora: "+ep.etiqueta());
+        }).addOnFailureListener(e -> erro("Não foi possível trocar o episódio", e));
+    }
+
+    /** Desenha apenas os episodios da temporada selecionada, em lista rolavel. */
+    private void desenharEpisodiosSala(LinearLayout destino, TemporadaSala temporada,
+                                      String episodioAtual, String nomeSerie,
+                                      DocumentReference refAtual, android.app.Dialog janela) {
+        destino.removeAllViews();
+        TextView cabecalho = texto("TEMPORADA " + temporada.numero + "  •  "
+                + temporada.episodios.size() + " EPISÓDIOS", 12, AZUL, true);
+        cabecalho.setPadding(dp(3), dp(10), 0, dp(12));
+        destino.addView(cabecalho);
+        if (temporada.episodios.isEmpty()) {
+            destino.addView(texto("Não há episódios publicados nesta temporada.", 13, SUAVE, false));
+            return;
+        }
+        for (EpisodioSala ep : temporada.episodios) {
+            boolean atual = ep.etiqueta().equals(episodioAtual)
+                    || episodioAtual.startsWith("T"+ep.temporada+" · E"+ep.numero+"  ");
+            LinearLayout cartao = linha();
+            cartao.setGravity(Gravity.CENTER_VERTICAL);
+            cartao.setPadding(dp(8), dp(10), dp(8), dp(10));
+            cartao.setBackground(fundo(0xFF09131C, atual ? AZUL : 0xFF244557, 13));
+            LinearLayout.LayoutParams cartaoLp=margens(-1,-2,0,9);
+            destino.addView(cartao, cartaoLp);
+
+            FrameLayout miniatura=new FrameLayout(this);
+            miniatura.setBackground(fundo(0xFF101F2C, 0xFF31546B, 10));
+            miniatura.setClipToOutline(true);
+            ImageView imagem=new ImageView(this);
+            imagem.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            miniatura.addView(imagem,new FrameLayout.LayoutParams(-1,-1));
+            String urlImagem=lobbyUrlCapa(ep.imagem);
+            if (!urlImagem.isEmpty()) {
+                imagem.setTag(urlImagem);
+                lobbyCarregarImagem(urlImagem,imagem);
+            } else {
+                TextView semCapa=texto("EP  "+ep.numero, 13, SUAVE, true);
+                semCapa.setGravity(Gravity.CENTER);
+                miniatura.addView(semCapa,new FrameLayout.LayoutParams(-1,-1));
+            }
+            TextView play=texto(ep.videoUrl.isEmpty()?"—":"▶",18, BRANCO, true);
+            play.setGravity(Gravity.CENTER);
+            play.setBackground(fundo(0xA9040B11,Color.TRANSPARENT,26));
+            FrameLayout.LayoutParams pp=new FrameLayout.LayoutParams(dp(33),dp(33),Gravity.CENTER);
+            miniatura.addView(play,pp);
+            int larguraMiniatura=larguraDp()<390?dp(102):dp(125);
+            LinearLayout.LayoutParams pMini=new LinearLayout.LayoutParams(larguraMiniatura,dp(80));
+            pMini.rightMargin=dp(10);
+            cartao.addView(miniatura,pMini);
+
+            LinearLayout descricao=coluna();
+            TextView nome=texto("E"+ep.numero+"  "+ep.nome,13.5f,BRANCO,true);
+            nome.setMaxLines(2);
+            nome.setEllipsize(TextUtils.TruncateAt.END);
+            descricao.addView(nome);
+            if (!ep.descricao.isEmpty()) {
+                TextView resumo=texto(ep.descricao,11.5f,SUAVE,false);
+                resumo.setMaxLines(3);
+                resumo.setEllipsize(TextUtils.TruncateAt.END);
+                descricao.addView(resumo,margens(-1,-2,5,0));
+            } else {
+                TextView semResumo=texto("Descrição não cadastrada",11,SUAVE,false);
+                descricao.addView(semResumo,margens(-1,-2,5,0));
+            }
+            TextView status=texto(atual?"EM REPRODUÇÃO":
+                    (ep.videoUrl.isEmpty()?"INDISPONÍVEL":
+                            (ep.duracao.isEmpty()?"TOQUE PARA ASSISTIR":ep.duracao)),
+                    10,atual?AZUL:SUAVE,true);
+            descricao.addView(status,margens(-1,-2,7,0));
+            cartao.addView(descricao,new LinearLayout.LayoutParams(0,-2,1));
+            cartao.setAlpha(ep.videoUrl.isEmpty()?.62f:1f);
+            cartao.setOnClickListener(v -> selecionarEpisodioSala(refAtual,nomeSerie,ep,janela));
+        }
+    }
+
+    private void mostrarTemporadasPremium(DocumentReference refAtual, String nomeSerie,
+                                          String episodioAtual, List<TemporadaSala> temporadas) {
+        if (destruida || sala != refAtual || isFinishing()) return;
+        if (temporadas.isEmpty()) {
+            toast("Nenhuma temporada cadastrada nesta série."); return;
+        }
+        android.app.Dialog janela=new android.app.Dialog(this);
+        LinearLayout caixa=coluna();
+        caixa.setPadding(dp(15),dp(15),dp(15),dp(12));
+        caixa.setBackground(fundo(0xFF04090E,AZUL,18));
+        LinearLayout cab=linha();cab.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout titulos=coluna();
+        TextView titulo=texto("TEMPORADAS E EPISÓDIOS",19,BRANCO,true);
+        titulos.addView(titulo);
+        TextView subtitulo=texto(nomeSerie,12,SUAVE,false);
+        titulos.addView(subtitulo,margens(-1,-2,4,0));
+        cab.addView(titulos,new LinearLayout.LayoutParams(0,-2,1));
+        TextView fechar=texto("✕",21,BRANCO,true);
+        fechar.setGravity(Gravity.CENTER);
+        fechar.setBackground(fundo(0xFF111C25,0xFF305A6D,12));
+        fechar.setOnClickListener(v -> janela.dismiss());
+        cab.addView(fechar,new LinearLayout.LayoutParams(dp(43),dp(43)));
+        caixa.addView(cab,margens(-1,-2,0,14));
+
+        TextView seletor=texto("",14,BRANCO,true);
+        seletor.setGravity(Gravity.CENTER_VERTICAL);
+        seletor.setPadding(dp(14),0,dp(12),0);
+        seletor.setBackground(fundo(0xFF091B28,AZUL,12));
+        caixa.addView(seletor,margens(-1,dp(49),0,9));
+        ScrollView rolagem=new ScrollView(this);
+        rolagem.setVerticalScrollBarEnabled(true);
+        rolagem.setFillViewport(false);
+        LinearLayout lista=coluna();
+        rolagem.addView(lista,new ScrollView.LayoutParams(-1,-2));
+        caixa.addView(rolagem,new LinearLayout.LayoutParams(-1,0,1));
+
+        // Seleciona inicialmente a temporada do episodio atual, se identificavel.
+        int inicial=0;
+        for (int i=0;i<temporadas.size();i++) {
+            if (episodioAtual.startsWith("T"+temporadas.get(i).numero+" · E")) { inicial=i;break; }
+        }
+        final int[] escolha={inicial};
+        Runnable renderizar=()->{
+            TemporadaSala escolhida=temporadas.get(escolha[0]);
+            seletor.setText("Temporada "+escolhida.numero+"   ▾");
+            desenharEpisodiosSala(lista,escolhida,episodioAtual,nomeSerie,refAtual,janela);
+            rolagem.post(() -> rolagem.scrollTo(0,0));
+        };
+        renderizar.run();
+        seletor.setOnClickListener(v -> {
+            ScrollView menuRolavel=new ScrollView(this);
+            menuRolavel.setBackground(fundo(0xF907151E,AZUL,13));
+            LinearLayout opcoes=coluna();
+            opcoes.setPadding(dp(5),dp(5),dp(5),dp(5));
+            menuRolavel.addView(opcoes);
+            android.widget.PopupWindow menu=new android.widget.PopupWindow(menuRolavel,
+                    Math.max(dp(210),seletor.getWidth()),
+                    Math.min(dp(280),dp(56)*temporadas.size()+dp(10)),true);
+            menu.setBackgroundDrawable(fundo(0xFF07131D,AZUL,13));
+            menu.setOutsideTouchable(true);
+            menu.setElevation(dp(8));
+            for (int i=0;i<temporadas.size();i++) {
+                final int pos=i;
+                TemporadaSala t=temporadas.get(i);
+                TextView opcao=texto("Temporada "+t.numero+"  •  "+t.episodios.size()+" episódios",
+                        13,i==escolha[0]?AZUL:BRANCO,i==escolha[0]);
+                opcao.setPadding(dp(12),0,dp(10),0);
+                opcoes.addView(opcao,new LinearLayout.LayoutParams(-1,dp(53)));
+                opcao.setOnClickListener(w -> {
+                    escolha[0]=pos;
+                    menu.dismiss();
+                    renderizar.run();
+                });
+            }
+            menu.showAsDropDown(seletor,0,dp(3));
+        });
+        TextView dica=texto(souLider?"Escolha um episódio para reproduzir nesta sala.":
+                "Somente o líder pode trocar o episódio.",11,SUAVE,false);
+        caixa.addView(dica,margens(-1,-2,10,0));
+        janela.setContentView(caixa);
+        android.view.Window window=janela.getWindow();
+        if (window!=null) {
+            window.setBackgroundDrawableResource(android.R.color.transparent);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
+            WindowManager.LayoutParams params=window.getAttributes();
+            params.dimAmount=.82f;
+            window.setAttributes(params);
+        }
+        janela.show();
+        if (janela.getWindow()!=null) {
+            int largura=Math.min(dp(750),getResources().getDisplayMetrics().widthPixels-dp(22));
+            int altura=Math.min(dp(680),(int)(getResources().getDisplayMetrics().heightPixels*.85f));
+            janela.getWindow().setLayout(largura,altura);
+            janela.getWindow().setGravity(Gravity.CENTER);
+        }
+    }
+
+    /** Usa o catalogo ja existente, sem inventar thumbnails ou descricoes. */
     private void abrirTemporadas() {
-        if (sala == null) return;
-        final DocumentReference refAtual = sala;
+        if (sala==null) return;
+        final DocumentReference refAtual=sala;
         refAtual.get().addOnSuccessListener(dados -> {
-            String idSerie = valor(dados.getString("serieId"));
-            String nomeSerie = valor(dados.getString("serieTitulo"));
+            if (!dados.exists() || sala != refAtual) return;
+            String idSerie=valor(dados.getString("serieId"));
+            String nomeSerie=valor(dados.getString("serieTitulo"));
+            String episodioAtual=valor(dados.getString("episodioAtual"));
             if (nomeSerie.isEmpty()) { toast("Esta sala não é de uma série."); return; }
-            toast("Carregando episódios do catálogo NEXO...");
+            toast("Carregando temporadas...");
             new Thread(() -> {
+                java.net.HttpURLConnection conexao=null;
                 try {
-                    java.net.URL u = new java.net.URL(
+                    java.net.URL url=new java.net.URL(
                       "https://delicate-sunset-c8b5.lipesanderson.workers.dev/file?key=dados%2Fcatalogo.json");
-                    java.net.HttpURLConnection c = (java.net.HttpURLConnection)u.openConnection();
-                    c.setConnectTimeout(15000); c.setReadTimeout(20000);
-                    if (c.getResponseCode() != 200) {
-                        c.disconnect(); throw new Exception("Catálogo indisponível");
-                    }
-                    java.io.ByteArrayOutputStream b = new java.io.ByteArrayOutputStream();
-                    try(java.io.InputStream in = c.getInputStream()) {
-                        byte[] buf=new byte[8192];int n;
-                        while((n=in.read(buf))!=-1) {
-                            b.write(buf,0,n);
-                            if(b.size()>5_000_000) throw new Exception("Catálogo muito grande");
+                    conexao=(java.net.HttpURLConnection)url.openConnection();
+                    conexao.setConnectTimeout(15000);
+                    conexao.setReadTimeout(20000);
+                    if (conexao.getResponseCode()!=200) throw new Exception("Catálogo indisponível");
+                    java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();
+                    try (java.io.InputStream in=conexao.getInputStream()) {
+                        byte[] buffer=new byte[8192];int n;
+                        while((n=in.read(buffer))!=-1) {
+                            if(bytes.size()+n>5_000_000) throw new Exception("Catálogo muito grande");
+                            bytes.write(buffer,0,n);
                         }
                     }
-                    c.disconnect();
-                    org.json.JSONObject raiz = new org.json.JSONObject(b.toString("UTF-8"));
-                    org.json.JSONArray series = raiz.optJSONArray("series");
-                    if (series == null) series = raiz.optJSONArray("conteudos");
-                    if (series == null) throw new Exception("Lista de séries indisponível");
-                    org.json.JSONObject serie = null;
+                    org.json.JSONObject raizJson=new org.json.JSONObject(bytes.toString("UTF-8"));
+                    org.json.JSONArray series=raizJson.optJSONArray("series");
+                    if (series==null) series=raizJson.optJSONArray("conteudos");
+                    if (series==null) throw new Exception("Séries não encontradas");
+                    org.json.JSONObject serie=null;
                     for (int i=0;i<series.length();i++) {
-                        org.json.JSONObject s = series.optJSONObject(i);
-                        if (s==null) continue;
-                        if ((!idSerie.isEmpty() && idSerie.equals(s.optString("id")))
-                                || nomeSerie.equalsIgnoreCase(s.optString("titulo"))) {
-                            serie=s;break;
+                        org.json.JSONObject item=series.optJSONObject(i);
+                        if (item==null) continue;
+                        if ((!idSerie.isEmpty() && idSerie.equals(item.optString("id")))
+                                || nomeSerie.equalsIgnoreCase(item.optString("titulo"))) {
+                            serie=item;break;
                         }
                     }
-                    if (serie==null) throw new Exception("Série não encontrada no catálogo");
-                    org.json.JSONArray temporadas=serie.optJSONArray("temporadas");
-                    if (temporadas==null) throw new Exception("Não há temporadas cadastradas");
-                    java.util.ArrayList<String> titulos=new java.util.ArrayList<>();
-                    java.util.ArrayList<String> urls=new java.util.ArrayList<>();
-                    for(int ti=0;ti<temporadas.length();ti++) {
-                        org.json.JSONObject temporada=temporadas.optJSONObject(ti);
-                        if(temporada==null)continue;
-                        int numero=temporada.optInt("numero",ti+1);
-                        org.json.JSONArray eps=temporada.optJSONArray("episodios");
-                        if(eps==null)continue;
-                        for(int ei=0;ei<eps.length();ei++) {
+                    if (serie==null) throw new Exception("Série não encontrada");
+                    org.json.JSONArray temporadasJson=serie.optJSONArray("temporadas");
+                    if (temporadasJson==null) throw new Exception("Sem temporadas cadastradas");
+                    List<TemporadaSala> temporadas=new ArrayList<>();
+                    String fotoSerie=campoCatalogo(serie,"banner_url","capa_url","poster_url","capa","poster");
+                    for (int ti=0;ti<temporadasJson.length();ti++) {
+                        org.json.JSONObject t=temporadasJson.optJSONObject(ti);
+                        if (t==null) continue;
+                        int numTemporada=t.optInt("numero",ti+1);
+                        TemporadaSala temporada=new TemporadaSala(numTemporada);
+                        org.json.JSONArray eps=t.optJSONArray("episodios");
+                        if (eps==null) continue;
+                        String fotoTemporada=campoCatalogo(t,"banner_url","capa_url","poster_url","capa");
+                        for (int ei=0;ei<eps.length();ei++) {
                             org.json.JSONObject ep=eps.optJSONObject(ei);
-                            if(ep==null)continue;
-                            String url=ep.optString("video_url", "").trim();
-                            if(url.isEmpty())url=ep.optString("urlReproducao", "").trim();
-                            if(url.isEmpty()) {
-                                String key=ep.optString("videoKey", "").trim();
-                                if(!key.isEmpty())url="https://delicate-sunset-c8b5.lipesanderson.workers.dev/video?key="
+                            if (ep==null) continue;
+                            String video=campoCatalogo(ep,"video_url","urlReproducao");
+                            if (video.isEmpty()) {
+                                String key=campoCatalogo(ep,"videoKey");
+                                if (!key.isEmpty()) video="https://delicate-sunset-c8b5.lipesanderson.workers.dev/video?key="
                                         +android.net.Uri.encode(key);
                             }
-                            if(!url.startsWith("https://"))continue;
+                            if (!video.startsWith("https://")) video="";
                             int numEp=ep.optInt("numero",ei+1);
-                            titulos.add("T"+numero+" · E"+numEp+"  "+
-                                    ep.optString("titulo","Episódio "+numEp));
-                            urls.add(url);
+                            String nome=campoCatalogo(ep,"titulo","title","nome");
+                            if (nome.isEmpty()) nome="Episódio "+numEp;
+                            String descricao=campoCatalogo(ep,"sinopse","descricao","resumo","overview");
+                            String imagem=campoCatalogo(ep,"thumbnail_url","thumb_url","imagem_url",
+                                    "capa_url","still_url","poster_url","miniatura","capa","banner_url");
+                            if (imagem.isEmpty()) imagem=fotoTemporada.isEmpty()?fotoSerie:fotoTemporada;
+                            String duracao=campoCatalogo(ep,"duracao","duracaoMinutos","tempo");
+                            if (duracao.matches("[0-9]{1,3}")) duracao += " min";
+                            temporada.episodios.add(new EpisodioSala(numTemporada,numEp,nome,
+                                    descricao,imagem,video,duracao));
                         }
+                        temporadas.add(temporada);
                     }
                     runOnUiThread(() -> {
-                        if (isFinishing() || destruida || sala != refAtual)return;
-                        if (titulos.isEmpty()) {
-                            toast("Nenhum episódio publicado com vídeo disponível.");return;
-                        }
-                        new AlertDialog.Builder(this)
-                            .setTitle(souCriador ? "Escolher episódio · " + nomeSerie
-                                    : "Episódios · " + nomeSerie)
-                            .setItems(titulos.toArray(new String[0]), (d,indice)->{
-                                if(!souCriador){toast("Somente o criador pode trocar episódios.");return;}
-                                String episodio=titulos.get(indice);
-                                java.util.Map<String,Object> mudanca=new HashMap<>();
-                                mudanca.put("videoUrl",urls.get(indice));
-                                mudanca.put("filmeTitulo",nomeSerie+"  •  "+episodio);
-                                mudanca.put("episodioAtual",episodio);
-                                mudanca.put("posicaoMs",0L);
-                                mudanca.put("reproduzindo",false);
-                                mudanca.put("sincronizadoEm",FieldValue.serverTimestamp());
-                                refAtual.update(mudanca).addOnFailureListener(e->
-                                    erro("Não foi possível trocar o episódio",e));
-                            })
-                            .setNegativeButton("FECHAR",null).show();
+                        if (sala == refAtual && !destruida && !isFinishing())
+                            mostrarTemporadasPremium(refAtual,nomeSerie,episodioAtual,temporadas);
                     });
-                } catch(Exception e) {
-                    android.util.Log.w("NEXO_WATCH", "episodios", e);
-                    runOnUiThread(() -> toast("Não foi possível carregar os episódios do catálogo."));
-                }
-            }).start();
+                } catch (Exception erro) {
+                    android.util.Log.w("NEXO_WATCH","temporadas premium",erro);
+                    runOnUiThread(() -> { if (!destruida) toast("Não foi possível carregar as temporadas."); });
+                } finally { if (conexao!=null) conexao.disconnect(); }
+            },"NEXO-temporadas").start();
         }).addOnFailureListener(e -> erro("Falha ao consultar a sala",e));
     }
     private void votarPausa() {
@@ -1833,7 +2269,7 @@ public class NexoWatchPartyActivity extends Activity {
         startActivity(Intent.createChooser(envio, "Convidar para a sala NEXO"));
     }
     private void ajustesSala() {
-        if (!souCriador) { toast("Somente o criador pode configurar a sala."); return; }
+        if (!souLider) { toast("Somente o líder pode configurar a sala."); return; }
         new AlertDialog.Builder(this)
                 .setTitle("Configurações da sala")
                 .setItems(new String[] {"Alterar vídeo", "Encerrar sala para todos"}, (d, pos) -> {
@@ -1853,10 +2289,14 @@ public class NexoWatchPartyActivity extends Activity {
                 .setNegativeButton("Cancelar", null)
                 .setPositiveButton("SAIR", (d,w) -> montarLobby()).show();
     }
-    private void liberarSala() {
+    private void liberarSala() { liberarSala(true); }
+    private void liberarSala(boolean registrarSaida) {
         if(cinema!=null){cinema.fechar();cinema=null;}
-        mensagensInicializadas=false;
-        ultimaMensagemTs=0L;
+        rastreadorMensagens.reiniciar();
+        ultimasMensagens = new ArrayList<>();
+        ultimaSalaSnapshot = null;
+        compactandoChat = false;
+        enviandoMensagem = false;
         handler.removeCallbacks(publicadorEstado);
         if (salaListener != null) { salaListener.remove(); salaListener = null; }
         if (player != null) {
@@ -1867,13 +2307,30 @@ public class NexoWatchPartyActivity extends Activity {
         }
         if (sala != null) {
             DocumentReference antiga = sala;
-            // Mantém a entrada no histórico; não trata contador como presença online.
-            antiga.update("participantes", FieldValue.arrayRemove(uid))
-                    .addOnFailureListener(e -> android.util.Log.w("NEXO_WATCH", "exit", e));
+            if (registrarSaida) {
+                // Remoção e transferência de liderança na MESMA transação.
+                db.runTransaction(tx -> {
+                    DocumentSnapshot doc = tx.get(antiga);
+                    if (!doc.exists()) return null;
+                    List<?> atuais = (List<?>) doc.get("participantes");
+                    List<String> restantes = new ArrayList<>();
+                    if (atuais != null) for (Object pessoa : atuais) {
+                        String id = String.valueOf(pessoa);
+                        if (!id.equals(uid) && !restantes.contains(id)) restantes.add(id);
+                    }
+                    String lider = txt(doc.get("liderUid"), txt(doc.get("criadorUid"), ""));
+                    Map<String,Object> mudancas = new HashMap<>();
+                    mudancas.put("participantes", restantes);
+                    if (uid.equals(lider)) mudancas.put("liderUid",
+                            restantes.isEmpty() ? "" : restantes.get(0));
+                    tx.update(antiga, mudancas);
+                    return null;
+                }).addOnFailureListener(e -> android.util.Log.w("NEXO_WATCH", "exit", e));
+            }
             sala = null;
         }
         salaId = null;
-        souCriador = false;
+        souLider = false;
         chipTitulo = null;
         listaMensagens = null;
         listaParticipantes = null;

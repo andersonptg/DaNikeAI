@@ -118,6 +118,33 @@ public class DaNikeFirebaseMessagingService extends FirebaseMessagingService {
             referencia = String.valueOf(System.currentTimeMillis());
         }
         int avisoId = ("NEXO:" + referencia).hashCode() & 0x7fffffff;
+        // NEXO_FCM_V10: só registrar como entregue se o Android puder mostrar avisos.
+        if (Build.VERSION.SDK_INT >= 33 &&
+                checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                        != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            android.util.Log.w("NEXO_FCM", "FCM recebido, POST_NOTIFICATIONS negada");
+            return;
+        }
+        NotificationManager nm = (NotificationManager)
+                getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= 24 && nm != null && !nm.areNotificationsEnabled()) {
+            android.util.Log.w("NEXO_FCM", "FCM recebido, notificações do aplicativo bloqueadas");
+            return;
+        }
+        android.util.Log.i("NEXO_FCM", "FCM_RECEBIDO tipo=" + tipo
+                + " id=" + (dados.containsKey("fila_id") ? "fila" : "transport"));
+
+        // NEXO_FCM_IDEMPOTENCIA_V9: impedir reaviso do mesmo evento/fila
+        // por horas ou dias. Mensagens diferentes, mesmo texto, continuam validas.
+        String idEstavel = dados.get("fila_id");
+        if (idEstavel == null || idEstavel.trim().isEmpty()) idEstavel = dados.get("evento_id");
+        if (idEstavel == null || idEstavel.trim().isEmpty()) idEstavel = mensagem.getMessageId();
+        if (idEstavel != null && !idEstavel.trim().isEmpty()
+                && jaNotificadoAntes(idEstavel.trim())) {
+            android.util.Log.i("NEXO_FCM", "Reentrega ignorada por identificador de evento.");
+            return;
+        }
+
 
         boolean conversa = "mensagem".equals(tipo)
                 && remetenteUid != null
@@ -159,6 +186,8 @@ public class DaNikeFirebaseMessagingService extends FirebaseMessagingService {
             if (doc == null || !doc.exists()) return;
             String nome = doc.getString("nome");
             String fotoUrl = doc.getString("fotoUrl");
+            if (fotoUrl == null || fotoUrl.trim().isEmpty())
+                fotoUrl = doc.getString("avatarUrl");
 
             String nomeFinal = nome != null
                     && !nome.trim().isEmpty()
@@ -224,6 +253,37 @@ public class DaNikeFirebaseMessagingService extends FirebaseMessagingService {
 
 
 
+
+    /** Evita alertas repetidos de um mesmo fila_id, mesmo apos reiniciar o app. */
+    private boolean jaNotificadoAntes(String eventoId) {
+        synchronized (DaNikeFirebaseMessagingService.class) {
+            try {
+                java.security.MessageDigest sha = java.security.MessageDigest.getInstance("SHA-256");
+                byte[] digest = sha.digest(eventoId.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                StringBuilder chave = new StringBuilder("fcm_");
+                for (byte b : digest) chave.append(String.format(java.util.Locale.ROOT, "%02x", b & 255));
+                android.content.SharedPreferences prefs = getSharedPreferences(
+                        "nexo_fcm_eventos_v9", Context.MODE_PRIVATE);
+                long agora = System.currentTimeMillis();
+                long anterior = prefs.getLong(chave.toString(), 0L);
+                if (anterior > 0L && anterior <= agora
+                        && agora - anterior < 7L * 24L * 60L * 60L * 1000L) return true;
+                android.content.SharedPreferences.Editor editor = prefs.edit();
+                editor.putLong(chave.toString(), agora);
+                if (prefs.getAll().size() > 512) {
+                    long limite = agora - 7L * 24L * 60L * 60L * 1000L;
+                    for (Map.Entry<String, ?> e : prefs.getAll().entrySet()) {
+                        Object valor = e.getValue();
+                        if (valor instanceof Long && (Long) valor < limite) editor.remove(e.getKey());
+                    }
+                }
+                editor.apply();
+            } catch (Exception e) {
+                android.util.Log.w("NEXO_FCM", "Deduplicacao indisponivel: " + e.getClass().getSimpleName());
+            }
+            return false;
+        }
+    }
 
     private void mostrarNotificacao(
             String tipo,

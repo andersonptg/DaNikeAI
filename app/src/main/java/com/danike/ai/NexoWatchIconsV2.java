@@ -72,6 +72,18 @@ public final class NexoWatchIconsV2 {
                 case "mic":canvas.drawRoundRect(new RectF(9,3,15,15),3,3,p);canvas.drawArc(new RectF(6,8,18,19),0,180,false,p);canvas.drawLine(12,19,12,22,p);canvas.drawLine(8,22,16,22,p);break;
                 case "camera":canvas.drawRoundRect(new RectF(3,6,16,18),2,2,p);path.moveTo(16,10);path.lineTo(21,7);path.lineTo(21,17);path.lineTo(16,14);canvas.drawPath(path,p);break;
                 case "tv":canvas.drawRoundRect(new RectF(3,5,21,18),2,2,p);canvas.drawLine(9,21,15,21,p);canvas.drawLine(12,18,12,21,p);break;
+                case "close":canvas.drawLine(5,5,19,19,p);canvas.drawLine(19,5,5,19,p);break;
+                case "more":p.setStyle(Paint.Style.FILL);canvas.drawCircle(12,5,1.8f,p);canvas.drawCircle(12,12,1.8f,p);canvas.drawCircle(12,19,1.8f,p);break;
+                case "volume":path.moveTo(4,10);path.lineTo(8,10);path.lineTo(13,6);path.lineTo(13,18);path.lineTo(8,14);path.lineTo(4,14);path.close();canvas.drawPath(path,p);canvas.drawArc(new RectF(10,6,22,18),-60,120,false,p);break;
+                case "rewind10":
+                case "forward10": {
+                    boolean frente = name.equals("forward10");
+                    canvas.drawArc(new RectF(3.5f,3.5f,20.5f,20.5f), frente? -125 : -55, frente? 275 : -275,false,p);
+                    if(frente){canvas.drawLine(20,4,21,11,p);canvas.drawLine(21,11,15,8,p);}
+                    else{canvas.drawLine(4,4,3,11,p);canvas.drawLine(3,11,9,8,p);}
+                    p.setStyle(Paint.Style.FILL);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(9.6f);p.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+                    canvas.drawText("10",12,16,p);p.setTextAlign(Paint.Align.LEFT);p.setTypeface(null);break;
+                }
                 case "send":p.setStyle(Paint.Style.FILL);path.moveTo(3,11);path.lineTo(21,3);path.lineTo(16,21);path.lineTo(11,14);path.close();canvas.drawPath(path,p);break;
                 default:canvas.drawCircle(12,12,8,p);
             }

@@ -626,7 +626,7 @@ public class HaveHomeActivity extends Activity {
         card.setBackground(bg);
         card.setElevation(dp(5));
 
-        TextView titulo = texto("♧  ASSISTIR JUNTO", 21, Color.WHITE);
+        TextView titulo = texto("ASSISTIR JUNTO", 21, Color.WHITE);
         titulo.setTypeface(android.graphics.Typeface.DEFAULT,
                 android.graphics.Typeface.BOLD);
         card.addView(titulo);

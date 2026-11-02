@@ -235,6 +235,12 @@ public final class NexoCinemaExtras {
      */
     public static void adicionarGestos(Activity activity, FrameLayout raiz,
                                         PlayerView playerView, Dialog dialog) {
+        adicionarGestos(activity, raiz, playerView, dialog, playerView::showController);
+    }
+
+    /** O cinema NEXO pode usar controles próprios sem abrir os controles nativos. */
+    public static void adicionarGestos(Activity activity, FrameLayout raiz,
+                                        PlayerView playerView, Dialog dialog, Runnable aoToque) {
         final AudioManager audio=(AudioManager)activity.getSystemService(Context.AUDIO_SERVICE);
         final int volumeMax=audio!=null?audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC):15;
         final int largura=Math.max(dp(activity,64), (int)(activity.getResources().getDisplayMetrics().widthPixels*.15f));
@@ -290,7 +296,7 @@ public final class NexoCinemaExtras {
                         return true;
                     case MotionEvent.ACTION_UP:
                         if(!gesto[0]){
-                            playerView.showController();
+                            if (aoToque != null) aoToque.run();
                         }else{
                             aviso.removeCallbacks(esconder);aviso.postDelayed(esconder,850);
                         }

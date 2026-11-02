@@ -1076,6 +1076,7 @@ public class MainActivity extends Activity {
 
 
         montarHome();
+        NexoPermissoesHome.verificar(this); // NEXO_AJUSTES_V9_20261102
 
         DaNikeNotificacoes.registrarTokenFCM(this);
 
@@ -8797,6 +8798,8 @@ TextView botaoConexoes = txt("👥\nConexões", 12, Color.WHITE);
     protected void onResume() {
 
         super.onResume();
+        // NEXO_PERMISSOES_V10: se outro diálogo cobriu a Home, reavaliar o convite.
+        NexoPermissoesHome.verificar(this);
         if (NexoTemaGlobal.escuro(this) != escuro) {
             recreate();
             return;

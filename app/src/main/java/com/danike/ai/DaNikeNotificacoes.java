@@ -102,7 +102,7 @@ public final class DaNikeNotificacoes {
             return;
         }
 
-        usuario.getIdToken(true)
+        usuario.getIdToken(false)
                 .addOnSuccessListener(resultado -> {
                     if (resultado == null || resultado.getToken() == null) {
                         Log.e(TAG, "CENTRAL DEVICES: Firebase ID Token vazio");
@@ -208,7 +208,7 @@ public final class DaNikeNotificacoes {
             return;
         }
 
-        usuario.getIdToken(true)
+        usuario.getIdToken(false)
                 .addOnSuccessListener(resultado -> {
                     if (resultado == null || resultado.getToken() == null) {
                         Log.e(TAG, "NOTIFICACAO CENTRAL: ID TOKEN vazio");
